@@ -1,0 +1,553 @@
+/* Fonts — self-hosted pour performance connexions africaines */
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+/* Tailwind v4 */
+@import 'tailwindcss';
+
+/* ============================================
+   DESIGN SYSTEM SKILLUV — Tokens CSS
+   Architecture 3 niveaux :
+   1. Primitifs (--sk-*) — valeurs brutes par thème
+   2. Sémantiques (@theme) — intégration Tailwind
+   3. Composants — dans chaque composant .svelte
+   ============================================ */
+
+@theme {
+	/* Typography */
+	--font-sans: 'Space Grotesk', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', monospace;
+
+	/* Colors — résolution dynamique via CSS vars */
+	--color-primary: var(--sk-primary);
+	--color-primary-hover: var(--sk-primary-hover);
+	--color-primary-fg: var(--sk-primary-fg);
+	--color-accent: var(--sk-accent);
+	--color-accent-hover: var(--sk-accent-hover);
+	--color-accent-fg: var(--sk-accent-fg);
+	--color-surface: var(--sk-surface);
+	--color-surface-elevated: var(--sk-surface-elevated);
+	--color-surface-elevated-hover: var(--sk-surface-elevated-hover);
+	--color-surface-overlay: var(--sk-surface-overlay);
+	--color-text-primary: var(--sk-text);
+	--color-text-muted: var(--sk-text-muted);
+	--color-border: var(--sk-border);
+
+	/* Sémantiques theme-aware — success/warning/error/info sont désaturés
+	   ou virés en sakura/terminal pour ne pas jurer avec la palette. */
+	--color-success: var(--sk-success);
+	--color-success-soft: var(--sk-success-soft);
+	--color-warning: var(--sk-warning);
+	--color-warning-soft: var(--sk-warning-soft);
+	--color-error: var(--sk-error);
+	--color-error-soft: var(--sk-error-soft);
+	--color-error-fg: var(--sk-error-fg);
+	--color-info: var(--sk-info);
+	--color-info-soft: var(--sk-info-soft);
+
+	/* Radius — arrondis accueillants (UX spec) */
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-xl: 24px;
+	--radius-full: 9999px;
+
+	/* Shadows — teintées par thème */
+	--shadow-sm: 0 1px 2px var(--sk-shadow-color);
+	--shadow-md: 0 4px 6px var(--sk-shadow-color);
+	--shadow-lg: 0 10px 15px var(--sk-shadow-color);
+}
+
+/* ============================================
+   THÈME FORGE (défaut)
+   Bleu Électrique + Orange Brûlé sur gris chaud
+   ============================================ */
+:root,
+[data-theme='forge'] {
+	--sk-primary: #2563eb;
+	--sk-primary-hover: #1d4ed8;
+	--sk-accent: #ea580c;
+	--sk-accent-hover: #c2410c;
+	--sk-surface: #1c1917;
+	--sk-surface-elevated: #292524;
+	--sk-surface-elevated-hover: #33302c;
+	--sk-surface-overlay: #44403c;
+	--sk-text: #fafaf9;
+	--sk-text-muted: #a8a29e;
+	--sk-border: #57534e;
+	--sk-shadow-color: rgba(0, 0, 0, 0.5);
+	--sk-success: #22c55e;
+	--sk-success-soft: rgba(34, 197, 94, 0.15);
+	--sk-warning: #f59e0b;
+	--sk-warning-soft: rgba(245, 158, 11, 0.15);
+	--sk-error: #ef4444;
+	--sk-error-soft: rgba(239, 68, 68, 0.15);
+	--sk-info: #3b82f6;
+	--sk-info-soft: rgba(59, 130, 246, 0.15);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* ============================================
+   THÈME NEON
+   Cyan + Ambre sur bleu sombre — Futuriste
+   ============================================ */
+[data-theme='neon'] {
+	--sk-primary: #06b6d4;
+	--sk-primary-hover: #0891b2;
+	--sk-accent: #f59e0b;
+	--sk-accent-hover: #d97706;
+	--sk-surface: #0c1222;
+	--sk-surface-elevated: #1a2332;
+	--sk-surface-elevated-hover: #22304a;
+	--sk-surface-overlay: #2a3342;
+	--sk-text: #e2e8f0;
+	--sk-text-muted: #b0c0d0;
+	--sk-border: #3d4a5f;
+	--sk-shadow-color: rgba(0, 0, 0, 0.55);
+	--sk-success: #22c55e;
+	--sk-success-soft: rgba(34, 197, 94, 0.15);
+	--sk-warning: #f59e0b;
+	--sk-warning-soft: rgba(245, 158, 11, 0.15);
+	--sk-error: #f87171;
+	--sk-error-soft: rgba(248, 113, 113, 0.15);
+	--sk-info: #06b6d4;
+	--sk-info-soft: rgba(6, 182, 212, 0.15);
+	--sk-primary-fg: #0c1222;
+	--sk-accent-fg: #0c1222;
+	--sk-error-fg: #0c1222;
+}
+
+/* ============================================
+   THÈME ARENA
+   Rouge Profond + Bleu Acier — Compétition
+   ============================================ */
+[data-theme='arena'] {
+	--sk-primary: #dc2626;
+	--sk-primary-hover: #b91c1c;
+	--sk-accent: #64748b;
+	--sk-accent-hover: #475569;
+	--sk-surface: #1e1e2e;
+	--sk-surface-elevated: #2a2a3e;
+	--sk-surface-elevated-hover: #333349;
+	--sk-surface-overlay: #3a3a4e;
+	--sk-text: #f1f5f9;
+	--sk-text-muted: #b0c0d0;
+	--sk-border: #4a4a5e;
+	--sk-shadow-color: rgba(0, 0, 0, 0.55);
+	--sk-success: #22c55e;
+	--sk-success-soft: rgba(34, 197, 94, 0.15);
+	--sk-warning: #f59e0b;
+	--sk-warning-soft: rgba(245, 158, 11, 0.15);
+	--sk-error: #ef4444;
+	--sk-error-soft: rgba(239, 68, 68, 0.15);
+	--sk-info: #64748b;
+	--sk-info-soft: rgba(100, 116, 139, 0.2);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* ============================================
+   THÈME TERMINAL
+   Vert terminal + Ambre — Unix/Hacker
+   Monospace partout (override font-sans)
+   ============================================ */
+[data-theme='terminal'] {
+	--sk-primary: #22c55e;
+	--sk-primary-hover: #16a34a;
+	--sk-accent: #fbbf24;
+	--sk-accent-hover: #f59e0b;
+	--sk-surface: #000000;
+	--sk-surface-elevated: #0a0a0a;
+	--sk-surface-elevated-hover: #131313;
+	--sk-surface-overlay: #1a1a1a;
+	--sk-text: #22c55e;
+	--sk-text-muted: #15803d;
+	--sk-border: #2d3a2d;
+	--sk-shadow-color: rgba(0, 0, 0, 0.8);
+	--sk-success: #22c55e;
+	--sk-success-soft: rgba(34, 197, 94, 0.15);
+	--sk-warning: #fbbf24;
+	--sk-warning-soft: rgba(251, 191, 36, 0.15);
+	--sk-error: #ef4444;
+	--sk-error-soft: rgba(239, 68, 68, 0.15);
+	--sk-info: #22c55e;
+	--sk-info-soft: rgba(34, 197, 94, 0.12);
+	--sk-primary-fg: #000000;
+	--sk-accent-fg: #000000;
+	--sk-error-fg: #ffffff;
+}
+
+[data-theme='terminal'] * {
+	font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* ============================================
+   THEME SAKURA
+   Violet + Rose sur fond prune — Creatif
+   ============================================ */
+[data-theme='sakura'] {
+	--sk-primary: #9333ea;
+	--sk-primary-hover: #7e22ce;
+	--sk-accent: #ec4899;
+	--sk-accent-hover: #db2777;
+	--sk-surface: #1a0a2e;
+	--sk-surface-elevated: #251242;
+	--sk-surface-elevated-hover: #2f1852;
+	--sk-surface-overlay: #3b1f5e;
+	--sk-text: #f5f0ff;
+	--sk-text-muted: #b89dd8;
+	--sk-border: #4d2e73;
+	--sk-shadow-color: rgba(0, 0, 0, 0.55);
+	--sk-success: #34d399;
+	--sk-success-soft: rgba(52, 211, 153, 0.15);
+	--sk-warning: #fbbf24;
+	--sk-warning-soft: rgba(251, 191, 36, 0.15);
+	--sk-error: #f472b6;
+	--sk-error-soft: rgba(244, 114, 182, 0.15);
+	--sk-info: #a855f7;
+	--sk-info-soft: rgba(168, 85, 247, 0.15);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* ============================================
+   LIGHT MODES
+   ============================================ */
+
+/* FORGE LIGHT — Papier ivoire chaud, encre stone.
+   Base warm-neutral (hue kraft/parchemin), elevated ivoire clair,
+   accent orange-800 pour contraste WCAG AA sur crème. */
+[data-theme='forge-light'] {
+	--sk-primary: #1e40af;
+	--sk-primary-hover: #1e3a8a;
+	--sk-accent: #9a3412;
+	--sk-accent-hover: #7c2d12;
+	--sk-surface: #ede6d6;
+	--sk-surface-elevated: #f6f0e2;
+	--sk-surface-elevated-hover: #ede5d0;
+	--sk-surface-overlay: #fbf6ea;
+	--sk-text: #1c1917;
+	--sk-text-muted: #57534e;
+	--sk-border: #c9bfa8;
+	--sk-shadow-color: rgba(120, 53, 15, 0.12);
+	--sk-success: #15803d;
+	--sk-success-soft: rgba(21, 128, 61, 0.12);
+	--sk-warning: #b45309;
+	--sk-warning-soft: rgba(180, 83, 9, 0.12);
+	--sk-error: #b91c1c;
+	--sk-error-soft: rgba(185, 28, 28, 0.1);
+	--sk-info: #1e40af;
+	--sk-info-soft: rgba(30, 64, 175, 0.1);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* NEON LIGHT — Papier bleu glacier, cyan doux.
+   Base cool-tinted, elevated glacier clair, primary cyan-700 assombri. */
+[data-theme='neon-light'] {
+	--sk-primary: #0e7490;
+	--sk-primary-hover: #155e75;
+	--sk-accent: #b45309;
+	--sk-accent-hover: #92400e;
+	--sk-surface: #d4e6f0;
+	--sk-surface-elevated: #e5f0f7;
+	--sk-surface-elevated-hover: #d9e8f2;
+	--sk-surface-overlay: #eff6fb;
+	--sk-text: #0c1222;
+	--sk-text-muted: #475569;
+	--sk-border: #93c5fd;
+	--sk-shadow-color: rgba(6, 78, 118, 0.12);
+	--sk-success: #15803d;
+	--sk-success-soft: rgba(21, 128, 61, 0.12);
+	--sk-warning: #b45309;
+	--sk-warning-soft: rgba(180, 83, 9, 0.12);
+	--sk-error: #b91c1c;
+	--sk-error-soft: rgba(185, 28, 28, 0.1);
+	--sk-info: #0e7490;
+	--sk-info-soft: rgba(14, 116, 144, 0.1);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* ARENA LIGHT — Béton gladiateur, teinte steel warm.
+   Base gris-bleu métallique, elevated steel clair, primary red-800. */
+[data-theme='arena-light'] {
+	--sk-primary: #991b1b;
+	--sk-primary-hover: #7f1d1d;
+	--sk-accent: #334155;
+	--sk-accent-hover: #1e293b;
+	--sk-surface: #dbe1e8;
+	--sk-surface-elevated: #e8ecf1;
+	--sk-surface-elevated-hover: #dee4eb;
+	--sk-surface-overlay: #f1f4f8;
+	--sk-text: #1e1e2e;
+	--sk-text-muted: #475569;
+	--sk-border: #a3b3c4;
+	--sk-shadow-color: rgba(30, 30, 46, 0.12);
+	--sk-success: #15803d;
+	--sk-success-soft: rgba(21, 128, 61, 0.12);
+	--sk-warning: #b45309;
+	--sk-warning-soft: rgba(180, 83, 9, 0.12);
+	--sk-error: #991b1b;
+	--sk-error-soft: rgba(153, 27, 27, 0.1);
+	--sk-info: #334155;
+	--sk-info-soft: rgba(51, 65, 85, 0.1);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* TERMINAL LIGHT — Papier vert phosphore, vieux CRT en plein jour.
+   Base vert désaturé, elevated plus clair, monospace conservé. */
+[data-theme='terminal-light'] {
+	--sk-primary: #15803d;
+	--sk-primary-hover: #166534;
+	--sk-accent: #a16207;
+	--sk-accent-hover: #854d0e;
+	--sk-surface: #cde0c9;
+	--sk-surface-elevated: #dfecdb;
+	--sk-surface-elevated-hover: #d3e4cf;
+	--sk-surface-overlay: #ecf4e8;
+	--sk-text: #052e16;
+	--sk-text-muted: #166534;
+	--sk-border: #86b57e;
+	--sk-shadow-color: rgba(5, 46, 22, 0.12);
+	--sk-success: #15803d;
+	--sk-success-soft: rgba(21, 128, 61, 0.12);
+	--sk-warning: #a16207;
+	--sk-warning-soft: rgba(161, 98, 7, 0.12);
+	--sk-error: #b91c1c;
+	--sk-error-soft: rgba(185, 28, 28, 0.1);
+	--sk-info: #15803d;
+	--sk-info-soft: rgba(21, 128, 61, 0.1);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+[data-theme='terminal-light'] * {
+	font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* SAKURA LIGHT — Papier washi rose pâle, encre prune.
+   Base lavande/pêche, elevated plus clair, primary purple-700. */
+[data-theme='sakura-light'] {
+	--sk-primary: #7e22ce;
+	--sk-primary-hover: #6b21a8;
+	--sk-accent: #be185d;
+	--sk-accent-hover: #9d174d;
+	--sk-surface: #ecd6ee;
+	--sk-surface-elevated: #f4e5f4;
+	--sk-surface-elevated-hover: #ecdaec;
+	--sk-surface-overlay: #faf0fa;
+	--sk-text: #1a0a2e;
+	--sk-text-muted: #6b21a8;
+	--sk-border: #d8b4e8;
+	--sk-shadow-color: rgba(126, 34, 206, 0.12);
+	--sk-success: #15803d;
+	--sk-success-soft: rgba(21, 128, 61, 0.12);
+	--sk-warning: #a16207;
+	--sk-warning-soft: rgba(161, 98, 7, 0.12);
+	--sk-error: #be185d;
+	--sk-error-soft: rgba(190, 24, 93, 0.1);
+	--sk-info: #7e22ce;
+	--sk-info-soft: rgba(126, 34, 206, 0.1);
+	--sk-primary-fg: #ffffff;
+	--sk-accent-fg: #ffffff;
+	--sk-error-fg: #ffffff;
+}
+
+/* ============================================
+   STYLES DE BASE
+   ============================================ */
+body {
+	background-color: var(--sk-surface);
+	color: var(--sk-text);
+	font-family: 'Space Grotesk', system-ui, sans-serif;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--sk-surface);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--sk-border);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--sk-text-muted);
+}
+
+/* Focus visible — accessibilité (boutons, liens, éléments interactifs sans focus style propre).
+   Exclut les champs de formulaire qui ont leur propre ring/border focus pour éviter le double indicateur. */
+:focus-visible {
+	outline: 2px solid var(--sk-accent);
+	outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role='combobox']:focus-visible,
+[role='listbox']:focus-visible {
+	outline: none;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fragment-burst {
+	0% {
+		transform: scale(0);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.2);
+		opacity: 0.8;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes pulse-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 var(--sk-primary);
+	}
+	50% {
+		box-shadow: 0 0 20px 4px var(--sk-primary);
+	}
+}
+
+@keyframes slide-up {
+	from {
+		transform: translateY(8px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+/* Utility animations for Svelte components */
+@keyframes in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.animate-in {
+	animation: in 0.2s ease-out;
+}
+
+.fade-in {
+	animation-name: fade-in;
+}
+
+.slide-in-from-top-2 {
+	--tw-enter-translate-y: -0.5rem;
+	animation: slide-in-from-top 0.2s ease-out;
+}
+
+@keyframes slide-in-from-top {
+	from { opacity: 0; transform: translateY(-0.5rem); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion — accessibilité */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* Hide native number spinners — utilité globale */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+.no-spinner {
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+/* Auto-hide scrollbar — la piste garde toujours la même largeur (6px) pour
+   éviter tout layout shift, mais le thumb est transparent au repos.
+   Il apparaît au survol du conteneur OU quand on est en train de scroller
+   (classe `.is-scrolling` posée dynamiquement via une action Svelte).
+
+   Firefox reçoit la même logique via `scrollbar-color` transitionnable.
+   Le thumb devient légèrement plus sombre au hover pour un feedback discret. */
+.auto-hide-scrollbar {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+	transition: scrollbar-color 200ms ease;
+}
+.auto-hide-scrollbar:hover,
+.auto-hide-scrollbar.is-scrolling {
+	scrollbar-color: var(--sk-border) transparent;
+}
+
+.auto-hide-scrollbar::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+.auto-hide-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+.auto-hide-scrollbar::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 3px;
+	transition: background 200ms ease;
+}
+.auto-hide-scrollbar:hover::-webkit-scrollbar-thumb,
+.auto-hide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
+	background: var(--sk-border);
+}
+.auto-hide-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+	background: var(--sk-text-muted);
+}

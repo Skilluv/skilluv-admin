@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<script>
+			(function() {
+				// Mode terminal désactivé — si quelqu'un avait le flag dans son localStorage, on le purge.
+				if (localStorage.getItem('skilluv-terminal-mode') === 'true') {
+					localStorage.removeItem('skilluv-terminal-mode');
+				}
+				var b = localStorage.getItem('skilluv-theme') || 'forge';
+				// Si l'utilisateur avait le thème "terminal" stocké, on retombe sur forge.
+				if (b === 'terminal') b = 'forge';
+				var m = localStorage.getItem('skilluv-mode') || 'dark';
+				document.documentElement.setAttribute('data-theme', m === 'dark' ? b : b + '-light');
+			})();
+		</script>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Skilluv — Prouve ce que tu sais faire. Pour de vrai." />
+		<meta name="theme-color" content="#ea580c" />
+		<meta property="og:site_name" content="Skilluv" />
+		<meta property="og:type" content="website" />
+		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
+		<link rel="icon" type="image/png" href="%sveltekit.assets%/favicon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icon-192.png" />
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
+		<div id="app">%sveltekit.body%</div>
+	</body>
+</html>

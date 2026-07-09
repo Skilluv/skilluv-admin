@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80">
+  <defs>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Fragment icon -->
+  <path d="M20 40 L36 24 L52 40 L36 56 Z" fill="url(#accent)" opacity="0.9"/>
+  <path d="M20 40 L36 24 L52 40 L36 56 Z" fill="none" stroke="#ea580c" stroke-width="1.5"/>
+  <!-- "Skill" in accent -->
+  <text x="64" y="54" font-family="'Space Grotesk', system-ui, sans-serif" font-size="40" font-weight="700" fill="url(#accent)">Skill</text>
+  <!-- "uv" in white -->
+  <text x="210" y="54" font-family="'Space Grotesk', system-ui, sans-serif" font-size="40" font-weight="700" fill="#fafaf9">uv</text>
+</svg>
