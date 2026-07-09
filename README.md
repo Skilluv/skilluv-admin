@@ -17,18 +17,22 @@ Full product vision in the [backend repository](https://github.com/jeremie0342/s
 
 ## What this repo contains
 
-The **admin panel** used by Skilluv platform operators to manage:
+The **admin panel** used by Skilluv platform operators. Currently implemented sections:
 
-- Challenges and challenge templates
-- Users, moderation, reports
-- Curated OSS projects (integration, review, health)
-- Enterprise B2B accounts (subscriptions, credits, sponsored challenges, KYC)
-- Seasons, tournaments, bounties
-- Platform settings and feature flags
+- **Challenges** — creation, edit, publish, archive
+- **Users** — search, profile, actions
+- **Community moderation** — reports, community operations
+- **Enterprise B2B** — KYC, sponsored challenges pipeline
+- **Multi-tenant** — tenants management
+- **SSO** — session tracking and revocation
+- **Tournaments** — creation and management
+- **Audit log** — traceability of admin actions
+- **Operations** — platform-wide operational tooling
+- **Auth** — admin authentication
 
 Built with **SvelteKit 2, Svelte 5, Tailwind CSS 4, TypeScript**.
 
-See `ADMIN-CAPABILITIES.md` for the exhaustive feature list.
+Future admin surfaces (planned as the platform matures): seasons management, project-slice curation, mentor reputation dashboards, feature flags UI. See `ADMIN-CAPABILITIES.md` for the up-to-date capability inventory.
 
 ## Companion repositories
 
