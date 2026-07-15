@@ -111,6 +111,48 @@ export const ar: Translations = {
 			invalidLink: 'رابط التحقق غير صالح.',
 			loginBtn: 'تسجيل الدخول'
 		},
+		setup2fa: {
+			title: 'أمِّن حسابك الإداري',
+			subtitle: 'المصادقة الثنائية إلزامية لجميع المشرفين.',
+			stepScan: 'المسح',
+			stepVerify: 'التحقق',
+			stepBackup: 'أكواد الاسترداد',
+			scanTitle: 'الخطوة 1 — امسح رمز QR',
+			scanHint: 'افتح تطبيق المصادقة (Google Authenticator, 1Password, Authy…) وأضف حسابًا جديدًا.',
+			manualLabel: 'أو أدخل هذا السر يدويًا',
+			manualHint: 'مفيد إذا لم تتمكن من مسح رمز QR.',
+			continueBtn: 'لقد أضفت الحساب',
+			verifyTitle: 'الخطوة 2 — أكِّد باستخدام رمز',
+			verifyHint: 'أدخل الرمز المكوّن من 6 أرقام الذي يعرضه تطبيقك لإتمام التفعيل.',
+			codeLabel: 'رمز من 6 أرقام',
+			codePlaceholder: '123456',
+			codeInvalidFormat: 'يجب أن يحتوي الرمز على 6 أرقام بالضبط.',
+			enableBtn: 'تفعيل المصادقة الثنائية',
+			backupTitle: 'الخطوة 3 — احفظ أكواد الاسترداد',
+			backupHint: 'تتيح لك هذه الأكواد العشرة تسجيل الدخول إذا فقدت جهازك. كل كود يُستخدم مرة واحدة فقط.',
+			backupWarning: 'لن تُعرض مرة أخرى أبدًا. احفظها في مدير كلمات مرور أو اطبعها.',
+			copyBtn: 'نسخ الأكواد',
+			copiedToast: 'تم نسخ الأكواد',
+			downloadBtn: 'تنزيل (.txt)',
+			acknowledgeLabel: 'لقد حفظت أكواد الاسترداد في مكان آمن.',
+			finishBtn: 'المتابعة إلى الإدارة',
+			errorGeneric: 'حدث خطأ. أعد المحاولة أو تواصل مع مشرف آخر.',
+			starting: 'جاري توليد السر...',
+			enabling: 'جاري التفعيل...'
+		},
+		recovery2fa: {
+			title: 'تسجيل الدخول بكود استرداد',
+			subtitle: 'إذا فقدت جهاز المصادقة الثنائية، استخدم أحد أكواد الاسترداد أحادية الاستخدام.',
+			identifierLabel: 'البريد الإلكتروني أو اسم المستخدم',
+			passwordLabel: 'كلمة المرور',
+			backupCodeLabel: 'كود الاسترداد',
+			backupCodeHint: 'التنسيق: 4 مجموعات من 4 أحرف (مثال ABCD-EFGH-IJKL-MNOP).',
+			submitBtn: 'تسجيل الدخول',
+			backToLoginLink: 'العودة إلى تسجيل الدخول العادي',
+			errorGeneric: 'كود غير صالح أو مستخدم بالفعل.',
+			submitting: 'جاري التحقق...',
+			postLoginNotice: 'تذكّر إعادة توليد أكواد الاسترداد من الإعدادات بعد تسجيل الدخول.'
+		},
 		footer: 'سكيلوف © {year} — أثبت ما يمكنك فعله.'
 	},
 	challenges: {
@@ -300,6 +342,14 @@ export const ar: Translations = {
 			enterpriseIdLabel: 'معرّف المؤسسة',
 			seasonIdLabel: 'معرّف الموسم',
 			tournamentIdLabel: 'معرّف البطولة'
+		},
+		confirmDialog: {
+			irreversible: 'إجراء لا رجعة فيه. سيُسجَّل في سجل التدقيق.',
+			reasonLabel: 'السبب',
+			reasonPlaceholderDefault: 'اشرح لماذا هذا الإجراء ضروري',
+			reasonHint: 'مرئي في سجل التدقيق ولباقي المشرفين.',
+			reasonRequired: 'السبب مطلوب.',
+			reasonTooShort: 'يجب أن يحتوي السبب على {n} أحرف على الأقل.'
 		},
 		nav: {
 			administration: 'الإدارة',
@@ -604,6 +654,17 @@ export const ar: Translations = {
 			downloadCsv: 'تنزيل CSV',
 			lastResult: 'آخر نتيجة',
 			rebuildTriggered: 'انطلقت إعادة بناء لوحات المتصدرين'
+		},
+		reset2fa: {
+			sectionTitle: 'استعادة المصادقة الثنائية',
+			sectionHint: 'أعِد ضبط المصادقة الثنائية لهذا المستخدم إذا فُقد جهازه أو تعرض للاختراق.',
+			buttonLabel: 'إعادة ضبط المصادقة الثنائية',
+			dialogTitle: 'إعادة ضبط المصادقة الثنائية للمستخدم',
+			dialogDescription: 'سيتم حذف TOTP وأكواد الاسترداد والمفاتيح. ستُلغى جميع الجلسات النشطة. سيحتاج المستخدم إلى تسجيل الدخول من جديد وإعادة إعداد المصادقة الثنائية.',
+			reasonHint: 'السبب مطلوب (8 أحرف على الأقل) — مرئي في سجل التدقيق.',
+			successToast: 'تم إعادة ضبط المصادقة الثنائية. أُلغيت جميع الجلسات.',
+			wipeExplanation: 'يمسح TOTP وأكواد الاسترداد والمفاتيح ويُلغي الجلسات',
+			selfBlocked: 'لا يمكنك إعادة ضبط المصادقة الثنائية الخاصة بك.'
 		}
 	},
 	community: {
@@ -638,6 +699,7 @@ export const ar: Translations = {
 		genericMessage: 'حدث خطأ غير متوقع.',
 		backHome: 'رجوع للرئيسية',
 		retryBtn: 'إعادة المحاولة',
-		generic: 'حدث خطأ. حاول مرة أخرى.'
+		generic: 'حدث خطأ. حاول مرة أخرى.',
+		adminOriginRequired: 'المصدر غير مسموح به للوحة الإدارة. استخدم عنوان admin.skilluv.com الرسمي.'
 	}
 };

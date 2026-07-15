@@ -16,17 +16,31 @@ Ces décisions sont prises pour dé-bloquer l'exécution. Toute déviation doit 
 
 **0.2 Nouvelle règle sécurité — 2FA obligatoire pour admin.** Le login admin exige TOTP OU passkey. Un admin sans 2FA configuré est redirigé vers `/auth/setup-2fa` au premier login post-MVP. **Backend change requis** : côté login, si `role='admin'` et `totp_configured=false && webauthn_credentials=0` → renvoyer `AUTH_ADMIN_2FA_SETUP_REQUIRED`.
 
+**0.2.1 Recovery 2FA (obligatoire).** Au setup 2FA, générer 10 recovery codes one-shot (affichés une seule fois, hash bcrypt en DB). Endpoint `POST /api/admin/users/{id}/reset-2fa` réservé à un autre admin (audit log + reason obligatoire) pour re-enrollment si device perdu. Sans ça = risque lockout total du panel.
+
 **0.3 Origin check server-side.** Actuellement CORS seulement (contrôle client). En prod, ajouter middleware backend `require_admin_origin(headers)` qui vérifie `Origin ∈ ADMIN_ORIGINS` env. Sans quoi 403. Sinon un CSRF exfiltré depuis un site externe pourrait taper l'admin panel.
 
-**0.4 Rate-limit destructif.** Chaque action destructive (ban, unban, revoke_capability, revoke_deliverable, dissolve, reject) → rate-limit 10 req/min par admin + 100 req/heure. Middleware `rate_limit::AdminDestructive`.
+**0.4 Rate-limit destructif.** Chaque action destructive (ban, unban, revoke_capability, revoke_deliverable, dissolve, reject, rank_override) → rate-limit **3 req/min par admin + 30 req/heure**. Circuit breaker : 5 échecs (4xx/5xx) consécutifs → lock l'admin 15min avec notification email/Slack aux autres admins. Middleware `rate_limit::AdminDestructive`. Pas de bypass superuser (si urgence, désactiver le middleware via flag env explicite + audit).
 
-**0.5 Audit log unifié.** Toute mutation admin doit passer par `audit_logs::write(admin_id, action, target_type, target_id, reason, before_snapshot, after_snapshot)`. KYC, sponsored decisions, SSO revoke, tournament conclude, **et toutes les nouvelles routes MVP**. Format uniforme, queryable.
+**0.5 Audit log unifié + immuable.** Toute mutation admin passe par `audit_logs::write(admin_id, action, target_type, target_id, reason, before_snapshot, after_snapshot)`. Contraintes :
+- Table `audit_logs` en **append-only** : REVOKE UPDATE, DELETE sur tous les rôles applicatifs ; seul un rôle `audit_admin` PostgreSQL séparé peut purger.
+- Rétention **7 ans** minimum (compliance KYC/finance).
+- Export quotidien vers S3 (chiffré KMS) via cron `admin_audit_export`. Bucket immutable (Object Lock).
+- Routes existantes sans audit (KYC decide, sponsored decide, SSO revoke, tournament conclude) à refactorer en ADM-M0.
 
 **0.6 API client versioning.** L'API client (`src/lib/api/admin.ts`) évolue en gardant compatibilité arrière : nouvelles méthodes ajoutées, pas de rename. Types dans `src/lib/types/index.ts` étendus avec `Capability`, `Orientation`, `BadgeRule`, `EnterpriseType`, `FraudFlag`.
 
-**0.7 Reuse maximum des routes backend existantes.** Le backend expose déjà 90+ routes admin. **Aucune nouvelle route backend nécessaire pour ADM-M1 à ADM-M5.** Seul ADM-M6 (security hardening) ajoute quelques middlewares backend.
+**0.7 Reuse partiel des routes backend existantes.** Le backend expose déjà 90+ routes admin, mais :
+- **ADM-M1 (Capabilities) et ADM-M2 (Fraud)** = pur frontend, aucune route backend nouvelle.
+- **ADM-M3 / M4 / M5** = 13 nouvelles routes backend nécessaires (voir Annexe A).
+- **ADM-M0 (Security)** = 3 middlewares + refactor audit sur 4 routes existantes + endpoint `reset-2fa`.
 
-**0.8 Estimation** — 6-8 semaines de dev cumulé (1 dev senior full-time), tests + UI polish inclus.
+**0.8 Dry-run mode obligatoire** pour actions à effet en cascade (`rank-override`, `recompute-proofs`, `deprecate-badge-rule`, `archive-orientation`). Query `?dry_run=true` → renvoie preview des changements sans commit. Frontend affiche diff avant confirmation.
+
+**0.9 Estimation réaliste** :
+- **Solo dev senior full-time : 10-14 semaines** (features + backend + tests + polish + i18n + buffer). Les 6-8 semaines initiales sous-estimaient i18n (750 traductions dont AR), Playwright, Docker/CI, et refactor sécurité.
+- **Équipe de 2 (1 back + 1 front) : 6-8 semaines** en parallèle.
+- Ajouter **1 semaine buffer polish/regressions** par tranche de 4 semaines de dev feature.
 
 ---
 
@@ -231,15 +245,19 @@ export interface UserCapability {
 - `POST /api/admin/users/{id}/recompute-proofs` (wrap `proof_hooks::recompute_all_for_user`)
 - `POST /api/admin/users/{id}/rank-override` (avec `new_rank`, `reason`)
 
-### 3.6 Security hardening (Phase ADM-M6)
+### 3.0 Security hardening (Phase ADM-M0 — PRÉREQUIS)
 
-**Toutes les décisions §0.2 à §0.5** :
+**Livrée AVANT toutes les features M1..M5.** Rationale : les phases suivantes ajoutent des mutations sensibles (grant capability, rank override, revoke deliverable). Les ouvrir sans 2FA mandatory + audit uniforme = fenêtre 5+ semaines d'exposition inutile.
+
+**Toutes les décisions §0.2 à §0.5 + §0.8** :
 
 - **2FA mandatory admin** : côté login backend, si role='admin' et pas de TOTP + pas de passkey → renvoyer `AUTH_ADMIN_2FA_SETUP_REQUIRED`. Côté frontend, page `/auth/setup-2fa` qui force le user à configurer.
+- **Recovery codes** (§0.2.1) : 10 codes one-shot au setup + endpoint `reset-2fa` réservé à un autre admin.
 - **Origin server-side check** : middleware backend `require_admin_origin(headers)` sur toutes routes `/api/admin/*`.
-- **Rate-limit destructive** : middleware `rate_limit::AdminDestructive` (10 req/min, 100/heure) sur ban, revoke, dissolve, reject, mark_invalid.
-- **Audit log unifié** : toutes routes admin passent par `audit_logs::write(...)`. Refactor des endpoints existants qui ne loggent pas encore (KYC, sponsored, SSO revoke, tournament conclude).
-- **IP allowlist optionnelle** : env `SKILLUV_ADMIN_IP_ALLOWLIST` (CSV IPs). Si set, block requests hors liste.
+- **Rate-limit destructive** : middleware `rate_limit::AdminDestructive` (3 req/min, 30/heure) + circuit breaker sur ban, revoke, dissolve, reject, rank_override.
+- **Audit log unifié + immuable** : append-only, rétention 7 ans, export S3. Refactor endpoints existants (KYC, sponsored, SSO revoke, tournament conclude).
+- **Dry-run mode** (§0.8) : middleware helper `?dry_run=true` sur actions cascade.
+- ~~IP allowlist~~ **retirée du MVP SaaS** (admins mobiles/VPN/dynamic IPs cassent le flow). Repoussée en option on-prem post-MVP via env `SKILLUV_ADMIN_IP_ALLOWLIST` documenté mais non implémenté au core.
 
 ### 3.7 Tests + docs + deploy (Phase ADM-M7)
 
@@ -326,7 +344,7 @@ Ajouter :
 - `CapabilityBadge.svelte` — badge visuel par famille (couleur, icône).
 - `RankChevron.svelte` — chevron scout Apprenti→Doyen (5 variants).
 - `SkillPatch.svelte` — patch rond avec rareté (bordure).
-- `JsonEditor.svelte` — editor JSON pour badge_rules conditions + type_config (utiliser CodeMirror 6 léger).
+- `JsonEditor.svelte` — editor JSON pour badge_rules conditions + type_config. **Décision** : `<textarea>` monospace + `JSON.parse` + validation live + preview parsed. Pas de CodeMirror (150 KB gzip pour 2 usages = trop cher). Coloration syntaxique différée post-MVP si besoin.
 - `ConfirmDangerousDialog.svelte` — modal double-confirmation avec reason obligatoire pour actions destructives.
 
 ### 5.4 `src/lib/i18n/` — étendre les traductions
@@ -339,6 +357,12 @@ Ajouter clés pour :
 - Erreurs backend spécifiques (fraud, capability revoked, etc.)
 
 Estimation : ~250 nouvelles clés × 3 langues = ~750 traductions.
+
+**Plan de traduction** :
+1. **EN + FR** rédigés par le dev (source de vérité EN, FR = traduction directe).
+2. **AR** : premier jet via DeepL/GPT-5 → **review obligatoire par locuteur natif** (RTL, terminologie technique, tournures polies). Ne pas ship AR non-relu — préférer fallback EN si le review glisse.
+3. Clés stockées par domaine (`capabilities.*`, `fraud.*`, etc.) pour éviter merge conflicts.
+4. CI check : détecter clés manquantes (parity FR/AR vs EN).
 
 ### 5.5 `src/routes/+layout.svelte` — sidebar admin étendue
 
@@ -371,7 +395,9 @@ La navigation actuelle a 6 quick-actions. Réorganiser en sidebar hiérarchique 
 
 ## 7. Phases séquencées
 
-**Estimation totale : 6-8 semaines de dev cumulé** (1 dev senior full-time).
+**Estimation totale : 10-14 semaines solo dev senior, 6-8 semaines à 2 devs** (voir §0.9). Buffer polish 1 semaine par tranche de 4 semaines inclus.
+
+**Ordre imposé : ADM-M0 (security) EN PREMIER**, puis M1..M5 en parallèle possible, M7 en clôture.
 
 ### Phase ADM-M1 — Capability Manager ⏱️ 5-7 jours
 
@@ -381,7 +407,10 @@ La navigation actuelle a 6 quick-actions. Réorganiser en sidebar hiérarchique 
 - [ ] Page `/users/[id]/capabilities` OU tab dans `/users/[id]`.
 - [ ] Grant modal + revoke confirm dialog.
 - [ ] i18n 14 capability names + descriptions.
+- [ ] **Vitest** : unit tests sur `adminApi.grantCapability`, `.revokeCapability`, store reducer.
 - [ ] Tests Playwright : grant + revoke + expires_at.
+
+**Note** : Vitest est setup en ADM-M1 (config + premier test) puis étendu au fil des phases. Cible : ≥60% coverage sur `src/lib/api/` et `src/lib/stores/`.
 
 **DoD** : un admin peut nommer un mentor / plagiarism_reviewer / forum_moderator depuis l'UI, avec audit log automatique.
 
@@ -437,22 +466,27 @@ La navigation actuelle a 6 quick-actions. Réorganiser en sidebar hiérarchique 
 
 **DoD** : admin a une vue complète du user en une page : identité + capabilities + orientations + badges + rank + actions.
 
-### Phase ADM-M6 — Security hardening ⏱️ 5-6 jours
+### Phase ADM-M0 — Security hardening (PRÉREQUIS, avant M1) ⏱️ 7-9 jours
 
-**Backend** (~3 jours) :
+**Backend** (~5 jours) :
 - [ ] Login retourne `AUTH_ADMIN_2FA_SETUP_REQUIRED` si admin sans 2FA.
+- [ ] Génération + stockage bcrypt des 10 recovery codes au setup 2FA.
+- [ ] `POST /api/admin/users/{id}/reset-2fa` (audit + reason obligatoire, appelant ≠ target).
 - [ ] Middleware `require_admin_origin(headers)` sur `/api/admin/*`.
-- [ ] Middleware `rate_limit::AdminDestructive` sur mutations sensibles.
+- [ ] Middleware `rate_limit::AdminDestructive` (3/min, 30/h) + circuit breaker 5 échecs → lock 15min + notif.
+- [ ] Refactor `audit_logs` en append-only (REVOKE UPDATE/DELETE, rôle `audit_admin` séparé).
 - [ ] Refactor endpoints admin sans audit log (KYC decide, sponsored decide, SSO revoke, tournament conclude) pour appeler `audit_logs::write`.
-- [ ] Env `SKILLUV_ADMIN_IP_ALLOWLIST` + middleware IP check.
+- [ ] Cron `admin_audit_export` → S3 chiffré KMS (bucket Object Lock).
+- [ ] Helper `dry_run` middleware.
 
-**Frontend** (~2 jours) :
-- [ ] Page `/auth/setup-2fa/+page.svelte` (setup TOTP OU passkey).
+**Frontend** (~3 jours) :
+- [ ] Page `/auth/setup-2fa/+page.svelte` (setup TOTP OU passkey + affichage one-shot des recovery codes).
+- [ ] Page `/auth/recovery-2fa/+page.svelte` (login via recovery code).
 - [ ] Login handle `AUTH_ADMIN_2FA_SETUP_REQUIRED` → redirect.
-- [ ] Composant `ConfirmDangerousDialog.svelte` — modal avec reason obligatoire.
+- [ ] Composant `ConfirmDangerousDialog.svelte` — modal avec reason obligatoire + preview dry-run pour actions cascade.
 - [ ] Toutes actions destructives passent par ce composant.
 
-**DoD** : impossible d'être admin sans 2FA. Impossible d'appeler `/api/admin/*` depuis un autre origin. Actions destructives rate-limitées + auditées.
+**DoD** : impossible d'être admin sans 2FA. Recovery flow testé end-to-end. Impossible d'appeler `/api/admin/*` depuis un autre origin. Actions destructives rate-limitées + circuit-breakées + auditées immuablement.
 
 ### Phase ADM-M7 — Tests + docs + deploy ⏱️ 4-5 jours
 
@@ -480,6 +514,31 @@ Une fois MVP livré, alignement avec les enhancements backend :
 
 ---
 
+## 9. Risques & rollback
+
+Chaque phase introduit des mutations sur des données production. Mitigations obligatoires avant merge.
+
+| Risque | Phase | Mitigation | Rollback |
+|---|---|---|---|
+| Grant capability accidentel (mentor à un user non qualifié) | M1 | Confirm dialog + audit + expires_at optionnel | `DELETE .../capabilities/{cap}` supporté nativement (P18.4) |
+| Revoke deliverable = perte XP/rank cascade | M2 | Dry-run preview obligatoire (§0.8) | Endpoint `undo-revoke` à ajouter côté backend, garde `revoked_snapshot` en DB |
+| Edit orientation casse la recherche talents v3 | M3 | **Soft-delete + versioning obligatoire** : `is_archived` + `version` incrémenté, ancienne version conservée 90j | Restore via bump version + `is_archived=false` |
+| Deprecate badge rule casse badge attribution existants | M3 | `deprecated_at` non-destructif + dry-run comptant users impactés | Reset `deprecated_at=NULL` |
+| Change enterprise_type viole triggers PG (staffing_agency requires seats) | M4 | Backend validation stricte + transaction rollback si invariants échouent | Aucun rollback nécessaire (transaction atomique) |
+| Rank override cascade sur classements/rewards | M5 | Dry-run montre delta leaderboard + confirm double | Re-run `recompute-proofs` sans override |
+| Recompute-proofs sur user actif = incohérence temporaire | M5 | Verrou row-level PG pendant recompute + notification "recompute en cours" au user | Automatique (transaction) |
+| 2FA rollout casse login pour admin sans setup | M0 | Grace period 7j : bandeau warning au lieu de redirect forcé, puis strict | Env flag `SKILLUV_ADMIN_2FA_ENFORCE=false` pour désactivation temporaire (audit obligatoire) |
+| Audit log append-only bloque migrations DB | M0 | Rôle `audit_admin` séparé documenté dans `docs/RUNBOOK.md` | Grant temporaire `audit_admin` à un DBA pour migration + revoke immédiat |
+
+**Règle générale** : toute nouvelle mutation admin doit répondre à 3 questions dans la PR description :
+1. Quel est l'effet en cascade (autres tables/systèmes touchés) ?
+2. Comment on rollback si erreur en prod ?
+3. Le dry-run mode couvre-t-il tous les effets visibles ?
+
+Sans réponse aux 3, la PR ne merge pas.
+
+---
+
 ## Annexe A — Endpoints backend à créer (~15 nouveaux)
 
 | # | Route | Body/Query | Utilisé par page |
@@ -499,8 +558,11 @@ Une fois MVP livré, alignement avec les enhancements backend :
 | 13 | `POST /api/admin/users/{id}/recompute-proofs` | — | /users/[id] |
 | 14 | `POST /api/admin/users/{id}/rank-override` | `{new_rank, reason}` | idem |
 | 15 | `POST /api/admin/proof-hooks/sweep` | `?within_days=7` | /operations |
+| 16 | `POST /api/admin/users/{id}/reset-2fa` | `{reason}` | ADM-M0 setup-2fa recovery |
 
-**Estimation ajouts backend : ~5-7 jours de dev cumulé** (surtout des CRUD simples avec `require_capability("admin")` + audit log). À faire en parallèle des phases ADM-M3/M4/M5.
+**Estimation ajouts backend : ~5-7 jours de dev cumulé pour M3/M4/M5** (CRUD simples avec `require_capability("admin")` + audit log). **+ ~5 jours pour ADM-M0** (middlewares + audit refactor + append-only + export S3). À faire en parallèle du frontend correspondant.
+
+**Toutes les mutations doivent supporter `?dry_run=true`** (§0.8).
 
 ---
 
@@ -508,16 +570,16 @@ Une fois MVP livré, alignement avec les enhancements backend :
 
 | Phase admin | Backend requis | Backend nouveau |
 |---|---|---|
+| **ADM-M0** (prérequis) | (nouveau) | 3 middlewares + 4 refactors audit + reset-2fa + append-only + export S3 (~5j) |
 | ADM-M1 | P18.4 | 0 |
 | ADM-M2 | P14.5 | 0 |
 | ADM-M3 | P16, P17 | 7 endpoints (~2j) |
 | ADM-M4 | P24 | 4 endpoints (~1j) |
 | ADM-M5 | P16, P17, P18, P19 | 2 endpoints (~1j) |
-| ADM-M6 | (nouveau) | 3 middlewares + 4 refactors audit (~3j) |
 | ADM-M7 | — | 0 |
-| **TOTAL** | | **~16 endpoints ≈ 7 jours dev backend** |
+| **TOTAL** | | **~16 endpoints + M0 ≈ 9-10 jours dev backend** |
 
-Backend + frontend cumulés : **~9-11 semaines** pour un dev senior, ~6-8 semaines pour une équipe de 2.
+Backend + frontend cumulés : **10-14 semaines** pour un dev senior full-stack, **6-8 semaines** pour une équipe de 2 (1 back + 1 front). Voir §0.9.
 
 ---
 

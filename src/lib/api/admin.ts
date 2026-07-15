@@ -100,6 +100,13 @@ export const adminApi = {
 		return api.post<ApiResponse<{ message: string }>>(`/admin/users/${id}/unban`);
 	},
 
+	resetUser2fa(id: string, reason: string) {
+		return api.post<ApiResponse<{ reset: boolean; user_id: string; message: string }>>(
+			`/admin/users/${id}/reset-2fa`,
+			{ reason }
+		);
+	},
+
 	// --- Reports ---
 
 	listReports(params?: { status?: ReportStatus; target_type?: ReportTargetType; page?: number; per_page?: number }) {
@@ -136,8 +143,11 @@ export const adminApi = {
 
 	// --- One-shot operations ---
 
-	dissolveGuild(id: string) {
-		return api.post<ApiResponse<{ dissolved: boolean }>>(`/admin/guilds/${id}/dissolve`, {});
+	dissolveGuild(id: string, reason?: string) {
+		return api.post<ApiResponse<{ dissolved: boolean }>>(
+			`/admin/guilds/${id}/dissolve`,
+			reason ? { reason } : {}
+		);
 	},
 
 	concludeGuildWar(id: string, winnerGuildId: string) {
@@ -244,8 +254,11 @@ export const adminApi = {
 		);
 	},
 
-	revokeSsoSession(id: string) {
-		return api.post<ApiResponse<{ revoked: boolean }>>(`/admin/sso/sessions/${id}/revoke`);
+	revokeSsoSession(id: string, reason?: string) {
+		return api.post<ApiResponse<{ revoked: boolean }>>(
+			`/admin/sso/sessions/${id}/revoke`,
+			reason ? { reason } : undefined
+		);
 	},
 
 	// --- Enterprise KYC ---
@@ -291,8 +304,11 @@ export const adminApi = {
 		return api.post<ApiResponse<{ season: Season }>>(`/admin/seasons/${id}/status`, { status });
 	},
 
-	closeSeason(id: string) {
-		return api.post<ApiResponse<{ close_report: SeasonCloseReport }>>(`/admin/seasons/${id}/close`, {});
+	closeSeason(id: string, reason?: string) {
+		return api.post<ApiResponse<{ close_report: SeasonCloseReport }>>(
+			`/admin/seasons/${id}/close`,
+			reason ? { reason } : {}
+		);
 	},
 
 	// --- Tournaments ---
@@ -309,10 +325,10 @@ export const adminApi = {
 		return api.post<ApiResponse<{ updated: boolean }>>(`/admin/tournaments/${id}/score`, body);
 	},
 
-	concludeTournament(id: string) {
+	concludeTournament(id: string, reason?: string) {
 		return api.post<ApiResponse<{ conclusion: Record<string, unknown> }>>(
 			`/admin/tournaments/${id}/conclude`,
-			{}
+			reason ? { reason } : {}
 		);
 	}
 };

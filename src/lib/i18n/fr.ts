@@ -103,6 +103,48 @@ export const fr: Translations = {
 			invalidLink: 'Lien de vérification invalide.',
 			loginBtn: 'Se connecter'
 		},
+		setup2fa: {
+			title: 'Sécurise ton compte admin',
+			subtitle: 'L\'authentification à deux facteurs est obligatoire pour tous les administrateurs.',
+			stepScan: 'Scan',
+			stepVerify: 'Vérification',
+			stepBackup: 'Codes de secours',
+			scanTitle: 'Étape 1 — Scanne le QR code',
+			scanHint: 'Ouvre ton application d\'authentification (Google Authenticator, 1Password, Authy…) et ajoute un nouveau compte.',
+			manualLabel: 'Ou saisis ce secret manuellement',
+			manualHint: 'Utile si tu ne peux pas scanner le QR code.',
+			continueBtn: 'J\'ai ajouté le compte',
+			verifyTitle: 'Étape 2 — Confirme avec un code',
+			verifyHint: 'Saisis le code à 6 chiffres affiché par ton application pour finaliser l\'activation.',
+			codeLabel: 'Code à 6 chiffres',
+			codePlaceholder: '123456',
+			codeInvalidFormat: 'Le code doit contenir exactement 6 chiffres.',
+			enableBtn: 'Activer la 2FA',
+			backupTitle: 'Étape 3 — Sauvegarde tes codes de secours',
+			backupHint: 'Ces 10 codes te permettent de te connecter si tu perds ton appareil. Chaque code est utilisable une seule fois.',
+			backupWarning: 'Ils ne seront plus jamais affichés. Copie-les dans un gestionnaire de mots de passe ou imprime-les.',
+			copyBtn: 'Copier les codes',
+			copiedToast: 'Codes copiés',
+			downloadBtn: 'Télécharger (.txt)',
+			acknowledgeLabel: 'J\'ai sauvegardé mes codes de secours dans un endroit sûr.',
+			finishBtn: 'Continuer vers l\'admin',
+			errorGeneric: 'Une erreur est survenue. Réessaie ou contacte un autre administrateur.',
+			starting: 'Génération du secret...',
+			enabling: 'Activation...'
+		},
+		recovery2fa: {
+			title: 'Connexion avec un code de secours',
+			subtitle: 'Si tu as perdu ton appareil 2FA, utilise l\'un de tes codes de secours à usage unique.',
+			identifierLabel: 'Email ou nom d\'utilisateur',
+			passwordLabel: 'Mot de passe',
+			backupCodeLabel: 'Code de secours',
+			backupCodeHint: 'Format : 4 groupes de 4 caractères (ex. ABCD-EFGH-IJKL-MNOP).',
+			submitBtn: 'Se connecter',
+			backToLoginLink: 'Retour à la connexion classique',
+			errorGeneric: 'Code invalide ou déjà utilisé.',
+			submitting: 'Vérification...',
+			postLoginNotice: 'Pense à régénérer tes codes de secours depuis les paramètres après connexion.'
+		},
 		footer: 'Skilluv © {year} — Prouve ce que tu sais faire.'
 	},
 	challenges: {
@@ -292,6 +334,14 @@ export const fr: Translations = {
 			enterpriseIdLabel: 'Enterprise ID',
 			seasonIdLabel: 'Season ID',
 			tournamentIdLabel: 'Tournament ID'
+		},
+		confirmDialog: {
+			irreversible: 'Action irréversible. Elle sera enregistrée dans le journal d\'audit.',
+			reasonLabel: 'Motif',
+			reasonPlaceholderDefault: 'Explique pourquoi cette action est nécessaire',
+			reasonHint: 'Visible dans le journal d\'audit et par les autres administrateurs.',
+			reasonRequired: 'Un motif est obligatoire.',
+			reasonTooShort: 'Le motif doit contenir au moins {n} caractères.'
 		},
 		nav: {
 			administration: 'Administration',
@@ -596,6 +646,17 @@ export const fr: Translations = {
 			downloadCsv: 'Télécharger CSV',
 			lastResult: 'Dernier résultat',
 			rebuildTriggered: 'Leaderboards rebuild lancé'
+		},
+		reset2fa: {
+			sectionTitle: 'Récupération 2FA',
+			sectionHint: 'Réinitialise l\'authentification à deux facteurs de cet utilisateur si son appareil est perdu ou compromis.',
+			buttonLabel: 'Réinitialiser la 2FA',
+			dialogTitle: 'Réinitialiser la 2FA de l\'utilisateur',
+			dialogDescription: 'TOTP, codes de secours et passkeys seront supprimés. Toutes les sessions actives seront révoquées. L\'utilisateur devra se reconnecter et reconfigurer sa 2FA.',
+			reasonHint: 'Motif requis (8 caractères minimum) — visible dans le journal d\'audit.',
+			successToast: '2FA réinitialisée. Toutes les sessions sont révoquées.',
+			wipeExplanation: 'Efface TOTP + codes de secours + passkeys + révoque les sessions',
+			selfBlocked: 'Tu ne peux pas réinitialiser ta propre 2FA.'
 		}
 	},
 	community: {
@@ -630,6 +691,7 @@ export const fr: Translations = {
 		genericMessage: 'Une erreur inattendue est survenue.',
 		backHome: 'Retour à l\'accueil',
 		retryBtn: 'Réessayer',
-		generic: 'Une erreur est survenue. Réessaie.'
+		generic: 'Une erreur est survenue. Réessaie.',
+		adminOriginRequired: 'Origine non autorisée pour le panneau admin. Utilise l\'URL officielle admin.skilluv.com.'
 	}
 };

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { adminApi } from '$api/admin';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
+	import { toast } from '$stores/toast.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import Button from '$components/ui/Button.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
@@ -37,7 +38,9 @@
 			});
 			reports = res.data as ReportEntry[];
 			totalPages = res.pagination.total_pages;
-		} catch { /* silent */ }
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 		loading = false;
 	}
 
@@ -45,7 +48,12 @@
 		try {
 			await adminApi.resolveReport(id, status);
 			reports = reports.filter((r) => r.id !== id);
-		} catch { /* silent */ }
+			toast.success(
+				status === 'resolved' ? i18n.t('admin.reports.resolveBtn') : i18n.t('admin.reports.dismissBtn')
+			);
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 	}
 </script>
 

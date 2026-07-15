@@ -3,6 +3,9 @@
 	import Badge from '$components/ui/Badge.svelte';
 	import Button from '$components/ui/Button.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
+	import { toast } from '$stores/toast.svelte';
+	import { errorMessage } from '$api/errors';
 	import { i18n } from '$lib/i18n';
 	import type { Challenge } from '$types';
 
@@ -14,6 +17,9 @@
 	let entries = $state<CommunityEntry[]>([]);
 	let loading = $state(true);
 
+	let rejectTarget = $state<CommunityEntry | null>(null);
+	let rejectSubmitting = $state(false);
+
 	$effect(() => { loadReview(); });
 
 	async function loadReview() {
@@ -21,7 +27,9 @@
 		try {
 			const res = await adminApi.communityReview();
 			entries = res.data.challenges as CommunityEntry[];
-		} catch { /* silent */ }
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 		loading = false;
 	}
 
@@ -29,16 +37,29 @@
 		try {
 			await adminApi.approveCommunity(id);
 			entries = entries.filter((e) => e.challenge.id !== id);
-		} catch { /* silent */ }
+			toast.success(i18n.t('admin.community.approveBtn'));
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 	}
 
-	async function reject(id: string) {
-		const feedback = prompt(i18n.t('admin.community.rejectFeedback'));
-		if (!feedback) return;
+	function requestReject(entry: CommunityEntry) {
+		rejectTarget = entry;
+	}
+
+	async function confirmReject(feedback: string) {
+		if (!rejectTarget) return;
+		const id = rejectTarget.challenge.id;
+		rejectSubmitting = true;
 		try {
 			await adminApi.rejectCommunity(id, feedback);
 			entries = entries.filter((e) => e.challenge.id !== id);
-		} catch { /* silent */ }
+			toast.success(i18n.t('admin.community.rejectBtn'));
+			rejectTarget = null;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
+		rejectSubmitting = false;
 	}
 </script>
 
@@ -78,10 +99,21 @@
 					</details>
 					<div class="flex gap-2">
 						<Button variant="primary" size="sm" onclick={() => approve(challenge.id)}>{i18n.t('admin.community.approveBtn')}</Button>
-						<Button variant="ghost" size="sm" onclick={() => reject(challenge.id)}>{i18n.t('admin.community.rejectBtn')}</Button>
+						<Button variant="danger" size="sm" onclick={() => requestReject({ challenge, creator })}>{i18n.t('admin.community.rejectBtn')}</Button>
 					</div>
 				</div>
 			{/each}
 		</div>
 	{/if}
 </div>
+
+<ConfirmDangerousDialog
+	open={rejectTarget !== null}
+	title={i18n.t('admin.community.rejectBtn')}
+	description={rejectTarget ? rejectTarget.challenge.title : ''}
+	actionLabel={i18n.t('admin.community.rejectBtn')}
+	reasonPlaceholder={i18n.t('admin.community.rejectFeedback')}
+	loading={rejectSubmitting}
+	onconfirm={confirmReject}
+	onclose={() => (rejectTarget = null)}
+/>

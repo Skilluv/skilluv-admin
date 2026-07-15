@@ -148,6 +148,48 @@ export interface Translations {
 			invalidLink: string;
 			loginBtn: string;
 		};
+		setup2fa: {
+			title: string;
+			subtitle: string;
+			stepScan: string;
+			stepVerify: string;
+			stepBackup: string;
+			scanTitle: string;
+			scanHint: string;
+			manualLabel: string;
+			manualHint: string;
+			continueBtn: string;
+			verifyTitle: string;
+			verifyHint: string;
+			codeLabel: string;
+			codePlaceholder: string;
+			codeInvalidFormat: string;
+			enableBtn: string;
+			backupTitle: string;
+			backupHint: string;
+			backupWarning: string;
+			copyBtn: string;
+			copiedToast: string;
+			downloadBtn: string;
+			acknowledgeLabel: string;
+			finishBtn: string;
+			errorGeneric: string;
+			starting: string;
+			enabling: string;
+		};
+		recovery2fa: {
+			title: string;
+			subtitle: string;
+			identifierLabel: string;
+			passwordLabel: string;
+			backupCodeLabel: string;
+			backupCodeHint: string;
+			submitBtn: string;
+			backToLoginLink: string;
+			errorGeneric: string;
+			submitting: string;
+			postLoginNotice: string;
+		};
 		footer: string;
 	};
 	challenges: {
@@ -427,6 +469,14 @@ export interface Translations {
 			enterpriseIdLabel: string;
 			seasonIdLabel: string;
 			tournamentIdLabel: string;
+		};
+		confirmDialog: {
+			irreversible: string;
+			reasonLabel: string;
+			reasonPlaceholderDefault: string;
+			reasonHint: string;
+			reasonRequired: string;
+			reasonTooShort: string;
 		};
 		nav: {
 			administration: string;
@@ -787,6 +837,17 @@ export interface Translations {
 			lastResult: string;
 			rebuildTriggered: string;
 		};
+		reset2fa: {
+			sectionTitle: string;
+			sectionHint: string;
+			buttonLabel: string;
+			dialogTitle: string;
+			dialogDescription: string;
+			reasonHint: string;
+			successToast: string;
+			wipeExplanation: string;
+			selfBlocked: string;
+		};
 	};
 	community: {
 		title: string;
@@ -839,5 +900,6 @@ export interface Translations {
 		backHome: string;
 		retryBtn: string;
 		generic: string;
+		adminOriginRequired: string;
 	};
 }

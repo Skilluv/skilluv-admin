@@ -1,4 +1,6 @@
 import type { ApiErrorBody } from '$lib/types';
+import { toast } from '$lib/stores/toast.svelte';
+import { i18n } from '$lib/i18n';
 
 /**
  * Erreur API Skilluv typée
@@ -162,8 +164,18 @@ export function createApiClient(
 					currentPath.startsWith('/enterprise/settings/security') ||
 					currentPath.startsWith('/settings/security');
 				const alreadyOnVerify = currentPath.startsWith('/auth/verify-email');
+				const alreadyOnSetup2fa = currentPath.startsWith('/auth/setup-2fa');
 
-				if (code === 'AUTH_TOTP_SETUP_REQUIRED') {
+				if (code === 'AUTH_ADMIN_2FA_SETUP_REQUIRED') {
+					if (!alreadyOnSetup2fa) {
+						window.location.replace(`/auth/setup-2fa?next=${next}`);
+					}
+				} else if (code === 'AUTH_ADMIN_ORIGIN_REQUIRED') {
+					// Erreur de config déploiement : montre un message clair, pas de
+					// redirect (on est déjà sur une origine refusée, redirect
+					// bouclerait).
+					toast.error(i18n.t('errors.adminOriginRequired'));
+				} else if (code === 'AUTH_TOTP_SETUP_REQUIRED') {
 					// Enterprise users go through the onboarding wizard (offers
 					// both TOTP and Passkey). Candidates keep the direct route
 					// to the security page.

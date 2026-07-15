@@ -52,6 +52,13 @@
 				}
 				auth.setUser(res.data.user, res.data.login_method ?? 'password');
 				auth.hasPasskey = res.data.has_passkey ?? false;
+				// Soft flag backend (BE-A) : admin sans 2FA doit setup avant tout.
+				// La 403 middleware sur /api/admin/* est un filet — ce redirect
+				// proactif évite un flash de dashboard puis un renvoi brutal.
+				if (res.data.requires_totp_setup) {
+					window.location.replace(`/auth/setup-2fa?next=${encodeURIComponent(redirect)}`);
+					return;
+				}
 				window.location.href = redirect;
 			}
 		} catch (err) {
@@ -59,6 +66,10 @@
 				if (err.code === 'AUTH_TOTP_REQUIRED') {
 					requiresTotp = true;
 					error = '';
+				} else if (err.code === 'AUTH_ADMIN_2FA_SETUP_REQUIRED') {
+					// Le client global redirige déjà ; on force ici au cas où le
+					// browser bloquerait la redirection automatique (tests, iframe).
+					window.location.replace(`/auth/setup-2fa?next=${encodeURIComponent(redirect)}`);
 				} else {
 					error = err.message;
 				}
@@ -115,6 +126,14 @@
 					autocomplete="one-time-code"
 					placeholder="123456"
 				/>
+				<a
+					href="/auth/recovery-2fa"
+					class="text-center text-xs text-text-muted underline-offset-2 hover:text-text-primary hover:underline"
+				>
+					{i18n.locale === 'fr'
+						? 'Utiliser un code de secours'
+						: 'Use a backup code'}
+				</a>
 			{/if}
 			<Button variant="accent" size="lg" type="submit" loading={loading}>
 				{i18n.locale === 'fr' ? 'Se connecter' : 'Sign in'}

@@ -11,6 +11,21 @@ Planned scope for the MVP catch-up (see `docs/MVP.md`). The admin panel is
 currently ~50 backend endpoints behind (P6 → P25). The phases below bring it
 back in sync.
 
+### ADM-M0 — Security hardening (PREREQUISITE, ships before M1)
+- Mandatory 2FA (TOTP or passkey) for `role='admin'`; redirect to
+  `/auth/setup-2fa` when missing; 10 one-shot recovery codes generated at
+  setup.
+- `POST /api/admin/users/{id}/reset-2fa` (admin-to-admin, audited).
+- Server-side `Origin` check middleware on `/api/admin/*`.
+- Rate-limit destructive actions (3/min, 30/h per admin) + circuit
+  breaker (5 consecutive failures → 15 min lock + notification).
+- Unified append-only audit log: REVOKE UPDATE/DELETE, 7 year retention,
+  daily S3 export (KMS + Object Lock).
+- Refactor KYC, sponsored, SSO revoke, tournament conclude to write
+  audit entries.
+- `?dry_run=true` middleware for cascade actions.
+- IP allowlist deferred to post-MVP on-prem option.
+
 ### ADM-M1 — Capability Manager
 - Add `Capability` / `UserCapability` types to `src/lib/types/index.ts`.
 - New tab on `/users/[id]` (or `/users/[id]/capabilities`) to list, grant and
@@ -50,18 +65,6 @@ back in sync.
   `POST /api/admin/users/{id}/recompute-proofs`,
   `POST /api/admin/users/{id}/rank-override`,
   `GET /api/users/{id}/orientations` (admin-scoped).
-
-### ADM-M6 — Security hardening
-- Mandatory 2FA (TOTP or passkey) for `role='admin'`; redirect to
-  `/auth/setup-2fa` when missing.
-- Server-side `Origin` check middleware on `/api/admin/*`
-  (`require_admin_origin`).
-- Rate-limit destructive admin actions (10/min, 100/h per admin) via
-  `rate_limit::AdminDestructive`.
-- Unified audit log: every admin mutation goes through
-  `audit_logs::write(...)`. Refactor KYC, sponsored, SSO revoke, tournament
-  conclude endpoints that do not log yet.
-- Optional IP allowlist via `SKILLUV_ADMIN_IP_ALLOWLIST`.
 
 ### ADM-M7 — Tests, docs, deploy
 - Playwright e2e coverage for login, grant capability, fraud queue,

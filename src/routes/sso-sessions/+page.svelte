@@ -3,8 +3,10 @@
 	import Button from '$components/ui/Button.svelte';
 	import Input from '$components/ui/Input.svelte';
 	import Pagination from '$components/ui/Pagination.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import { adminApi, type SsoSession } from '$api/admin';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
+	import { toast } from '$stores/toast.svelte';
 	import { i18n } from '$lib/i18n';
 
 	let loading = $state(true);
@@ -15,6 +17,7 @@
 	let total = $state(0);
 	let enterpriseFilter = $state('');
 	let revokingId = $state<string | null>(null);
+	let revokeTarget = $state<SsoSession | null>(null);
 
 	async function load() {
 		loading = true;
@@ -28,7 +31,7 @@
 			sessions = res.data;
 			total = res.pagination.total;
 		} catch (e) {
-			error = e instanceof SkilluError ? e.message : String(e);
+			error = errorMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -36,22 +39,22 @@
 
 	onMount(load);
 
-	async function revoke(id: string) {
-		if (
-			!confirm(
-				i18n.locale === 'fr'
-					? 'Révoquer cette session ? L’utilisateur sera immédiatement déconnecté.'
-					: 'Revoke this session? The user will be logged out immediately.'
-			)
-		)
-			return;
+	function requestRevoke(session: SsoSession) {
+		revokeTarget = session;
+	}
+
+	async function confirmRevoke(reason: string) {
+		if (!revokeTarget) return;
+		const id = revokeTarget.session_id;
 		revokingId = id;
 		try {
-			await adminApi.revokeSsoSession(id);
+			await adminApi.revokeSsoSession(id, reason);
 			sessions = sessions.filter((s) => s.session_id !== id);
 			total = Math.max(0, total - 1);
+			toast.success(i18n.locale === 'fr' ? 'Session révoquée' : 'Session revoked');
+			revokeTarget = null;
 		} catch (e) {
-			error = e instanceof SkilluError ? e.message : String(e);
+			toast.error(errorMessage(e));
 		} finally {
 			revokingId = null;
 		}
@@ -167,10 +170,10 @@
 							<td class="px-4 py-3 text-xs text-text-muted">{fmtDate(s.last_used_at)}</td>
 							<td class="px-4 py-3 text-right">
 								<Button
-									variant="ghost"
+									variant="danger"
 									size="sm"
 									loading={revokingId === s.session_id}
-									onclick={() => revoke(s.session_id)}
+									onclick={() => requestRevoke(s)}
 								>
 									{i18n.locale === 'fr' ? 'Révoquer' : 'Revoke'}
 								</Button>
@@ -193,3 +196,18 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDangerousDialog
+	open={revokeTarget !== null}
+	title={i18n.locale === 'fr' ? 'Révoquer la session SSO' : 'Revoke SSO session'}
+	description={revokeTarget
+		? `${revokeTarget.user_username} — ${revokeTarget.user_email}`
+		: ''}
+	actionLabel={i18n.locale === 'fr' ? 'Révoquer' : 'Revoke'}
+	reasonHint={i18n.locale === 'fr'
+		? 'Compromission suspectée, session zombie, etc.'
+		: 'Suspected compromise, stale session, etc.'}
+	loading={revokingId !== null}
+	onconfirm={confirmRevoke}
+	onclose={() => (revokeTarget = null)}
+/>

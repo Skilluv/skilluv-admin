@@ -4,6 +4,9 @@
 	import Input from '$components/ui/Input.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
+	import { toast } from '$stores/toast.svelte';
+	import { errorMessage } from '$api/errors';
 	import { i18n } from '$lib/i18n';
 
 	interface UserRow {
@@ -19,6 +22,9 @@
 	let currentPage = $state(1);
 	let totalPages = $state(1);
 
+	let banTarget = $state<UserRow | null>(null);
+	let banSubmitting = $state(false);
+
 	$effect(() => { loadUsers(); });
 
 	async function loadUsers() {
@@ -32,24 +38,40 @@
 			});
 			users = res.data as UserRow[];
 			totalPages = res.pagination.total_pages;
-		} catch { /* silent */ }
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 		loading = false;
 	}
 
 	function search() { currentPage = 1; loadUsers(); }
 
-	async function toggleBan(user: UserRow) {
+	function requestBan(user: UserRow) {
+		banTarget = user;
+	}
+
+	async function confirmBan(reason: string) {
+		if (!banTarget) return;
+		banSubmitting = true;
 		try {
-			if (user.banned) {
-				await adminApi.unbanUser(user.id);
-				user.banned = false;
-			} else {
-				const reason = prompt(i18n.t('admin.users.banReason'));
-				if (!reason) return;
-				await adminApi.banUser(user.id, reason);
-				user.banned = true;
-			}
-		} catch { /* silent */ }
+			await adminApi.banUser(banTarget.id, reason);
+			banTarget.banned = true;
+			toast.success(i18n.t('admin.userDetail.bannedToast'));
+			banTarget = null;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
+		banSubmitting = false;
+	}
+
+	async function unban(user: UserRow) {
+		try {
+			await adminApi.unbanUser(user.id);
+			user.banned = false;
+			toast.success(i18n.t('admin.userDetail.unbannedToast'));
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
 	}
 </script>
 
@@ -83,13 +105,15 @@
 							<span>{user.total_fragments} ◆</span>
 						</div>
 					</div>
-					<Button
-						variant={user.banned ? 'primary' : 'danger'}
-						size="sm"
-						onclick={() => toggleBan(user)}
-					>
-						{user.banned ? i18n.t('admin.users.unbanBtn') : i18n.t('admin.users.banBtn')}
-					</Button>
+					{#if user.banned}
+						<Button variant="primary" size="sm" onclick={() => unban(user)}>
+							{i18n.t('admin.users.unbanBtn')}
+						</Button>
+					{:else}
+						<Button variant="danger" size="sm" onclick={() => requestBan(user)}>
+							{i18n.t('admin.users.banBtn')}
+						</Button>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -103,3 +127,15 @@
 		{/if}
 	{/if}
 </div>
+
+<ConfirmDangerousDialog
+	open={banTarget !== null}
+	title={i18n.t('admin.users.banBtn')}
+	description={banTarget ? `@${banTarget.username} — ${banTarget.display_name}` : ''}
+	actionLabel={i18n.t('admin.users.banBtn')}
+	reasonPlaceholder={i18n.t('admin.userDetail.banPlaceholder')}
+	reasonHint={i18n.t('admin.userDetail.banHint')}
+	loading={banSubmitting}
+	onconfirm={confirmBan}
+	onclose={() => (banTarget = null)}
+/>

@@ -4,7 +4,7 @@
 	import { auth } from '$stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$stores/toast.svelte';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
 	import {
 		adminApi,
 		type Season,
@@ -17,6 +17,7 @@
 	import Badge from '$components/ui/Badge.svelte';
 	import Select from '$components/ui/Select.svelte';
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import { Swords, Calendar, Trophy, Sparkles, ChevronRight, Flag, DoorClosed } from '@lucide/svelte';
 
 	type Tab = 'seasons' | 'tournaments';
@@ -66,6 +67,9 @@
 	let scoreValue = $state(0);
 	let scoring = $state(false);
 
+	let showCloseSeason = $state(false);
+	let showConcludeTournament = $state(false);
+
 	function toIsoOrUndef(local: string): string | undefined {
 		if (!local) return undefined;
 		return new Date(local).toISOString();
@@ -88,7 +92,7 @@
 			toast.success(i18n.t('admin.tournaments.seasonCreated'));
 			sSlug = ''; sName = ''; sDesc = ''; sStartsAt = ''; sEndsAt = '';
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			creatingSeason = false;
 		}
@@ -102,22 +106,27 @@
 			await adminApi.updateSeasonStatus(seasonOpsId.trim(), seasonNewStatus);
 			toast.success(i18n.t('admin.tournaments.seasonStatusUpdated'));
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			updatingSeasonStatus = false;
 		}
 	}
 
-	async function submitCloseSeason() {
+	function requestCloseSeason() {
+		if (!seasonOpsId.trim()) return;
+		showCloseSeason = true;
+	}
+
+	async function confirmCloseSeason(reason: string) {
 		if (closingSeason || !seasonOpsId.trim()) return;
-		if (!confirm(i18n.t('admin.tournaments.closeSeasonConfirm'))) return;
 		closingSeason = true;
 		try {
-			const res = await adminApi.closeSeason(seasonOpsId.trim());
+			const res = await adminApi.closeSeason(seasonOpsId.trim(), reason);
 			lastCloseReport = res.data.close_report;
 			toast.success(i18n.t('admin.tournaments.seasonClosed'));
+			showCloseSeason = false;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			closingSeason = false;
 		}
@@ -150,7 +159,7 @@
 			tSlug = ''; tName = ''; tDesc = '';
 			tSponsorEntId = ''; tSponsorLogo = ''; tSponsorBlurb = '';
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			creatingTournament = false;
 		}
@@ -164,7 +173,7 @@
 			await adminApi.updateTournamentStatus(tournamentOpsId.trim(), tournamentNewStatus);
 			toast.success(i18n.t('admin.tournaments.tournamentStatusUpdated'));
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			updatingTournamentStatus = false;
 		}
@@ -184,21 +193,26 @@
 			scoreParticipantId = '';
 			scoreValue = 0;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			scoring = false;
 		}
 	}
 
-	async function submitConclude() {
+	function requestConclude() {
+		if (!tournamentOpsId.trim()) return;
+		showConcludeTournament = true;
+	}
+
+	async function confirmConclude(reason: string) {
 		if (concludingTournament || !tournamentOpsId.trim()) return;
-		if (!confirm(i18n.t('admin.tournaments.concludeConfirm'))) return;
 		concludingTournament = true;
 		try {
-			await adminApi.concludeTournament(tournamentOpsId.trim());
+			await adminApi.concludeTournament(tournamentOpsId.trim(), reason);
 			toast.success(i18n.t('admin.tournaments.tournamentConcluded'));
+			showConcludeTournament = false;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			concludingTournament = false;
 		}
@@ -342,7 +356,7 @@
 					<p class="text-xs text-text-muted">
 						{i18n.t('admin.tournaments.closeSeasonHint')}
 					</p>
-					<Button variant="danger" size="sm" onclick={submitCloseSeason} loading={closingSeason}>
+					<Button variant="danger" size="sm" onclick={requestCloseSeason} loading={closingSeason}>
 						<DoorClosed size={14} strokeWidth={2} />
 						{i18n.t('admin.tournaments.closePermanently')}
 					</Button>
@@ -552,7 +566,7 @@
 					<p class="text-xs text-text-muted">
 						{i18n.t('admin.tournaments.concludeTournamentHint')}
 					</p>
-					<Button variant="danger" size="sm" onclick={submitConclude} loading={concludingTournament}>
+					<Button variant="danger" size="sm" onclick={requestConclude} loading={concludingTournament}>
 						<Trophy size={14} strokeWidth={2} />
 						{i18n.t('admin.tournaments.concludeBtn')}
 					</Button>
@@ -561,3 +575,23 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDangerousDialog
+	open={showCloseSeason}
+	title={i18n.t('admin.tournaments.closeSeason')}
+	description={i18n.t('admin.tournaments.closeSeasonConfirm')}
+	actionLabel={i18n.t('admin.tournaments.closePermanently')}
+	loading={closingSeason}
+	onconfirm={confirmCloseSeason}
+	onclose={() => (showCloseSeason = false)}
+/>
+
+<ConfirmDangerousDialog
+	open={showConcludeTournament}
+	title={i18n.t('admin.tournaments.concludeTournament')}
+	description={i18n.t('admin.tournaments.concludeConfirm')}
+	actionLabel={i18n.t('admin.tournaments.concludeBtn')}
+	loading={concludingTournament}
+	onconfirm={confirmConclude}
+	onclose={() => (showConcludeTournament = false)}
+/>

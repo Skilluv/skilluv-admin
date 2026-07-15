@@ -103,6 +103,48 @@ export const en: Translations = {
 			invalidLink: 'Invalid verification link.',
 			loginBtn: 'Log in'
 		},
+		setup2fa: {
+			title: 'Secure your admin account',
+			subtitle: 'Two-factor authentication is mandatory for every administrator.',
+			stepScan: 'Scan',
+			stepVerify: 'Verify',
+			stepBackup: 'Backup codes',
+			scanTitle: 'Step 1 — Scan the QR code',
+			scanHint: 'Open your authenticator app (Google Authenticator, 1Password, Authy…) and add a new account.',
+			manualLabel: 'Or enter this secret manually',
+			manualHint: 'Useful if you cannot scan the QR code.',
+			continueBtn: 'I added the account',
+			verifyTitle: 'Step 2 — Confirm with a code',
+			verifyHint: 'Enter the 6-digit code displayed by your authenticator app to finish activation.',
+			codeLabel: '6-digit code',
+			codePlaceholder: '123456',
+			codeInvalidFormat: 'Code must contain exactly 6 digits.',
+			enableBtn: 'Enable 2FA',
+			backupTitle: 'Step 3 — Save your backup codes',
+			backupHint: 'These 10 codes let you sign in if you lose your device. Each code works only once.',
+			backupWarning: 'They will never be shown again. Store them in a password manager or print them.',
+			copyBtn: 'Copy codes',
+			copiedToast: 'Codes copied',
+			downloadBtn: 'Download (.txt)',
+			acknowledgeLabel: 'I have stored my backup codes in a safe place.',
+			finishBtn: 'Continue to admin',
+			errorGeneric: 'Something went wrong. Retry or contact another administrator.',
+			starting: 'Generating secret...',
+			enabling: 'Enabling...'
+		},
+		recovery2fa: {
+			title: 'Sign in with a backup code',
+			subtitle: 'If you lost your 2FA device, use one of your single-use backup codes.',
+			identifierLabel: 'Email or username',
+			passwordLabel: 'Password',
+			backupCodeLabel: 'Backup code',
+			backupCodeHint: 'Format: 4 groups of 4 characters (e.g. ABCD-EFGH-IJKL-MNOP).',
+			submitBtn: 'Sign in',
+			backToLoginLink: 'Back to normal sign in',
+			errorGeneric: 'Invalid or already-used code.',
+			submitting: 'Verifying...',
+			postLoginNotice: 'Remember to regenerate your backup codes from settings after signing in.'
+		},
 		footer: 'Skilluv © {year} — Prove what you can do.'
 	},
 	challenges: {
@@ -292,6 +334,14 @@ export const en: Translations = {
 			enterpriseIdLabel: 'Enterprise ID',
 			seasonIdLabel: 'Season ID',
 			tournamentIdLabel: 'Tournament ID'
+		},
+		confirmDialog: {
+			irreversible: 'Irreversible action. It will be recorded in the audit log.',
+			reasonLabel: 'Reason',
+			reasonPlaceholderDefault: 'Explain why this action is necessary',
+			reasonHint: 'Visible in the audit log and to other administrators.',
+			reasonRequired: 'A reason is required.',
+			reasonTooShort: 'Reason must be at least {n} characters.'
 		},
 		nav: {
 			administration: 'Administration',
@@ -596,6 +646,17 @@ export const en: Translations = {
 			downloadCsv: 'Download CSV',
 			lastResult: 'Last result',
 			rebuildTriggered: 'Leaderboards rebuild triggered'
+		},
+		reset2fa: {
+			sectionTitle: '2FA recovery',
+			sectionHint: 'Reset this user\'s two-factor authentication if their device is lost or compromised.',
+			buttonLabel: 'Reset 2FA',
+			dialogTitle: 'Reset user 2FA',
+			dialogDescription: 'TOTP, backup codes and passkeys will be wiped. All active sessions will be revoked. The user must sign back in and re-configure 2FA.',
+			reasonHint: 'Reason required (8 characters minimum) — visible in the audit log.',
+			successToast: '2FA reset. All sessions revoked.',
+			wipeExplanation: 'Wipes TOTP + backup codes + passkeys + revokes sessions',
+			selfBlocked: 'You cannot reset your own 2FA.'
 		}
 	},
 	community: {
@@ -630,6 +691,7 @@ export const en: Translations = {
 		genericMessage: 'An unexpected error occurred.',
 		backHome: 'Back to home',
 		retryBtn: 'Retry',
-		generic: 'An error occurred. Please try again.'
+		generic: 'An error occurred. Please try again.',
+		adminOriginRequired: 'Origin not allowed for the admin panel. Use the official admin.skilluv.com URL.'
 	}
 };

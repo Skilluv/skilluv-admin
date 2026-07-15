@@ -5,7 +5,7 @@
 	import { i18n } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { toast } from '$stores/toast.svelte';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
 	import { adminApi } from '$api/admin';
 	import type { UserPrivate } from '$lib/types';
 
@@ -14,7 +14,7 @@
 	type AdminUser = UserPrivate & { banned?: boolean; ban_reason?: string | null; created_at?: string };
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
-	import Modal from '$components/ui/Modal.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
 		ChevronRight,
@@ -28,7 +28,8 @@
 		FileCheck2,
 		Flag,
 		Sparkles,
-		Star
+		Star,
+		KeyRound
 	} from '@lucide/svelte';
 
 	const userId = $derived($page.params.id as string);
@@ -39,9 +40,16 @@
 	let loading = $state(true);
 
 	let showBan = $state(false);
-	let banReason = $state('');
+	let showUnban = $state(false);
+	let showReset2fa = $state(false);
 	let banning = $state(false);
 	let unbanning = $state(false);
+	let resetting2fa = $state(false);
+
+	const canReset2fa = $derived(
+		user !== null && auth.user !== null && user.id !== auth.user.id
+	);
+	const targetHasStrongFactor = $derived(user?.totp_enabled === true);
 
 	async function load() {
 		loading = true;
@@ -51,42 +59,59 @@
 			reportsAgainst = res.data.reports_against;
 			totalSubmissions = res.data.total_submissions;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 			void goto('/users');
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function submitBan(e: SubmitEvent) {
-		e.preventDefault();
-		if (!user || !banReason.trim() || banning) return;
+	async function confirmBan(reason: string) {
+		if (!user || banning) return;
 		banning = true;
 		try {
-			await adminApi.banUser(user.id, banReason.trim());
+			await adminApi.banUser(user.id, reason);
 			toast.success(i18n.t('admin.userDetail.bannedToast'));
 			showBan = false;
-			banReason = '';
 			await load();
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			banning = false;
 		}
 	}
 
-	async function unban() {
+	async function confirmUnban() {
 		if (!user || unbanning) return;
-		if (!confirm(i18n.t('admin.userDetail.unbanConfirm'))) return;
 		unbanning = true;
 		try {
 			await adminApi.unbanUser(user.id);
 			toast.success(i18n.t('admin.userDetail.unbannedToast'));
+			showUnban = false;
 			await load();
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			unbanning = false;
+		}
+	}
+
+	async function confirmReset2fa(reason: string) {
+		if (!user || resetting2fa) return;
+		if (user.id === auth.user?.id) {
+			toast.error(i18n.t('admin.reset2fa.selfBlocked'));
+			return;
+		}
+		resetting2fa = true;
+		try {
+			await adminApi.resetUser2fa(user.id, reason);
+			toast.success(i18n.t('admin.reset2fa.successToast'));
+			showReset2fa = false;
+			await load();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			resetting2fa = false;
 		}
 	}
 
@@ -158,7 +183,7 @@
 						</p>
 					{/if}
 				</div>
-				<Button variant="secondary" size="sm" onclick={unban} loading={unbanning}>
+				<Button variant="secondary" size="sm" onclick={() => (showUnban = true)} loading={unbanning}>
 					<ShieldCheck size={14} strokeWidth={2} />
 					{i18n.t('admin.users.unbanBtn')}
 				</Button>
@@ -238,7 +263,7 @@
 				</div>
 				<div class="shrink-0">
 					{#if user.banned}
-						<Button variant="secondary" onclick={unban} loading={unbanning}>
+						<Button variant="secondary" onclick={() => (showUnban = true)} loading={unbanning}>
 							<ShieldCheck size={14} strokeWidth={2} />
 							{i18n.t('admin.users.unbanBtn')}
 						</Button>
@@ -248,6 +273,41 @@
 							{i18n.t('admin.users.banBtn')}
 						</Button>
 					{/if}
+				</div>
+			</div>
+		</div>
+
+		<!-- Security card -->
+		<div class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">
+			<div class="mb-3 flex items-center gap-2">
+				<KeyRound size={16} strokeWidth={2} class="text-accent" />
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-text-muted">
+					{i18n.t('admin.reset2fa.sectionTitle')}
+				</h2>
+			</div>
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div class="min-w-0">
+					<p class="text-sm text-text-primary">
+						{i18n.t('admin.reset2fa.sectionHint')}
+					</p>
+					<p class="mt-1 text-xs text-text-muted">
+						{i18n.t('admin.reset2fa.wipeExplanation')}
+					</p>
+					{#if !canReset2fa}
+						<p class="mt-2 text-xs text-warning">{i18n.t('admin.reset2fa.selfBlocked')}</p>
+					{/if}
+				</div>
+				<div class="shrink-0">
+					<Button
+						variant="danger"
+						size="sm"
+						onclick={() => (showReset2fa = true)}
+						disabled={!canReset2fa || !targetHasStrongFactor}
+						loading={resetting2fa}
+					>
+						<KeyRound size={14} strokeWidth={2} />
+						{i18n.t('admin.reset2fa.buttonLabel')}
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -318,48 +378,37 @@
 	{/if}
 </div>
 
-<!-- Ban modal -->
-<Modal
+<ConfirmDangerousDialog
 	open={showBan}
 	title={i18n.t('admin.users.banBtn')}
+	description={user ? `@${user.username} — ${user.display_name}` : ''}
+	actionLabel={i18n.t('admin.users.banBtn')}
+	reasonPlaceholder={i18n.t('admin.userDetail.banPlaceholder')}
+	reasonHint={i18n.t('admin.userDetail.banHint')}
+	loading={banning}
+	onconfirm={confirmBan}
 	onclose={() => (showBan = false)}
->
-	<form onsubmit={submitBan} class="space-y-4">
-		{#if user}
-			<div class="rounded-xl border border-border bg-surface-overlay p-4">
-				<p class="text-xs uppercase tracking-wider text-text-muted mb-1">
-					{i18n.t('admin.users.title')}
-				</p>
-				<p class="font-bold">{user.display_name}</p>
-				<p class="font-mono text-xs text-text-muted mt-1">@{user.username} · {user.email}</p>
-			</div>
-		{/if}
+/>
 
-		<div>
-			<label for="b-reason" class="mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted">
-				{i18n.t('admin.users.banReason')} *
-			</label>
-			<textarea
-				id="b-reason"
-				bind:value={banReason}
-				required
-				rows="4"
-				placeholder={i18n.t('admin.userDetail.banPlaceholder')}
-				class="w-full rounded-2xl border border-border bg-surface-overlay px-4 py-3 text-sm focus:border-primary focus:outline-none resize-none"
-			></textarea>
-			<p class="mt-2 text-xs text-text-muted">
-				{i18n.t('admin.userDetail.banHint')}
-			</p>
-		</div>
+<ConfirmDangerousDialog
+	open={showUnban}
+	title={i18n.t('admin.users.unbanBtn')}
+	description={user ? `@${user.username} — ${user.display_name}` : ''}
+	actionLabel={i18n.t('admin.users.unbanBtn')}
+	requireReason={false}
+	loading={unbanning}
+	onconfirm={() => confirmUnban()}
+	onclose={() => (showUnban = false)}
+/>
 
-		<div class="flex justify-end gap-2 pt-2 border-t border-border">
-			<Button variant="ghost" onclick={() => (showBan = false)}>
-				{i18n.t('admin.common.cancel')}
-			</Button>
-			<Button variant="danger" loading={banning}>
-				<ShieldAlert size={14} strokeWidth={2} />
-				{i18n.t('admin.users.banBtn')}
-			</Button>
-		</div>
-	</form>
-</Modal>
+<ConfirmDangerousDialog
+	open={showReset2fa}
+	title={i18n.t('admin.reset2fa.dialogTitle')}
+	description={i18n.t('admin.reset2fa.dialogDescription')}
+	actionLabel={i18n.t('admin.reset2fa.buttonLabel')}
+	reasonHint={i18n.t('admin.reset2fa.reasonHint')}
+	minReasonLength={8}
+	loading={resetting2fa}
+	onconfirm={confirmReset2fa}
+	onclose={() => (showReset2fa = false)}
+/>

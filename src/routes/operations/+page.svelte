@@ -4,10 +4,11 @@
 	import { auth } from '$stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$stores/toast.svelte';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
 	import { adminApi } from '$api/admin';
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import {
 		ChevronRight,
 		Wrench,
@@ -44,6 +45,9 @@
 
 	let lastResult = $state<{ label: string; body: unknown } | null>(null);
 
+	let showDigestConfirm = $state(false);
+	let showDissolveConfirm = $state(false);
+
 	function record(label: string, body: unknown) {
 		lastResult = { label, body };
 	}
@@ -56,22 +60,26 @@
 			toast.success(i18n.t('admin.operations.rebuildTriggered'));
 			record('rebuildLeaderboards', res.data);
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			rebuildingLb = false;
 		}
 	}
 
-	async function runDigest() {
+	function requestDigest() {
+		showDigestConfirm = true;
+	}
+
+	async function confirmDigest() {
 		if (runningDigest) return;
-		if (!confirm(i18n.t('admin.operations.jobDigestConfirm'))) return;
 		runningDigest = true;
 		try {
 			const res = await adminApi.runWeeklyDigest();
 			toast.success(i18n.t('admin.operations.digestSent'));
 			record('runWeeklyDigest', res.data.digest);
+			showDigestConfirm = false;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			runningDigest = false;
 		}
@@ -85,7 +93,7 @@
 			toast.success(i18n.t('admin.operations.gemsQueued', { id: res.data.job_id }));
 			record('aiHiddenGems', res.data);
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			runningGems = false;
 		}
@@ -99,7 +107,7 @@
 			toast.success(i18n.t('admin.operations.churnQueued', { id: res.data.job_id }));
 			record('aiChurn', res.data);
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			runningChurn = false;
 		}
@@ -114,24 +122,30 @@
 			toast.success(i18n.t('admin.operations.syncTriggered'));
 			record('syncGithub', res.data.sync);
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			syncingGithub = false;
 		}
 	}
 
-	async function submitDissolve(e: SubmitEvent) {
+	function requestDissolve(e: SubmitEvent) {
 		e.preventDefault();
+		if (!guildIdToDissolve.trim()) return;
+		showDissolveConfirm = true;
+	}
+
+	async function confirmDissolve(reason: string) {
 		if (dissolvingGuild || !guildIdToDissolve.trim()) return;
-		if (!confirm(i18n.t('admin.operations.dissolveConfirm'))) return;
 		dissolvingGuild = true;
+		const id = guildIdToDissolve.trim();
 		try {
-			await adminApi.dissolveGuild(guildIdToDissolve.trim());
+			await adminApi.dissolveGuild(id, reason);
 			toast.success(i18n.t('admin.operations.guildDissolved'));
-			record('dissolveGuild', { id: guildIdToDissolve.trim() });
+			record('dissolveGuild', { id });
 			guildIdToDissolve = '';
+			showDissolveConfirm = false;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			dissolvingGuild = false;
 		}
@@ -146,7 +160,7 @@
 			toast.success(i18n.t('admin.operations.warConcluded'));
 			record('concludeGuildWar', res.data);
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+			toast.error(errorMessage(e));
 		} finally {
 			concludingWar = false;
 		}
@@ -216,7 +230,7 @@
 				<p class="text-xs text-text-muted mb-4">
 					{i18n.t('admin.operations.jobDigestHint')}
 				</p>
-				<Button variant="secondary" size="sm" onclick={runDigest} loading={runningDigest}>
+				<Button variant="secondary" size="sm" onclick={requestDigest} loading={runningDigest}>
 					<Mail size={14} strokeWidth={2} />
 					{i18n.t('admin.operations.sendNow')}
 				</Button>
@@ -278,7 +292,7 @@
 			</form>
 
 			<!-- Guild dissolve -->
-			<form onsubmit={submitDissolve} class="rounded-2xl border border-error/30 bg-error/5 p-5">
+			<form onsubmit={requestDissolve} class="rounded-2xl border border-error/30 bg-error/5 p-5">
 				<div class="mb-2 flex items-center gap-2">
 					<UsersIcon size={16} strokeWidth={2} class="text-error" />
 					<h3 class="font-bold">{i18n.t('admin.operations.dissolveGuild')}</h3>
@@ -371,3 +385,27 @@
 		</section>
 	{/if}
 </div>
+
+<ConfirmDangerousDialog
+	open={showDigestConfirm}
+	title={i18n.t('admin.operations.sendNow')}
+	description={i18n.t('admin.operations.jobDigestConfirm')}
+	actionLabel={i18n.t('admin.operations.sendNow')}
+	requireReason={false}
+	loading={runningDigest}
+	onconfirm={() => confirmDigest()}
+	onclose={() => (showDigestConfirm = false)}
+/>
+
+<ConfirmDangerousDialog
+	open={showDissolveConfirm}
+	title={i18n.t('admin.operations.dissolveGuild')}
+	description={guildIdToDissolve.trim()
+		? `${i18n.t('admin.common.guildIdLabel')}: ${guildIdToDissolve.trim()}`
+		: i18n.t('admin.operations.dissolveConfirm')}
+	actionLabel={i18n.t('admin.operations.dissolveBtn')}
+	reasonHint={i18n.t('admin.operations.dissolveHint')}
+	loading={dissolvingGuild}
+	onconfirm={confirmDissolve}
+	onclose={() => (showDissolveConfirm = false)}
+/>
