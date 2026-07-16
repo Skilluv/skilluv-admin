@@ -1,0 +1,43 @@
+# docker-compose used to run the admin panel on its own, next to a
+# `skilluv-backend` stack. In prod the two services live behind different
+# subdomains (admin.skilluv.com vs api.skilluv.com); this file only cares
+# about the admin panel container.
+#
+# Usage:
+#   docker compose -f docker-compose.admin.yml up --build
+#
+# The admin panel proxies /api requests to the backend at runtime through
+# whatever reverse proxy sits in front (Caddy, Nginx, etc.). In this compose
+# file we assume the backend is reachable at BACKEND_INTERNAL_URL; if you
+# also run the backend via compose, join both services on a shared external
+# network.
+
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skilluv-admin:local
+    container_name: skilluv-admin
+    restart: unless-stopped
+    ports:
+      # Host 5174 mirrors the Vite dev port so URLs stay familiar.
+      - "5174:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      # ORIGIN is required by adapter-node when it sits behind a proxy that
+      # rewrites the Host header — mirror your public admin URL here.
+      ORIGIN: ${ADMIN_ORIGIN:-http://localhost:5174}
+      # SvelteKit hooks + client both call /api on the same origin; the
+      # reverse proxy or backend container must be reachable at that path.
+      # Override BACKEND_INTERNAL_URL to point at your Rust backend when
+      # both services share a compose network.
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://host.docker.internal:3001}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

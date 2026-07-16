@@ -2,8 +2,13 @@
 
 **Scope :** documentation exhaustive de tout ce qu'un compte `role='admin'` peut faire côté backend (`skilluv-backend`), exposé via l'app dédiée `skilluv-admin` sur `admin.skilluv.com` (dev : `localhost:5174`).
 
-**Version :** 2026-07-08.
-**Total endpoints :** 37, groupés en 12 domaines.
+**Version :** 2026-07-16.
+**Total endpoints :** 48, groupés en 14 domaines.
+
+**Changelog depuis 2026-07-08** :
+- **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
+- **ADM-M1** (commit front `9950799`, back P18.4) : `POST/DELETE /api/admin/users/{id}/capabilities` + `GET /api/users/{id}/capabilities` — 14 capabilities admin-manageable.
+- **ADM-M2** (commit front `3b29837`, back P14.5) : 7 endpoints fraud — plagiat queue + revoke + LLM re-eval + multi-account detection.
 
 ---
 
@@ -139,6 +144,15 @@ Réactive un user précédemment banni.
 - **Response :** `{ "message": "…" }`
 - **Errors :** `400` (pas banni), `403`, `404`.
 - **Side effects :** `users` — `is_banned=FALSE`, `ban_reason=NULL`, `banned_at=NULL`, `banned_by=NULL`. Audit log. Notification.
+
+### `POST /api/admin/users/{id}/reset-2fa` (BE-B, M0)
+Wipe l'ensemble de la 2FA d'un user cible et révoque toutes ses sessions actives — pour cas de device perdu ou compromis. Un admin **ne peut pas** utiliser cet endpoint sur son propre compte.
+- **Path :** `id: uuid`
+- **Body :** `{ "reason": "string, ≥8 chars" }`
+- **Response :** `{ "reset": true, "user_id": "…", "message": "…" }`
+- **Errors :** `400` (reason trop courte), `403` (self-reset ou non-admin), `404`.
+- **Side effects :** clear `users.totp_secret`, `totp_enabled=false`, delete `totp_backup_codes` + `webauthn_credentials`, revoke all `user_sessions`. Audit log obligatoire.
+- **Front :** section "Récupération 2FA" sur `/users/[id]`, dialog `ConfirmDangerousDialog` avec `minReasonLength=8`.
 
 ---
 
@@ -719,34 +733,182 @@ Export CSV comptabilité (une ligne par facture).
 
 ---
 
+## 13. Capabilities (P18.4, ADM-M1)
+
+Rôles fonctionnels attachés à un user via `user_capabilities`. Le CRUD front vit sur `/users/[id]`.
+
+### `GET /api/users/{id}/capabilities`
+Public (pas de guard admin). Retourne uniquement les capabilities **actives** (non révoquées, non expirées).
+- **Path :** `id: uuid`
+- **Response :**
+  ```json
+  {
+    "user_id": "…",
+    "capabilities": [
+      {
+        "capability": "mentor",
+        "granted_at": "…",
+        "granted_reason": "…",
+        "expires_at": null
+      }
+    ]
+  }
+  ```
+
+### `POST /api/admin/users/{id}/capabilities`
+Grant une capability à un user.
+- **Path :** `id: uuid`
+- **Body :**
+  ```json
+  {
+    "capability": "mentor",
+    "granted_reason": "Q3 promotion",
+    "expires_at": "2027-01-01T00:00:00Z"
+  }
+  ```
+  `granted_reason` et `expires_at` sont optionnels côté back mais **rendus obligatoires côté front** (min 8 chars) pour la traçabilité.
+- **Response 201 :** `{ "granted": true, "user_id": "…", "capability": "mentor" }`
+- **Errors :** `400` (capability invalide), `403`, `409` (déjà active).
+
+### `DELETE /api/admin/users/{id}/capabilities/{cap}`
+Revoke une capability. Backend génère `revoked_reason = "admin_revoke:by_{admin_id}"` côté serveur — pas de body à envoyer.
+- **Path :** `id: uuid`, `cap: string`
+- **Body :** aucun.
+- **Response :** `{ "revoked": true, "user_id": "…", "capability": "…" }`
+
+**Enum `capability`** (14 valeurs) :
+`challenger | mentor | project_steward | pr_reviewer | bounty_funder | issue_proposer | jury_tournament | admin | enterprise_recruiter | community_moderator | forum_moderator | plagiarism_reviewer | kyc_reviewer | community_curator`
+
+**Gaps** : audit log pas encore branché côté back (tracké). Historique révoqués pas exposé.
+
+---
+
+## 14. Fraud (P14.5, ADM-M2)
+
+Triage des livrables plagiés, comptes multi-suspects, re-évaluation LLM. Front sur `/fraud`.
+
+### `GET /api/admin/fraud/queue`
+Queue combinée des livrables signalés (plagiat) et users suspectés (multi-account).
+- **Query :** `threshold: float=0.9`, `limit: i64=50` (clampé `[1, 200]`)
+- **Response :**
+  ```json
+  {
+    "flagged_deliverables": [
+      { "deliverable_id": "…", "plagiarism_score": "0.923", "similar_to": "…" }
+    ],
+    "suspected_users": [
+      { "user_id": "…", "flagged_at": "…", "reason": "shared_ip_ua" }
+    ]
+  }
+  ```
+- **Note :** `plagiarism_score` est un `NUMERIC(4,3)` sérialisé en string par sqlx.
+
+### `POST /api/admin/fraud/deliverables/{id}/mark-valid`
+Marque un livrable flaggué comme faux positif (clear `plagiarism_score`).
+- **Body :** aucun.
+- **Response :** `{ "marked_valid": true }`
+
+### `POST /api/admin/fraud/deliverables/{id}/revoke`
+Révoque un livrable frauduleux (perte des fragments côté user).
+- **Body :** `{ "reason": "string, optional" }`
+- **Response :** `{ "revoked": true }`
+- **Front :** `ConfirmDangerousDialog` avec reason obligatoire.
+
+### `POST /api/admin/fraud/users/{id}/mark-valid`
+Marque un user suspecté multi-account comme faux positif.
+- **Body :** aucun.
+- **Response :** `{ "marked_valid": true }`
+
+### `POST /api/admin/fraud/scan-deliverable/{id}`
+Recompute la similarité cosinus d'un livrable donné.
+- **Query :** `threshold: f32=0.9`, `window_days: i32=30`
+- **Response :**
+  ```json
+  {
+    "deliverable_id": "…",
+    "best_match_id": "…",
+    "best_score": 0.87,
+    "compared_count": 42
+  }
+  ```
+
+### `POST /api/admin/fraud/detect-multi-accounts`
+Lance une passe de détection sur les signups récents.
+- **Body :** `{ "window_hours": 24, "min_group_size": 3 }` (les deux optionnels).
+- **Response :**
+  ```json
+  {
+    "groups_detected": 2,
+    "users_flagged": 6,
+    "groups": [
+      { "shared_ip": "<sha256>", "shared_ua": "<sha256>", "user_ids": ["…", "…"] }
+    ]
+  }
+  ```
+- **Note :** IP et User-Agent sont hashés SHA-256 côté back — jamais en clair.
+
+### `POST /api/admin/fraud/llm-evaluate/{id}` (P15.2)
+Re-évaluation d'un livrable via `skilluv-ia` (code_reviewer service).
+- **Body :** aucun.
+- **Response :**
+  ```json
+  {
+    "deliverable_id": "…",
+    "new_status": "verified|pending_manual_review",
+    "score": 0.82,
+    "llm_reachable": true,
+    "notes": "…"
+  }
+  ```
+- **Auto-threshold :** 0.7 (>= 0.7 → verified, sinon pending).
+- **Fallback :** si `llm_reachable=false`, statut = `pending_manual_review`.
+
+**Gaps** : aucun endpoint fraud n'écrit dans l'audit log côté back — front affiche un warning permanent.
+
+---
+
 ## 15. Récapitulatif par domaine
 
 | Domaine | Endpoints | Notes |
 |---|---:|---|
-| Users management | 4 | ban/unban destructifs, cascade sessions + leaderboard + conversations |
+| Users management | 5 | ban/unban destructifs + reset-2fa admin-to-admin (M0) |
 | Reports | 3 | queue + résolution + KPIs |
 | Challenges CRUD | 5 | create/read/update/publish/archive |
 | Community review | 3 | pipeline distinct (`community_status`) |
 | Dashboards & KPIs | 5 | overview / financial / moderation-queue / health / stats |
-| Audit logs | 2 | nouveau + legacy |
+| Audit logs | 2 | append-only depuis M0 (migration 0099) |
 | Enterprise KYC | 2 | approve/reject avec niveaux |
 | Tenants (white-label) | 7 | CRUD + members + cohorts |
 | Tournaments & seasons | 7 | create + status + score + conclude |
 | Sponsored challenges | 3 | decide + link |
-| SSO sessions | 2 | list + revoke |
+| SSO sessions | 2 | list + revoke (avec reason M0) |
+| **Capabilities (M1)** | **3** | grant/revoke + read public |
+| **Fraud (M2)** | **7** | queue + revoke/mark valid + scan + detect + LLM eval |
 | Autres (guilds, AI, digest, GitHub, accounting, leaderboards) | 8 | one-shot triggers |
-| **Total** | **37** | |
+| **Total** | **48** | |
 
 ---
 
-## 16. Sécurité — checklist de durcissement (non implémenté)
+## 16. Sécurité — checklist de durcissement
 
-Ce qui *pourrait* être ajouté sans casser l'existant :
+État à jour post-ADM-M0.
 
-- **2FA obligatoire pour admin** : ajouter un extractor `AuthUserAdmin` qui refuse si `login_method != "webauthn"` ou `totp_enabled == false`.
-- **Origin check server-side sur `/api/admin/*`** : refuser les requêtes dont l'`Origin` header n'est pas dans `ADMIN_ORIGINS` (belt-and-suspenders par-dessus le CORS). Bloquerait une XSS depuis `skilluv.com` même si le browser laisse passer par accident.
-- **Rate-limit admin actions destructives** : ban, dissolve, reject — actuellement pas de `RateLimiter::check` sur ces endpoints.
-- **Audit log complet** : `approve/reject KYC`, `link sponsored challenge`, `conclude tournament`, `revoke SSO session` n'écrivent pas dans l'audit log — seuls ban/unban/report/report-update le font.
-- **IP allowlist optionnelle** : middleware pour n'accepter les requêtes admin que depuis une liste d'IPs / range (VPN d'entreprise).
+### Livrés (P1+P2 back, commit front `b614ba4`)
 
-Chacun de ces items = un fix ciblé, pas de refactor massif. À prioriser selon ton modèle de menace.
+- **2FA obligatoire pour admin** : livré via soft flag `requires_totp_setup` au login + middleware `ensure_admin_2fa` qui renvoie 403 `AUTH_ADMIN_2FA_SETUP_REQUIRED` sur `/api/admin/*`. Front redirige vers `/auth/setup-2fa`. Recovery : `/auth/recovery-2fa` avec code de secours à usage unique + endpoint admin-to-admin `POST /api/admin/users/{id}/reset-2fa`.
+- **Origin check server-side** : middleware `ensure_admin_origin` sur `/api/admin/*`, renvoie 403 `AUTH_ADMIN_ORIGIN_REQUIRED`. Origins configurés via env `ADMIN_ORIGINS` (comma-separated).
+- **Rate-limit destructif** : middleware `enforce_admin_destructive` — 10 req/min + 100 req/heure par admin via Redis sliding-window.
+- **Audit log complet** : append-only via migration 0099 (REVOKE UPDATE/DELETE + rôle `audit_admin` SELECT-only + advisory lock cross-DB). Handlers legacy instrumentés (KYC decide, community approve/reject, SSO revoke, tournament conclude).
+- **Dry-run mode** : helper `is_admin_dry_run()` + env `SKILLUV_ADMIN_DRY_RUN=1`.
+
+### Deferred post-MVP
+
+- **Circuit breaker** (lock 15min sur 5 échecs consécutifs) : le rate-limit Redis suffit tant que la prod ne montre pas de patterns d'erreur en cascade.
+- **Export S3 audit** : doc écrite (`docs/AUDIT-APPEND-ONLY.md` back), code stub livré. Attend crate `aws-sdk-s3` + bucket Object Lock provisionné.
+- **IP allowlist** : reportée en option on-prem (env `SKILLUV_ADMIN_IP_ALLOWLIST`) car incompatible avec les admins en mobilité sur le SaaS public.
+
+### Gaps identifiés en aval (à combler post-MVP)
+
+- Aucun endpoint fraud (P14.5) n'écrit dans `audit_log` — front affiche un warning permanent sur `/fraud`.
+- Aucun endpoint capabilities (P18.4) n'écrit dans `audit_log` — même transparence côté front.
+- Recompute-capabilities existe en interne (`capabilities_engine.rs:33`) mais **n'est pas exposé** en HTTP — bloque partiellement le futur ADM-M5.

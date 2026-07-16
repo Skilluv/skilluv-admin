@@ -19,20 +19,21 @@ Full product vision in the [backend repository](https://github.com/jeremie0342/s
 
 The **admin panel** used by Skilluv platform operators. Currently implemented sections:
 
+- **Auth** — mandatory admin 2FA (TOTP + WebAuthn), single-use backup codes, admin-to-admin 2FA reset
+- **Users** — search, profile, ban/unban, capability management (14 functional roles), 2FA recovery
+- **Fraud dashboard** — plagiarism queue, multi-account detection, LLM re-evaluation
 - **Challenges** — creation, edit, publish, archive
-- **Users** — search, profile, actions
-- **Community moderation** — reports, community operations
+- **Community moderation** — reports, review queue
 - **Enterprise B2B** — KYC, sponsored challenges pipeline
 - **Multi-tenant** — tenants management
 - **SSO** — session tracking and revocation
-- **Tournaments** — creation and management
-- **Audit log** — traceability of admin actions
-- **Operations** — platform-wide operational tooling
-- **Auth** — admin authentication
+- **Tournaments** — creation, scoring, conclusion
+- **Audit log** — append-only, 7-year retention
+- **Operations** — platform-wide one-shot triggers (rebuild leaderboards, digest, GitHub sync, guild dissolution, war conclusion, accounting export)
 
-Built with **SvelteKit 2, Svelte 5, Tailwind CSS 4, TypeScript**.
+Built with **SvelteKit 2, Svelte 5 (runes), Tailwind CSS 4, TypeScript strict**, and **48 wired backend endpoints** across 14 domains. Full inventory in [`ADMIN-CAPABILITIES.md`](ADMIN-CAPABILITIES.md).
 
-Future admin surfaces (planned as the platform matures): seasons management, project-slice curation, mentor reputation dashboards, feature flags UI. See `ADMIN-CAPABILITIES.md` for the up-to-date capability inventory.
+Roadmap for the remaining MVP phases (M3 orientations catalog + M4 enterprise type manager + M5 user enrichment) is tracked in [`docs/MVP.md`](docs/MVP.md) and the backend contract in [`docs/BACKEND-TODO.md`](docs/BACKEND-TODO.md).
 
 ## Companion repositories
 
@@ -59,18 +60,53 @@ The admin panel opens on `http://localhost:5173`.
 ## Scripts
 
 ```bash
-npm run dev          # dev server
-npm run check        # svelte-check type verification
-npm run build        # production build
-npm run preview      # preview the production build
+npm run dev             # dev server on :5174
+npm run check           # svelte-check type verification
+npm run build           # production build (adapter-node)
+npm run preview         # preview the production build
+
+npm run test            # Vitest unit + component tests
+npm run test:watch      # watch mode
+npm run test:coverage   # coverage report
+
+npm run test:e2e        # Playwright smoke tests
+npm run test:e2e:ui     # interactive Playwright UI
 ```
 
 ## Structure
 
-- `src/routes/` — SvelteKit pages (dashboard, challenges, users, moderation, projects, etc.)
-- `src/lib/` — shared components, stores, utilities
-- `static/` — static assets
-- `ADMIN-CAPABILITIES.md` — feature reference
+- `src/routes/` — SvelteKit pages (dashboard, users, fraud, challenges, moderation, etc.)
+- `src/lib/components/ui/` — design-system primitives (Button, Modal, Input, Table, ConfirmDangerousDialog, CapabilityBadge, …)
+- `src/lib/components/admin/` — admin-specific composites (UserCapabilitiesSection, …)
+- `src/lib/api/` — typed API clients (`auth.ts`, `admin.ts`, shared `client.ts` with SkilluError + CSRF + refresh)
+- `src/lib/i18n/` — EN / FR / AR translations (typed)
+- `src/lib/stores/` — Svelte 5 rune stores (auth, toast, theme)
+- `e2e/` — Playwright smoke tests
+- `ADMIN-CAPABILITIES.md` — capability + endpoint reference
+- `docs/MVP.md` — full MVP plan
+- `docs/BACKEND-TODO.md` — backend endpoints still required to close the MVP
+
+## Docker
+
+Multi-stage `Dockerfile` (Node 22 alpine, non-root `node` user, HEALTHCHECK). Compose file mirrors the dev port so URLs stay familiar.
+
+```bash
+# Standalone build + run (backend expected at BACKEND_INTERNAL_URL)
+docker compose -f docker-compose.admin.yml up --build
+
+# Or manually
+docker build -t skilluv-admin:local .
+docker run --rm -p 5174:3000 -e ORIGIN=http://localhost:5174 skilluv-admin:local
+```
+
+## Continuous integration
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and PR:
+
+1. `svelte-check` type verification
+2. Vitest unit and component tests
+3. Production build
+4. Playwright smoke tests against the built server (artifacts uploaded on failure)
 
 ## Stack summary
 
