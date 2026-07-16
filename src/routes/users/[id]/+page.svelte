@@ -15,6 +15,7 @@
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
+	import UserCapabilitiesSection from '$components/admin/UserCapabilitiesSection.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
 		ChevronRight,
@@ -276,6 +277,9 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Capabilities section (P18.4) -->
+		<UserCapabilitiesSection userId={user.id} />
 
 		<!-- Security card -->
 		<div class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">

@@ -23,6 +23,36 @@ export type ThemeBase = 'forge' | 'neon' | 'arena' | 'terminal' | 'sakura';
 export type ThemeMode = 'dark' | 'light';
 export type Theme = ThemeBase | `${ThemeBase}-light`;
 
+/** Backend P18.4 — capability slugs stored in `user_capabilities.capability`.
+ *  Kept in sync with migrations/0094_user_capabilities.sql +
+ *  migrations/0098_community_moderator_capabilities.sql.
+ *  Adding a value here requires a matching backend migration. */
+export type Capability =
+	| 'challenger'
+	| 'mentor'
+	| 'project_steward'
+	| 'pr_reviewer'
+	| 'bounty_funder'
+	| 'issue_proposer'
+	| 'jury_tournament'
+	| 'admin'
+	| 'enterprise_recruiter'
+	| 'community_moderator'
+	| 'forum_moderator'
+	| 'plagiarism_reviewer'
+	| 'kyc_reviewer'
+	| 'community_curator';
+
+export interface UserCapability {
+	capability: Capability;
+	granted_at: string;
+	granted_reason: string;
+	/** Only populated on non-null `expires_at`. Backend excludes expired entries
+	 *  from the active list, so a value here means the capability is still live
+	 *  but will lapse. */
+	expires_at: string | null;
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

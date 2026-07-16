@@ -66,3 +66,64 @@ describe('adminApi.dissolveGuild', () => {
 		expect(init.body).toBe(JSON.stringify({}));
 	});
 });
+
+describe('adminApi capabilities (P18.4)', () => {
+	it('listUserCapabilities GETs /users/:id/capabilities (public route)', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { user_id: 'u1', capabilities: [] } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.listUserCapabilities('u1');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/users/u1/capabilities');
+		expect(init.method ?? 'GET').toBe('GET');
+	});
+
+	it('grantCapability POSTs with capability + granted_reason + expires_at', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { granted: true, user_id: 'u1', capability: 'mentor' } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.grantCapability('u1', {
+			capability: 'mentor',
+			granted_reason: 'Q3 promotion after 12 attestations',
+			expires_at: '2027-01-01T00:00:00.000Z'
+		});
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/users/u1/capabilities');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body)).toEqual({
+			capability: 'mentor',
+			granted_reason: 'Q3 promotion after 12 attestations',
+			expires_at: '2027-01-01T00:00:00.000Z'
+		});
+	});
+
+	it('grantCapability omits expires_at when not passed', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { granted: true, user_id: 'u1', capability: 'kyc_reviewer' } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.grantCapability('u1', {
+			capability: 'kyc_reviewer',
+			granted_reason: 'staff nomination'
+		});
+		const [, init] = fetchMock.mock.calls[0];
+		const body = JSON.parse(init.body);
+		expect(body.expires_at).toBeUndefined();
+		expect(body.capability).toBe('kyc_reviewer');
+		expect(body.granted_reason).toBe('staff nomination');
+	});
+
+	it('revokeCapability DELETEs /admin/users/:id/capabilities/:cap with no body', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { revoked: true, user_id: 'u1', capability: 'mentor' } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.revokeCapability('u1', 'mentor');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/users/u1/capabilities/mentor');
+		expect(init.method).toBe('DELETE');
+		expect(init.body).toBeUndefined();
+	});
+});

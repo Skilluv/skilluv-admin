@@ -9,7 +9,9 @@ import type {
 	ReportTargetType,
 	SkillDomain,
 	ApiResponse,
-	ApiPaginatedResponse
+	ApiPaginatedResponse,
+	Capability,
+	UserCapability
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -104,6 +106,34 @@ export const adminApi = {
 		return api.post<ApiResponse<{ reset: boolean; user_id: string; message: string }>>(
 			`/admin/users/${id}/reset-2fa`,
 			{ reason }
+		);
+	},
+
+	// --- Capabilities (P18.4) ---
+
+	/** Public endpoint but useful in admin panel to list a user's active caps.
+	 *  Backend excludes revoked and expired entries. */
+	listUserCapabilities(userId: string) {
+		return api.get<ApiResponse<{ user_id: string; capabilities: UserCapability[] }>>(
+			`/users/${userId}/capabilities`
+		);
+	},
+
+	grantCapability(
+		userId: string,
+		payload: { capability: Capability; granted_reason: string; expires_at?: string }
+	) {
+		return api.post<ApiResponse<{ granted: boolean; user_id: string; capability: Capability }>>(
+			`/admin/users/${userId}/capabilities`,
+			payload
+		);
+	},
+
+	/** Backend generates the revoke reason server-side as
+	 *  `admin_revoke:by_{admin_id}`; DELETE accepts no body. */
+	revokeCapability(userId: string, capability: Capability) {
+		return api.delete<ApiResponse<{ revoked: boolean; user_id: string; capability: Capability }>>(
+			`/admin/users/${userId}/capabilities/${capability}`
 		);
 	},
 
