@@ -11,20 +11,39 @@ Planned scope for the MVP catch-up (see `docs/MVP.md`). The admin panel is
 currently ~50 backend endpoints behind (P6 → P25). The phases below bring it
 back in sync.
 
-### ADM-M0 — Security hardening (PREREQUISITE, ships before M1)
-- Mandatory 2FA (TOTP or passkey) for `role='admin'`; redirect to
-  `/auth/setup-2fa` when missing; 10 one-shot recovery codes generated at
-  setup.
-- `POST /api/admin/users/{id}/reset-2fa` (admin-to-admin, audited).
-- Server-side `Origin` check middleware on `/api/admin/*`.
-- Rate-limit destructive actions (3/min, 30/h per admin) + circuit
-  breaker (5 consecutive failures → 15 min lock + notification).
-- Unified append-only audit log: REVOKE UPDATE/DELETE, 7 year retention,
-  daily S3 export (KMS + Object Lock).
-- Refactor KYC, sponsored, SSO revoke, tournament conclude to write
-  audit entries.
-- `?dry_run=true` middleware for cascade actions.
-- IP allowlist deferred to post-MVP on-prem option.
+### ADM-M0 — Security hardening (delivered — front commit `b614ba4`, back P1+P2)
+- Mandatory 2FA (TOTP or WebAuthn) for `role='admin'`: soft flag
+  `requires_totp_setup` on login + middleware `ensure_admin_2fa` on
+  `/api/admin/*` returning 403 `AUTH_ADMIN_2FA_SETUP_REQUIRED` (BE-A).
+- `/auth/setup-2fa` (QR + verify + 10 one-shot backup codes with
+  copy/download/acknowledge) and `/auth/recovery-2fa` (backup code login).
+- `POST /api/admin/users/{id}/reset-2fa` with `{reason: string ≥8}` — wipes
+  TOTP + backup codes + WebAuthn creds + revokes all sessions + audit
+  (BE-B). Wired on `/users/[id]` (self-reset blocked).
+- Server-side `Origin` middleware `ensure_admin_origin` on `/api/admin/*`
+  returning 403 `AUTH_ADMIN_ORIGIN_REQUIRED` (BE-C). Frontend surfaces via
+  toast (no redirect to avoid loops).
+- Rate-limit destructive actions **10/min, 100/h per admin** via Redis
+  sliding-window (`enforce_admin_destructive`) (BE-D). Circuit breaker
+  deferred post-MVP.
+- Dry-run mode via env `SKILLUV_ADMIN_DRY_RUN=1` + helper
+  `is_admin_dry_run()` (BE-D).
+- Unified append-only audit log: migration 0099 REVOKE UPDATE/DELETE +
+  cross-DB advisory lock + `audit_admin` PostgreSQL role SELECT-only.
+  Retention env `SKILLUV_AUDIT_RETENTION_DAYS=2555` (7 years default)
+  (BE-E). Doc `docs/AUDIT-APPEND-ONLY.md`.
+- Legacy handlers instrumented `audit::record()`: KYC decide, community
+  approve/reject, SSO revoke, tournament conclude (BE-F).
+- Reusable `ConfirmDangerousDialog` with mandatory reason (configurable
+  min length) — wired on ban/unban/reject/revoke/close/conclude/dissolve/
+  digest/reset-2fa.
+- `errorMessage()` helper + silent catches replaced by toasts across
+  `/reports`, `/community`, `/users`, `/sso-sessions`, `/tournaments`,
+  `/operations`.
+- Vitest + `@testing-library/svelte` + jsdom (30 tests across 5 files).
+- IP allowlist and daily S3 export (KMS + Object Lock) deferred: front is
+  ready, back has stub + doc, activation requires `aws-sdk-s3` crate + AWS
+  bucket provisioning.
 
 ### ADM-M1 — Capability Manager
 - Add `Capability` / `UserCapability` types to `src/lib/types/index.ts`.

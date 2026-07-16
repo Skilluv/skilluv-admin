@@ -20,13 +20,13 @@ Ces décisions sont prises pour dé-bloquer l'exécution. Toute déviation doit 
 
 **0.3 Origin check server-side.** Actuellement CORS seulement (contrôle client). En prod, ajouter middleware backend `require_admin_origin(headers)` qui vérifie `Origin ∈ ADMIN_ORIGINS` env. Sans quoi 403. Sinon un CSRF exfiltré depuis un site externe pourrait taper l'admin panel.
 
-**0.4 Rate-limit destructif.** Chaque action destructive (ban, unban, revoke_capability, revoke_deliverable, dissolve, reject, rank_override) → rate-limit **3 req/min par admin + 30 req/heure**. Circuit breaker : 5 échecs (4xx/5xx) consécutifs → lock l'admin 15min avec notification email/Slack aux autres admins. Middleware `rate_limit::AdminDestructive`. Pas de bypass superuser (si urgence, désactiver le middleware via flag env explicite + audit).
+**0.4 Rate-limit destructif.** Chaque action destructive (ban, unban, revoke_capability, revoke_deliverable, dissolve, reject, rank_override) → rate-limit **10 req/min par admin + 100 req/heure** (compteurs Redis sliding-window). Middleware `enforce_admin_destructive`. Livré en BE-D. Circuit breaker (lock 15min sur 5 échecs consécutifs) **reporté post-MVP** : le rate-limit Redis suffit tant que la prod ne montre pas de patterns d'erreur en cascade.
 
 **0.5 Audit log unifié + immuable.** Toute mutation admin passe par `audit_logs::write(admin_id, action, target_type, target_id, reason, before_snapshot, after_snapshot)`. Contraintes :
-- Table `audit_logs` en **append-only** : REVOKE UPDATE, DELETE sur tous les rôles applicatifs ; seul un rôle `audit_admin` PostgreSQL séparé peut purger.
-- Rétention **7 ans** minimum (compliance KYC/finance).
-- Export quotidien vers S3 (chiffré KMS) via cron `admin_audit_export`. Bucket immutable (Object Lock).
-- Routes existantes sans audit (KYC decide, sponsored decide, SSO revoke, tournament conclude) à refactorer en ADM-M0.
+- Table `audit_logs` en **append-only** : migration 0099 REVOKE UPDATE/DELETE + advisory lock cross-DB. Rôle `audit_admin` PostgreSQL créé avec `GRANT SELECT` uniquement — la purge nécessite un DBA. Livré en BE-E.
+- Rétention **7 ans** par défaut, contrôlée via env `SKILLUV_AUDIT_RETENTION_DAYS=2555`.
+- Export quotidien vers S3 (chiffré KMS, Object Lock) — **doc écrite** (`docs/AUDIT-APPEND-ONLY.md` back), **code stub** livré, activation post-MVP quand crate `aws-sdk-s3` et bucket Object Lock provisionnés (~2j dev + infra).
+- Routes legacy instrumentées en BE-F : KYC decide, community approve/reject, SSO revoke, tournament conclude appellent désormais `audit::record()`.
 
 **0.6 API client versioning.** L'API client (`src/lib/api/admin.ts`) évolue en gardant compatibilité arrière : nouvelles méthodes ajoutées, pas de rename. Types dans `src/lib/types/index.ts` étendus avec `Capability`, `Orientation`, `BadgeRule`, `EnterpriseType`, `FraudFlag`.
 
@@ -35,7 +35,7 @@ Ces décisions sont prises pour dé-bloquer l'exécution. Toute déviation doit 
 - **ADM-M3 / M4 / M5** = 13 nouvelles routes backend nécessaires (voir Annexe A).
 - **ADM-M0 (Security)** = 3 middlewares + refactor audit sur 4 routes existantes + endpoint `reset-2fa`.
 
-**0.8 Dry-run mode obligatoire** pour actions à effet en cascade (`rank-override`, `recompute-proofs`, `deprecate-badge-rule`, `archive-orientation`). Query `?dry_run=true` → renvoie preview des changements sans commit. Frontend affiche diff avant confirmation.
+**0.8 Dry-run mode.** Activable via env `SKILLUV_ADMIN_DRY_RUN=1` + helper backend `is_admin_dry_run()` (livré en BE-D). Utile pour tester des actions destructives en staging sans effet réel. Les actions à effet en cascade (`rank-override`, `recompute-proofs`, `deprecate-badge-rule`, `archive-orientation`) supporteront `?dry_run=true` par-endpoint quand elles atterrissent (M3/M5).
 
 **0.9 Estimation réaliste** :
 - **Solo dev senior full-time : 10-14 semaines** (features + backend + tests + polish + i18n + buffer). Les 6-8 semaines initiales sous-estimaient i18n (750 traductions dont AR), Playwright, Docker/CI, et refactor sécurité.
@@ -254,9 +254,9 @@ export interface UserCapability {
 - **2FA mandatory admin** : côté login backend, si role='admin' et pas de TOTP + pas de passkey → renvoyer `AUTH_ADMIN_2FA_SETUP_REQUIRED`. Côté frontend, page `/auth/setup-2fa` qui force le user à configurer.
 - **Recovery codes** (§0.2.1) : 10 codes one-shot au setup + endpoint `reset-2fa` réservé à un autre admin.
 - **Origin server-side check** : middleware backend `require_admin_origin(headers)` sur toutes routes `/api/admin/*`.
-- **Rate-limit destructive** : middleware `rate_limit::AdminDestructive` (3 req/min, 30/heure) + circuit breaker sur ban, revoke, dissolve, reject, rank_override.
-- **Audit log unifié + immuable** : append-only, rétention 7 ans, export S3. Refactor endpoints existants (KYC, sponsored, SSO revoke, tournament conclude).
-- **Dry-run mode** (§0.8) : middleware helper `?dry_run=true` sur actions cascade.
+- **Rate-limit destructive** : middleware `enforce_admin_destructive` (10 req/min, 100/heure) sur ban, revoke, dissolve, reject, rank_override (BE-D livré). Circuit breaker deferred post-MVP.
+- **Audit log unifié + immuable** : append-only (migration 0099 + rôle `audit_admin` SELECT-only), rétention 7 ans via `SKILLUV_AUDIT_RETENTION_DAYS`, export S3 Object Lock deferred (code stub livré, active quand infra AWS/R2 provisionnée). Legacy handlers (KYC, community, SSO revoke, tournament conclude) instrumentés en BE-F.
+- **Dry-run mode** (§0.8) : env `SKILLUV_ADMIN_DRY_RUN=1` + helper `is_admin_dry_run()` (BE-D livré).
 - ~~IP allowlist~~ **retirée du MVP SaaS** (admins mobiles/VPN/dynamic IPs cassent le flow). Repoussée en option on-prem post-MVP via env `SKILLUV_ADMIN_IP_ALLOWLIST` documenté mais non implémenté au core.
 
 ### 3.7 Tests + docs + deploy (Phase ADM-M7)
@@ -468,25 +468,36 @@ La navigation actuelle a 6 quick-actions. Réorganiser en sidebar hiérarchique 
 
 ### Phase ADM-M0 — Security hardening (PRÉREQUIS, avant M1) ⏱️ 7-9 jours
 
-**Backend** (~5 jours) :
-- [ ] Login retourne `AUTH_ADMIN_2FA_SETUP_REQUIRED` si admin sans 2FA.
-- [ ] Génération + stockage bcrypt des 10 recovery codes au setup 2FA.
-- [ ] `POST /api/admin/users/{id}/reset-2fa` (audit + reason obligatoire, appelant ≠ target).
-- [ ] Middleware `require_admin_origin(headers)` sur `/api/admin/*`.
-- [ ] Middleware `rate_limit::AdminDestructive` (3/min, 30/h) + circuit breaker 5 échecs → lock 15min + notif.
-- [ ] Refactor `audit_logs` en append-only (REVOKE UPDATE/DELETE, rôle `audit_admin` séparé).
-- [ ] Refactor endpoints admin sans audit log (KYC decide, sponsored decide, SSO revoke, tournament conclude) pour appeler `audit_logs::write`.
-- [ ] Cron `admin_audit_export` → S3 chiffré KMS (bucket Object Lock).
-- [ ] Helper `dry_run` middleware.
+**Backend** (livré P1+P2, ~5 jours) :
+- [x] Login retourne soft flag `requires_totp_setup` + middleware `ensure_admin_2fa` renvoie 403 `AUTH_ADMIN_2FA_SETUP_REQUIRED` (BE-A).
+- [x] Génération + stockage bcrypt des 10 recovery codes au setup 2FA (déjà en place P5-era).
+- [x] `POST /api/admin/users/{id}/reset-2fa` avec `{reason: string ≥8}` + audit (BE-B).
+- [x] Middleware `ensure_admin_origin` sur `/api/admin/*` — 403 `AUTH_ADMIN_ORIGIN_REQUIRED` (BE-C).
+- [x] Middleware `enforce_admin_destructive` (10/min, 100/h Redis sliding-window) (BE-D). Circuit breaker → post-MVP.
+- [x] `audit_logs` append-only : migration 0099 REVOKE UPDATE/DELETE + rôle `audit_admin` SELECT-only + advisory lock cross-DB + doc `docs/AUDIT-APPEND-ONLY.md` (BE-E).
+- [x] Handlers legacy instrumentés `audit::record()` : KYC decide, community approve/reject, SSO revoke, tournament conclude (BE-F).
+- [x] Helper `is_admin_dry_run()` via env `SKILLUV_ADMIN_DRY_RUN` (BE-D).
+- [ ] Cron `admin_audit_export` → S3 KMS Object Lock : **deferred post-MVP** (crate `aws-sdk-s3` + bucket Object Lock à provisionner, ~2j + infra).
 
-**Frontend** (~3 jours) :
-- [ ] Page `/auth/setup-2fa/+page.svelte` (setup TOTP OU passkey + affichage one-shot des recovery codes).
-- [ ] Page `/auth/recovery-2fa/+page.svelte` (login via recovery code).
-- [ ] Login handle `AUTH_ADMIN_2FA_SETUP_REQUIRED` → redirect.
-- [ ] Composant `ConfirmDangerousDialog.svelte` — modal avec reason obligatoire + preview dry-run pour actions cascade.
-- [ ] Toutes actions destructives passent par ce composant.
+**Frontend** (livré, commit `b614ba4`, ~3 jours) :
+- [x] Page `/auth/setup-2fa/+page.svelte` (QR + verify TOTP + 10 backup codes avec copy/download/acknowledge).
+- [x] Page `/auth/recovery-2fa/+page.svelte` (login via backup code, normalisation live du format).
+- [x] Login gère `requires_totp_setup` soft flag + fallback `AUTH_ADMIN_2FA_SETUP_REQUIRED` + lien vers recovery.
+- [x] Handler `AUTH_ADMIN_ORIGIN_REQUIRED` (toast erreur, pas de redirect car boucle).
+- [x] `ConfirmDangerousDialog.svelte` — modal réutilisable, validation reason live, `minReasonLength` configurable.
+- [x] Reset 2FA admin→admin sur `/users/[id]` (min 8 chars, self-reset bloqué).
+- [x] Toutes actions destructives (ban/unban/reject/revoke/close/conclude/dissolve/digest/reset2fa) via ce composant.
+- [x] Vitest setup + 30 tests (5 fichiers).
+- [x] Silent catches remplacés par toast d'erreur via `errorMessage()` helper.
 
-**DoD** : impossible d'être admin sans 2FA. Recovery flow testé end-to-end. Impossible d'appeler `/api/admin/*` depuis un autre origin. Actions destructives rate-limitées + circuit-breakées + auditées immuablement.
+**Env prod à setter** :
+```
+ADMIN_ORIGINS=https://admin.skilluv.com,https://admin-preview.skilluv.com
+SKILLUV_ADMIN_DRY_RUN=0
+SKILLUV_AUDIT_RETENTION_DAYS=2555
+```
+
+**DoD atteint** : impossible d'être admin sans 2FA. Recovery flow testé end-to-end (unit + intégration). Impossible d'appeler `/api/admin/*` depuis un autre origin. Actions destructives rate-limitées Redis + auditées immuablement. Export S3 des audit logs reste à activer côté infra pour compliance long terme.
 
 ### Phase ADM-M7 — Tests + docs + deploy ⏱️ 4-5 jours
 
