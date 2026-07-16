@@ -53,6 +53,45 @@ export interface UserCapability {
 	expires_at: string | null;
 }
 
+// --- Fraud (P14.5) ---
+
+/** Backend `plagiarism_score` is NUMERIC(4,3) in [0.0, 1.0], serialized as
+ *  string by sqlx BigDecimal. Frontend parses to number for display. */
+export interface FraudFlaggedDeliverable {
+	deliverable_id: string;
+	plagiarism_score: string | number;
+	similar_to: string | null;
+}
+
+export interface FraudSuspectedUser {
+	user_id: string;
+	flagged_at: string | null;
+	reason: string | null;
+}
+
+/** Result of a multi-account detection run. `shared_ip` and `shared_ua` are
+ *  SHA-256 hashes — never plaintext. */
+export interface FraudSuspectGroup {
+	shared_ip: string;
+	shared_ua: string;
+	user_ids: string[];
+}
+
+export interface FraudScanOutcome {
+	deliverable_id: string;
+	best_match_id: string | null;
+	best_score: number;
+	compared_count: number;
+}
+
+export interface FraudLlmEvaluation {
+	deliverable_id: string;
+	new_status: 'verified' | 'pending_manual_review' | string;
+	score: number | null;
+	llm_reachable: boolean;
+	notes: string | null;
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

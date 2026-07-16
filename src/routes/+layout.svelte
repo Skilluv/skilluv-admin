@@ -18,6 +18,7 @@
 		Megaphone,
 		Swords,
 		Wrench,
+		Fingerprint,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -39,6 +40,7 @@
 		{ href: '/', label: i18n.t('admin.dashboard.title'), icon: LayoutDashboard },
 		{ href: '/users', label: i18n.t('admin.users.title'), icon: Users },
 		{ href: '/reports', label: i18n.t('admin.reports.title'), icon: Flag },
+		{ href: '/fraud', label: i18n.t('admin.nav.fraud'), icon: Fingerprint },
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },

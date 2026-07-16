@@ -11,7 +11,12 @@ import type {
 	ApiResponse,
 	ApiPaginatedResponse,
 	Capability,
-	UserCapability
+	UserCapability,
+	FraudFlaggedDeliverable,
+	FraudSuspectedUser,
+	FraudSuspectGroup,
+	FraudScanOutcome,
+	FraudLlmEvaluation
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -134,6 +139,63 @@ export const adminApi = {
 	revokeCapability(userId: string, capability: Capability) {
 		return api.delete<ApiResponse<{ revoked: boolean; user_id: string; capability: Capability }>>(
 			`/admin/users/${userId}/capabilities/${capability}`
+		);
+	},
+
+	// --- Fraud (P14.5) ---
+
+	fraudQueue(params?: { threshold?: number; limit?: number }) {
+		return api.get<ApiResponse<{
+			flagged_deliverables: FraudFlaggedDeliverable[];
+			suspected_users: FraudSuspectedUser[];
+		}>>('/admin/fraud/queue', params as Record<string, string | number>);
+	},
+
+	markDeliverableValid(deliverableId: string) {
+		return api.post<ApiResponse<{ marked_valid: boolean }>>(
+			`/admin/fraud/deliverables/${deliverableId}/mark-valid`
+		);
+	},
+
+	revokeDeliverable(deliverableId: string, reason?: string) {
+		return api.post<ApiResponse<{ revoked: boolean }>>(
+			`/admin/fraud/deliverables/${deliverableId}/revoke`,
+			reason ? { reason } : undefined
+		);
+	},
+
+	markUserValid(userId: string) {
+		return api.post<ApiResponse<{ marked_valid: boolean }>>(
+			`/admin/fraud/users/${userId}/mark-valid`
+		);
+	},
+
+	scanDeliverable(
+		deliverableId: string,
+		params?: { threshold?: number; window_days?: number }
+	) {
+		const qs = new URLSearchParams();
+		if (params?.threshold !== undefined) qs.set('threshold', String(params.threshold));
+		if (params?.window_days !== undefined) qs.set('window_days', String(params.window_days));
+		const suffix = qs.toString() ? `?${qs.toString()}` : '';
+		return api.post<ApiResponse<FraudScanOutcome>>(
+			`/admin/fraud/scan-deliverable/${deliverableId}${suffix}`
+		);
+	},
+
+	detectMultiAccounts(body?: { window_hours?: number; min_group_size?: number }) {
+		return api.post<
+			ApiResponse<{
+				groups_detected: number;
+				users_flagged: number;
+				groups: FraudSuspectGroup[];
+			}>
+		>('/admin/fraud/detect-multi-accounts', body ?? {});
+	},
+
+	llmEvaluateDeliverable(deliverableId: string) {
+		return api.post<ApiResponse<FraudLlmEvaluation>>(
+			`/admin/fraud/llm-evaluate/${deliverableId}`
 		);
 	},
 

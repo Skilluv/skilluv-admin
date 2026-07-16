@@ -127,3 +127,91 @@ describe('adminApi capabilities (P18.4)', () => {
 		expect(init.body).toBeUndefined();
 	});
 });
+
+describe('adminApi fraud (P14.5)', () => {
+	it('fraudQueue GETs /admin/fraud/queue with threshold + limit query', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { flagged_deliverables: [], suspected_users: [] } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.fraudQueue({ threshold: 0.85, limit: 100 });
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/queue?threshold=0.85&limit=100');
+	});
+
+	it('markDeliverableValid POSTs with no body', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { marked_valid: true } }));
+		const { adminApi } = await import('./admin');
+		await adminApi.markDeliverableValid('d1');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/deliverables/d1/mark-valid');
+		expect(init.method).toBe('POST');
+		expect(init.body).toBeUndefined();
+	});
+
+	it('revokeDeliverable POSTs with {reason} when provided', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { revoked: true } }));
+		const { adminApi } = await import('./admin');
+		await adminApi.revokeDeliverable('d1', 'lifted from stack overflow');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/deliverables/d1/revoke');
+		expect(JSON.parse(init.body)).toEqual({ reason: 'lifted from stack overflow' });
+	});
+
+	it('markUserValid POSTs with no body', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { marked_valid: true } }));
+		const { adminApi } = await import('./admin');
+		await adminApi.markUserValid('u1');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/users/u1/mark-valid');
+		expect(init.method).toBe('POST');
+	});
+
+	it('scanDeliverable POSTs with threshold + window_days query', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					deliverable_id: 'd1',
+					best_match_id: null,
+					best_score: 0.42,
+					compared_count: 12
+				}
+			})
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.scanDeliverable('d1', { threshold: 0.8, window_days: 60 });
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/scan-deliverable/d1?threshold=0.8&window_days=60');
+	});
+
+	it('detectMultiAccounts POSTs body with window_hours + min_group_size', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { groups_detected: 0, users_flagged: 0, groups: [] } })
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.detectMultiAccounts({ window_hours: 48, min_group_size: 4 });
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/detect-multi-accounts');
+		expect(JSON.parse(init.body)).toEqual({ window_hours: 48, min_group_size: 4 });
+	});
+
+	it('llmEvaluateDeliverable POSTs with no body', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					deliverable_id: 'd1',
+					new_status: 'verified',
+					score: 0.82,
+					llm_reachable: true,
+					notes: null
+				}
+			})
+		);
+		const { adminApi } = await import('./admin');
+		await adminApi.llmEvaluateDeliverable('d1');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/fraud/llm-evaluate/d1');
+		expect(init.method).toBe('POST');
+		expect(init.body).toBeUndefined();
+	});
+});
