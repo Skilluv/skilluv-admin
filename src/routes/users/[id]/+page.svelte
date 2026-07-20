@@ -7,7 +7,7 @@
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
 	import { adminApi } from '$api/admin';
-	import type { UserPrivate } from '$lib/types';
+	import type { UserPrivate, Rank } from '$lib/types';
 
 	// UserPrivate ne déclare pas `banned`/`ban_reason` alors que /admin/users/{id}
 	// les renvoie — on élargit localement pour rester type-safe côté UI.
@@ -16,6 +16,10 @@
 	import Badge from '$components/ui/Badge.svelte';
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import UserCapabilitiesSection from '$components/admin/UserCapabilitiesSection.svelte';
+	import UserOrientationsSection from '$components/admin/UserOrientationsSection.svelte';
+	import UserBadgesSection from '$components/admin/UserBadgesSection.svelte';
+	import UserRankSection from '$components/admin/UserRankSection.svelte';
+	import UserRecomputeSection from '$components/admin/UserRecomputeSection.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
 		ChevronRight,
@@ -43,6 +47,15 @@
 	let showBan = $state(false);
 	let showUnban = $state(false);
 	let showReset2fa = $state(false);
+
+	// ADM-M5 — refreshKey pilote la reload des sections proof engine après
+	// recompute / rank override. currentRank est peuplé par UserBadgesSection.
+	let refreshKey = $state(0);
+	let currentRank = $state<Rank>('apprenti');
+
+	function triggerRefresh() {
+		refreshKey++;
+	}
 	let banning = $state(false);
 	let unbanning = $state(false);
 	let resetting2fa = $state(false);
@@ -280,6 +293,27 @@
 
 		<!-- Capabilities section (P18.4) -->
 		<UserCapabilitiesSection userId={user.id} />
+
+		<!-- ADM-M5 — Orientations métier (P16.3, public projection). -->
+		<UserOrientationsSection userId={user.id} {refreshKey} />
+
+		<!-- ADM-M5 — Badges + rank chevron (P17.5). Renvoie currentRank via callback. -->
+		<UserBadgesSection
+			userId={user.id}
+			{refreshKey}
+			onrankloaded={(r) => (currentRank = r)}
+		/>
+
+		<!-- ADM-M5 — Rank courant + historique + Force rank (P17.4 + ADM-M5+). -->
+		<UserRankSection
+			userId={user.id}
+			{currentRank}
+			{refreshKey}
+			onchange={triggerRefresh}
+		/>
+
+		<!-- ADM-M5 — Recompute proof engine (P19). -->
+		<UserRecomputeSection userId={user.id} onchange={triggerRefresh} />
 
 		<!-- Security card -->
 		<div class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">

@@ -719,6 +719,84 @@ export const ar: Translations = {
 			evalComparedCount: 'تمت المقارنة',
 			auditGap: 'ملاحظة : لم تُسجَّل إجراءات الاحتيال بعد في سجل التدقيق (فجوة خلفية متتبَّعة).'
 		},
+		userEnrichment: {
+			orientations: {
+				sectionTitle: 'التوجهات المهنية',
+				sectionHint: 'المهن النشطة التي اختارها المستخدم (بحد أقصى 3). يوجِّه الأساسي التوصيات.',
+				empty: 'لا يوجد توجه نشط.',
+				primaryBadge: 'أساسي',
+				modeLearning: 'تعلُّم',
+				modeActive: 'نشط',
+				pickedAt: 'اختير في'
+			},
+			badges: {
+				sectionTitle: 'الشارات والرتبة',
+				sectionHint: 'عرض متعدد الأشكال للإثباتات : شارة الرتبة، رقع المهارات، الميداليات، الأختام المجمَّعة.',
+				empty: 'لا توجد شارة ممنوحة (الرتبة الافتراضية apprenti).',
+				rankLabel: 'الرتبة الحالية',
+				achievedAt: 'وُصلت في',
+				previousRank: 'السابقة',
+				skillPatches: 'رقع المهارات',
+				medals: 'الميداليات',
+				guildCrests: 'شعارات النقابات',
+				sealsCount: 'أختام تحديات',
+				stampsCount: 'أختام أحداث',
+				total: 'إجمالي',
+				earned: 'اكتُسبت في'
+			},
+			rank: {
+				sectionTitle: 'الرتبة والسجل',
+				sectionHint: 'تتطور الرتبة عبر محرك الإثبات. تُخصَّص الكتابة اليدوية للحالات الاستثنائية (خلل، شيخ فخري، تخفيض إشراف) وهي مُدقَّقة.',
+				currentLabel: 'الرتبة الحالية',
+				forceRankBtn: 'فرض الرتبة',
+				historyTitle: 'السجل',
+				historyEmpty: 'لا يوجد سجل.',
+				forceDialog: {
+					title: 'فرض الرتبة',
+					currentRank: 'الرتبة الحالية',
+					newRank: 'الرتبة الجديدة',
+					reason: 'السبب (8 أحرف على الأقل، مُدقَّق)',
+					reasonPlaceholder: 'مثال : خلل محرك، شيخ فخري، تخفيض إشراف',
+					dryRunBtn: 'معاينة (dry-run)',
+					dryRunPeers: 'مستخدمون بالفعل بهذه الرتبة',
+					submit: 'تطبيق الكتابة اليدوية',
+					successToast: 'تم فرض الرتبة.'
+				},
+				ranks: {
+					apprenti: 'مبتدئ',
+					ranger: 'رينجر',
+					artisan: 'حرفي',
+					maitre: 'معلِّم',
+					doyen: 'شيخ'
+				}
+			},
+			recompute: {
+				sectionTitle: 'محرك الإثبات',
+				sectionHint: 'إعادة حساب الصلاحيات + الشارات + الرتبة لهذا المستخدم. يُستخدم بعد إصلاح خلل محرك أو تصحيح يدوي لـ deliverables.',
+				runBtn: 'إعادة الحساب',
+				dryRunBtn: 'معاينة',
+				dialogTitle: 'إعادة حساب الإثباتات',
+				dialogDescription: 'قفل على مستوى الصف أثناء التنفيذ ؛ يُدقِّق دلتا الصلاحيات/الشارات/الرتبة.',
+				dialogReasonPlaceholder: 'السبب (اختياري لكن موصى به)',
+				scopeLabel: 'النطاق',
+				scopeAll: 'الكل',
+				scopeCapabilities: 'الصلاحيات فقط',
+				scopeBadges: 'الشارات فقط',
+				scopeRanks: 'الرتبة فقط',
+				dryRunLabel: 'الحالة الراهنة',
+				dryRunCurrentRank: 'الرتبة',
+				dryRunCapsCount: 'صلاحيات نشطة',
+				dryRunBadgesCount: 'شارات نشطة',
+				reportTitle: 'نتيجة إعادة الحساب',
+				reportCapsAdded: 'صلاحيات مُضافة',
+				reportBadgesAdded: 'شارات مُضافة',
+				reportBadgesRevoked: 'شارات مُلغاة',
+				reportRankBefore: 'الرتبة قبل',
+				reportRankAfter: 'الرتبة بعد',
+				reportErrors: 'أخطاء جزئية',
+				runSuccessToast: 'اكتملت إعادة الحساب.'
+			}
+		},
 		enterprises: {
 			title: 'الشركات',
 			subtitle: 'إدارة أنواع الشركات (direct_hire / staffing_agency / remote_international) وتكوينها.',

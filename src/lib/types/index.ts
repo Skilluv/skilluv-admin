@@ -229,6 +229,92 @@ export interface PatchEnterpriseTypeBody {
 	reason: string;
 }
 
+// --- ADM-M5 — Users enrichment (backend P16.3, P17.4-5, P18.2, P19) ---
+
+/** Backend P17.4 rank enum (mig 0092). Note : le Title enum historique
+ *  (`apprenti | artisan | maitre | legende`) sur users.title est différent
+ *  et sera dépréquié en P18. Ce type est la source de vérité rank moderne. */
+export type Rank = 'apprenti' | 'ranger' | 'artisan' | 'maitre' | 'doyen';
+
+export interface UserOrientationEntry {
+	orientation_slug: string;
+	orientation_name: string;
+	mode: 'learning' | 'active';
+	is_primary: boolean;
+	picked_at: string;
+}
+
+export interface UserBadgeItem {
+	rule_slug: string | null;
+	output_type: string | null;
+	output_variant: string | null;
+	display_name: string | null;
+	rarity: string;
+	earned_at: string;
+	source_proofs_count: number;
+}
+
+export interface UserBadgesResponse {
+	user_id: string;
+	rank: {
+		rank: Rank;
+		achieved_at: string;
+		previous_rank: Rank | null;
+	};
+	skill_patches: UserBadgeItem[];
+	medals: UserBadgeItem[];
+	challenge_seals_count: number;
+	event_stamps_count: number;
+	guild_crests: UserBadgeItem[];
+	total_badges: number;
+}
+
+export interface UserRankHistoryEntry {
+	from_rank: Rank | null;
+	to_rank: Rank;
+	achieved_at: string;
+	reason: string | null;
+}
+
+export interface RecomputeProofsBody {
+	scope?: 'capabilities' | 'badges' | 'ranks' | 'all';
+	reason?: string;
+}
+
+export interface RecomputeProofsDryRunPreview {
+	dry_run: true;
+	current_state: {
+		rank: Rank | null;
+		capabilities_active_count: number;
+		badges_active_count: number;
+	};
+	would_recompute: string;
+}
+
+export interface RecomputeProofsReport {
+	recomputed: {
+		capabilities_added: string[];
+		capabilities_removed: string[];
+		badges_added: string[];
+		badges_removed: string[];
+		rank_before: Rank;
+		rank_after: Rank;
+		errors: string[];
+	};
+}
+
+export interface RankOverrideBody {
+	new_rank: Rank;
+	reason: string;
+}
+
+export interface RankOverrideResult {
+	user_id: string;
+	old_rank: Rank;
+	new_rank: Rank;
+	override_id: string;
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

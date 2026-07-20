@@ -711,6 +711,84 @@ export const en: Translations = {
 			evalComparedCount: 'compared',
 			auditGap: 'Note: fraud actions are not yet written to the audit log (tracked backend gap).'
 		},
+		userEnrichment: {
+			orientations: {
+				sectionTitle: 'Career orientations',
+				sectionHint: 'Active jobs picked by the user (max 3). The primary drives recommendations.',
+				empty: 'No active orientation.',
+				primaryBadge: 'PRIMARY',
+				modeLearning: 'Learning',
+				modeActive: 'Active',
+				pickedAt: 'Picked on'
+			},
+			badges: {
+				sectionTitle: 'Badges & rank',
+				sectionHint: 'Polymorphic view of proofs: rank chevron, skill patches, medals, aggregated seals/stamps.',
+				empty: 'No badge granted (rank apprenti by default).',
+				rankLabel: 'Current rank',
+				achievedAt: 'Reached on',
+				previousRank: 'previous',
+				skillPatches: 'Skill patches',
+				medals: 'Medals',
+				guildCrests: 'Guild crests',
+				sealsCount: 'challenge seals',
+				stampsCount: 'event stamps',
+				total: 'total',
+				earned: 'earned on'
+			},
+			rank: {
+				sectionTitle: 'Rank & history',
+				sectionHint: 'Rank evolves through the proof engine. Override is reserved for exceptional cases (engine bug, honorary elder, moderation demotion) and is audited.',
+				currentLabel: 'Current rank',
+				forceRankBtn: 'Force rank',
+				historyTitle: 'History',
+				historyEmpty: 'No history.',
+				forceDialog: {
+					title: 'Force rank',
+					currentRank: 'Current rank',
+					newRank: 'New rank',
+					reason: 'Reason (min 8 chars, audited)',
+					reasonPlaceholder: 'e.g. engine bug, honorary elder, moderation demotion',
+					dryRunBtn: 'Preview (dry-run)',
+					dryRunPeers: 'users already at this rank',
+					submit: 'Apply override',
+					successToast: 'Rank forced.'
+				},
+				ranks: {
+					apprenti: 'Apprentice',
+					ranger: 'Ranger',
+					artisan: 'Artisan',
+					maitre: 'Master',
+					doyen: 'Elder'
+				}
+			},
+			recompute: {
+				sectionTitle: 'Proof engine',
+				sectionHint: 'Recompute capabilities + badges + rank for this user. Use after an engine bug fix or manual deliverables correction.',
+				runBtn: 'Recompute',
+				dryRunBtn: 'Preview',
+				dialogTitle: 'Recompute proofs',
+				dialogDescription: 'Row-level lock during execution; audits the capabilities/badges/rank delta.',
+				dialogReasonPlaceholder: 'Reason (optional but recommended)',
+				scopeLabel: 'Scope',
+				scopeAll: 'All',
+				scopeCapabilities: 'Capabilities only',
+				scopeBadges: 'Badges only',
+				scopeRanks: 'Rank only',
+				dryRunLabel: 'Current state',
+				dryRunCurrentRank: 'Rank',
+				dryRunCapsCount: 'active capabilities',
+				dryRunBadgesCount: 'active badges',
+				reportTitle: 'Recompute result',
+				reportCapsAdded: 'Capabilities added',
+				reportBadgesAdded: 'Badges added',
+				reportBadgesRevoked: 'Badges revoked',
+				reportRankBefore: 'Rank before',
+				reportRankAfter: 'Rank after',
+				reportErrors: 'Partial errors',
+				runSuccessToast: 'Recompute complete.'
+			}
+		},
 		enterprises: {
 			title: 'Enterprises',
 			subtitle: 'Manage enterprise types (direct-hire / staffing_agency / remote_international) and their config.',

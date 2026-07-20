@@ -30,7 +30,16 @@ import type {
 	EnterpriseAdmin,
 	EnterpriseTypeConfig,
 	AgencyClient,
-	PatchEnterpriseTypeBody
+	PatchEnterpriseTypeBody,
+	UserOrientationEntry,
+	UserBadgesResponse,
+	UserRankHistoryEntry,
+	RecomputeProofsBody,
+	RecomputeProofsDryRunPreview,
+	RecomputeProofsReport,
+	RankOverrideBody,
+	RankOverrideResult,
+	Rank
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -564,6 +573,64 @@ export const adminApi = {
 	listEnterpriseAgencyClients(id: string) {
 		return api.get<ApiResponse<{ clients: AgencyClient[] }>>(
 			`/admin/enterprises/${id}/agency-clients`
+		);
+	},
+
+	// --- ADM-M5 — Users enrichment (backend routes admin_users.rs + public reads) ---
+
+	/** GET public : orientations d'un user (respecte profile_active). */
+	getUserOrientations(userId: string) {
+		return api.get<ApiResponse<{ orientations: UserOrientationEntry[] }>>(
+			`/users/${userId}/orientations`
+		);
+	},
+
+	/** GET public : badges polymorphiques d'un user (P17.5). */
+	getUserBadges(userId: string) {
+		return api.get<ApiResponse<UserBadgesResponse>>(`/users/${userId}/badges`);
+	},
+
+	/** GET public : historique des transitions de rank (ADM-M5+). */
+	getUserRankHistory(userId: string) {
+		return api.get<ApiResponse<{ history: UserRankHistoryEntry[] }>>(
+			`/users/${userId}/rank-history`
+		);
+	},
+
+	/** POST admin : recompute proof engine (capabilities + badges + rank) pour un user. */
+	recomputeUserProofs(userId: string, body: RecomputeProofsBody = {}, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		if (dryRun) {
+			return api.post<ApiResponse<RecomputeProofsDryRunPreview>>(
+				`/admin/users/${userId}/recompute-proofs${suffix}`,
+				body
+			);
+		}
+		return api.post<ApiResponse<RecomputeProofsReport>>(
+			`/admin/users/${userId}/recompute-proofs${suffix}`,
+			body
+		);
+	},
+
+	/** POST admin : force le rank d'un user (cas exceptionnel, audité). */
+	overrideUserRank(userId: string, body: RankOverrideBody, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		if (dryRun) {
+			return api.post<
+				ApiResponse<{
+					dry_run: true;
+					would_override: {
+						user_id: string;
+						old_rank: Rank;
+						new_rank: Rank;
+						peers_at_new_rank: number;
+					};
+				}>
+			>(`/admin/users/${userId}/rank-override${suffix}`, body);
+		}
+		return api.post<ApiResponse<RankOverrideResult>>(
+			`/admin/users/${userId}/rank-override${suffix}`,
+			body
 		);
 	}
 };

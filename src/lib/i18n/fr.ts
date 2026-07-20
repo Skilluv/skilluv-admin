@@ -711,6 +711,84 @@ export const fr: Translations = {
 			evalComparedCount: 'comparés',
 			auditGap: 'Note : les actions fraude ne sont pas encore inscrites dans le journal d\'audit (gap backend suivi).'
 		},
+		userEnrichment: {
+			orientations: {
+				sectionTitle: 'Orientations métier',
+				sectionHint: 'Métiers actifs choisis par l\'utilisateur (max 3). Le primary conditionne les recommandations.',
+				empty: 'Aucune orientation active.',
+				primaryBadge: 'PRIMARY',
+				modeLearning: 'Apprentissage',
+				modeActive: 'Actif',
+				pickedAt: 'Choisi le'
+			},
+			badges: {
+				sectionTitle: 'Badges & rank',
+				sectionHint: 'Vue polymorphique des preuves : rank chevron, skill patches, médailles, seals/stamps agrégés.',
+				empty: 'Aucun badge attribué (rank apprenti par défaut).',
+				rankLabel: 'Rang courant',
+				achievedAt: 'Atteint le',
+				previousRank: 'précédent',
+				skillPatches: 'Skill patches',
+				medals: 'Médailles',
+				guildCrests: 'Écussons guilde',
+				sealsCount: 'sceaux challenge',
+				stampsCount: 'tampons événement',
+				total: 'total',
+				earned: 'gagné le'
+			},
+			rank: {
+				sectionTitle: 'Rank & historique',
+				sectionHint: 'Le rank évolue via le proof engine. L\'override est réservé aux cas exceptionnels (bug, doyen d\'honneur, rétrogradation modération) et audité.',
+				currentLabel: 'Rang courant',
+				forceRankBtn: 'Forcer le rang',
+				historyTitle: 'Historique',
+				historyEmpty: 'Aucun historique.',
+				forceDialog: {
+					title: 'Forcer le rang',
+					currentRank: 'Rang actuel',
+					newRank: 'Nouveau rang',
+					reason: 'Raison (min. 8 caractères, auditée)',
+					reasonPlaceholder: 'Ex : bug engine, doyen d\'honneur, rétrogradation modération',
+					dryRunBtn: 'Prévisualiser (dry-run)',
+					dryRunPeers: 'utilisateurs déjà à ce rang',
+					submit: 'Appliquer l\'override',
+					successToast: 'Rang forcé.'
+				},
+				ranks: {
+					apprenti: 'Apprenti',
+					ranger: 'Ranger',
+					artisan: 'Artisan',
+					maitre: 'Maître',
+					doyen: 'Doyen'
+				}
+			},
+			recompute: {
+				sectionTitle: 'Proof engine',
+				sectionHint: 'Recompute capabilities + badges + rank pour ce user. À utiliser après un fix de bug engine ou une correction manuelle de deliverables.',
+				runBtn: 'Recompute',
+				dryRunBtn: 'Prévisualiser',
+				dialogTitle: 'Recompute proofs',
+				dialogDescription: 'Verrou row-level pendant l\'exécution ; audite le delta capabilities/badges/rank.',
+				dialogReasonPlaceholder: 'Raison (optionnelle mais recommandée)',
+				scopeLabel: 'Portée',
+				scopeAll: 'Tout',
+				scopeCapabilities: 'Capabilities seules',
+				scopeBadges: 'Badges seuls',
+				scopeRanks: 'Rank seul',
+				dryRunLabel: 'État actuel',
+				dryRunCurrentRank: 'Rang',
+				dryRunCapsCount: 'capabilities actives',
+				dryRunBadgesCount: 'badges actifs',
+				reportTitle: 'Résultat du recompute',
+				reportCapsAdded: 'Capabilities ajoutées',
+				reportBadgesAdded: 'Badges ajoutés',
+				reportBadgesRevoked: 'Badges révoqués',
+				reportRankBefore: 'Rang avant',
+				reportRankAfter: 'Rang après',
+				reportErrors: 'Erreurs partielles',
+				runSuccessToast: 'Recompute terminé.'
+			}
+		},
 		enterprises: {
 			title: 'Entreprises',
 			subtitle: 'Gestion des types d\'entreprise (direct-hire / staffing_agency / remote_international) et de leur configuration.',

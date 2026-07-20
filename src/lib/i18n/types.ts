@@ -955,6 +955,84 @@ export interface Translations {
 				community_curator: string;
 			};
 		};
+		userEnrichment: {
+			orientations: {
+				sectionTitle: string;
+				sectionHint: string;
+				empty: string;
+				primaryBadge: string;
+				modeLearning: string;
+				modeActive: string;
+				pickedAt: string;
+			};
+			badges: {
+				sectionTitle: string;
+				sectionHint: string;
+				empty: string;
+				rankLabel: string;
+				achievedAt: string;
+				previousRank: string;
+				skillPatches: string;
+				medals: string;
+				guildCrests: string;
+				sealsCount: string;
+				stampsCount: string;
+				total: string;
+				earned: string;
+			};
+			rank: {
+				sectionTitle: string;
+				sectionHint: string;
+				currentLabel: string;
+				forceRankBtn: string;
+				historyTitle: string;
+				historyEmpty: string;
+				forceDialog: {
+					title: string;
+					currentRank: string;
+					newRank: string;
+					reason: string;
+					reasonPlaceholder: string;
+					dryRunBtn: string;
+					dryRunPeers: string;
+					submit: string;
+					successToast: string;
+				};
+				ranks: {
+					apprenti: string;
+					ranger: string;
+					artisan: string;
+					maitre: string;
+					doyen: string;
+				};
+			};
+			recompute: {
+				sectionTitle: string;
+				sectionHint: string;
+				runBtn: string;
+				dryRunBtn: string;
+				dialogTitle: string;
+				dialogDescription: string;
+				dialogReasonPlaceholder: string;
+				scopeLabel: string;
+				scopeAll: string;
+				scopeCapabilities: string;
+				scopeBadges: string;
+				scopeRanks: string;
+				dryRunLabel: string;
+				dryRunCurrentRank: string;
+				dryRunCapsCount: string;
+				dryRunBadgesCount: string;
+				reportTitle: string;
+				reportCapsAdded: string;
+				reportBadgesAdded: string;
+				reportBadgesRevoked: string;
+				reportRankBefore: string;
+				reportRankAfter: string;
+				reportErrors: string;
+				runSuccessToast: string;
+			};
+		};
 		enterprises: {
 			title: string;
 			subtitle: string;
