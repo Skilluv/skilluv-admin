@@ -21,6 +21,7 @@
 		Fingerprint,
 		BookMarked,
 		Briefcase,
+		Network,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -46,6 +47,7 @@
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
+		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
 		{ href: '/enterprise-kyc', label: i18n.t('admin.nav.kycEnterprises'), icon: ShieldCheck },
 		{ href: '/enterprises', label: i18n.t('admin.nav.enterprises'), icon: Briefcase },

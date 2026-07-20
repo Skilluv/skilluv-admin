@@ -20,6 +20,7 @@
 	import UserBadgesSection from '$components/admin/UserBadgesSection.svelte';
 	import UserRankSection from '$components/admin/UserRankSection.svelte';
 	import UserRecomputeSection from '$components/admin/UserRecomputeSection.svelte';
+	import UserRecomputeCapSection from '$components/admin/UserRecomputeCapSection.svelte';
 	import UserGdprSection from '$components/admin/UserGdprSection.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
@@ -315,6 +316,9 @@
 
 		<!-- ADM-M5 — Recompute proof engine (P19). -->
 		<UserRecomputeSection userId={user.id} onchange={triggerRefresh} />
+
+		<!-- Extras Phase 5 — Recompute capabilities seul (scope réduit). -->
+		<UserRecomputeCapSection userId={user.id} onchange={triggerRefresh} />
 
 		<!-- ADM-M5+ — Admin-triggered GDPR export. -->
 		<UserGdprSection userId={user.id} />

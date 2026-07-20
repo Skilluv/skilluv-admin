@@ -355,7 +355,8 @@ export const fr: Translations = {
 			tenantsLabel: 'Tenants',
 			fraud: 'Fraude',
 			catalog: 'Catalogue',
-			enterprises: 'Entreprises'
+			enterprises: 'Entreprises',
+			skills: 'Skills'
 		},
 		dashboard: {
 			title: 'Dashboard Admin', platform: 'Plateforme', moderation: 'Modération',
@@ -810,6 +811,64 @@ export const fr: Translations = {
 				dialogDescription: 'Le user recevra l\'archive complète par email dans quelques minutes.',
 				reasonPlaceholder: 'Ex : ticket support #1234, demande légale',
 				queuedToast: 'Export mis en file.'
+			},
+			recomputeCap: {
+				sectionTitle: 'Recompute capabilities',
+				sectionHint: 'Scope réduit du proof engine : recalcule uniquement les capabilities (mentor, forum_moderator…), sans toucher aux badges ni au rank.',
+				runBtn: 'Recompute capabilities',
+				resultGranted: 'accordées',
+				resultAlreadyActive: 'déjà actives',
+				successToast: 'Capabilities recalculées.'
+			}
+		},
+		skills: {
+			title: 'Skill nodes',
+			subtitle: 'Graphe des compétences atomiques utilisé par les orientations, deliverables et badges.',
+			filterDomain: 'Domaine',
+			filterDomainAll: 'Tous',
+			filterQ: 'Recherche',
+			filterQPlaceholder: 'Slug ou nom…',
+			filterSkilluvSpecific: 'Skilluv-specific',
+			filterAny: 'Toutes',
+			filterYes: 'Oui',
+			filterNo: 'Non',
+			createBtn: 'Créer un skill',
+			empty: 'Aucun skill pour ces filtres.',
+			table: {
+				slug: 'Slug',
+				displayName: 'Nom',
+				domain: 'Domaine',
+				flags: 'Flags',
+				actions: 'Actions'
+			},
+			skilluvSpecificBadge: 'Skilluv-specific',
+			editBtn: 'Éditer',
+			copyIdBtn: 'Copier UUID',
+			idCopiedToast: 'UUID copié.',
+			create: {
+				title: 'Nouveau skill node',
+				slugLabel: 'Slug (immuable)',
+				slugHint: '2 à 80 caractères, minuscules, chiffres, tirets et underscores.',
+				displayNameLabel: 'Nom affiché',
+				descriptionLabel: 'Description',
+				domainLabel: 'Domaine',
+				parentIdLabel: 'Parent (UUID, optionnel)',
+				parentIdHint: 'Pour créer une hiérarchie 2 niveaux (catégorie → skill atomique).',
+				aliasesLabel: 'Alias (séparés par virgule)',
+				aliasesHint: 'Ex : « useState, react-state-hooks » pour react-hooks.',
+				externalRefsLabel: 'external_refs (JSON, optionnel)',
+				externalRefsHint: 'Ex : { "mdn": "https://…", "wikipedia": "…" }.',
+				externalRefsInvalidJson: 'JSON invalide.',
+				isSkilluvSpecificLabel: 'Marqué Skilluv-specific (contexte africain, stack interne).',
+				submit: 'Créer',
+				successToast: 'Skill node créé.'
+			},
+			edit: {
+				title: 'Éditer le skill',
+				submit: 'Enregistrer',
+				successToast: 'Skill node mis à jour.',
+				parentIdHint: 'Vide + case cochée = détacher du parent.',
+				clearParentLabel: 'Détacher du parent'
 			}
 		},
 		enterprises: {
@@ -882,6 +941,38 @@ export const fr: Translations = {
 			subtitle: 'Orientations métier et badge rules du proof engine. Toutes les mutations sont auditées.',
 			tabOrientations: 'Orientations',
 			tabBadgeRules: 'Badge rules',
+			tabEvents: 'Events',
+			events: {
+				subtitle: 'Événements datés (Hacktoberfest, Skilluv Fest, hackathons partenaires) — produisent un event_stamp via le badge engine.',
+				createBtn: 'Créer un event',
+				empty: 'Aucun event actif.',
+				table: {
+					slug: 'Slug',
+					name: 'Nom',
+					starts: 'Début',
+					ends: 'Fin',
+					partner: 'Partenaire'
+				},
+				partnerYes: 'Partenaire',
+				partnerNo: '—',
+				noEnd: 'ouvert',
+				create: {
+					title: 'Nouvel event',
+					slugLabel: 'Slug (immuable)',
+					slugHint: '3 à 60 caractères, minuscules, chiffres et tirets uniquement.',
+					nameLabel: 'Nom affiché',
+					descriptionLabel: 'Description',
+					startsAtLabel: 'Date de début',
+					endsAtLabel: 'Date de fin (optionnel)',
+					endsAtHint: 'Laisser vide pour un event ouvert (Hacktoberfest annuel).',
+					visualThemeLabel: 'Thème visuel (JSON, optionnel)',
+					visualThemeHint: 'Ex : { "color": "#ff6b35", "icon": "leaf" } — consommé par le frontend.',
+					visualThemeInvalidJson: 'JSON invalide.',
+					isPartnerLabel: 'Événement partenaire (charte badge unique)',
+					submit: 'Créer',
+					successToast: 'Event créé.'
+				}
+			},
 			orientations: {
 				filterDomain: 'Domaine',
 				filterDomainAll: 'Tous',

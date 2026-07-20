@@ -339,6 +339,69 @@ export interface AdminGdprExportResult {
 	message: string;
 }
 
+// --- Extras Phase 5 : badge events (P17.6) + skill nodes CRUD + recompute-capabilities ---
+
+export interface CreateBadgeEventBody {
+	slug: string;
+	name: string;
+	description?: string;
+	starts_at: string; // RFC3339
+	ends_at?: string;
+	visual_theme?: Record<string, unknown>;
+	is_partner?: boolean;
+}
+
+export interface BadgeEvent {
+	id: string;
+	slug: string;
+	name: string;
+	starts_at: string;
+	ends_at: string | null;
+	visual_theme: Record<string, unknown>;
+	is_partner: boolean;
+}
+
+/** Alias sur SkillDomain (challenges) — les skill_nodes utilisent le domain étendu
+ *  identique à `OrientationDomain` : code/design/game/security/soft_skills/ai/ops. */
+export type SkillNodeDomain = OrientationDomain;
+
+export interface SkillNodeAdmin {
+	id: string;
+	slug: string;
+	display_name: string;
+	description: string | null;
+	domain: SkillNodeDomain;
+	parent_id: string | null;
+	is_skilluv_specific: boolean;
+}
+
+export interface CreateSkillNodeBody {
+	slug: string;
+	display_name: string;
+	description?: string;
+	domain: SkillNodeDomain;
+	parent_id?: string;
+	aliases?: string[];
+	external_refs?: Record<string, unknown>;
+	is_skilluv_specific?: boolean;
+}
+
+export interface UpdateSkillNodeBody {
+	display_name?: string;
+	description?: string;
+	domain?: SkillNodeDomain;
+	/** `Some(null)` clears parent, `undefined` preserves current value. */
+	parent_id?: string | null;
+	aliases?: string[];
+	external_refs?: Record<string, unknown>;
+	is_skilluv_specific?: boolean;
+}
+
+export interface RecomputeCapabilitiesResult {
+	granted: string[];
+	already_active: string[];
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

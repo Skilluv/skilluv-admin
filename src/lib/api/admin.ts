@@ -43,7 +43,14 @@ import type {
 	ProofHooksSweepDryRun,
 	ProofHooksSweepResult,
 	AdminGdprExportTrigger,
-	AdminGdprExportResult
+	AdminGdprExportResult,
+	CreateBadgeEventBody,
+	BadgeEvent,
+	SkillNodeAdmin,
+	SkillNodeDomain,
+	CreateSkillNodeBody,
+	UpdateSkillNodeBody,
+	RecomputeCapabilitiesResult
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -637,6 +644,47 @@ export const adminApi = {
 	triggerUserGdprExport(userId: string, body: AdminGdprExportTrigger) {
 		return api.post<ApiResponse<AdminGdprExportResult>>(
 			`/admin/users/${userId}/gdpr-export`,
+			body
+		);
+	},
+
+	/** Extras Phase 5 — POST /admin/badge-events (Hacktoberfest, Skilluv Fest…). */
+	createBadgeEvent(body: CreateBadgeEventBody) {
+		return api.post<ApiResponse<{ event: BadgeEvent }>>('/admin/badge-events', body);
+	},
+
+	/** Extras Phase 5 — POST /admin/users/{id}/recompute-capabilities (scope réduit). */
+	recomputeUserCapabilities(userId: string) {
+		return api.post<ApiResponse<RecomputeCapabilitiesResult>>(
+			`/admin/users/${userId}/recompute-capabilities`,
+			{}
+		);
+	},
+
+	/** Extras Phase 5 — GET /admin/skills (list + filter + pagination). */
+	listAdminSkills(params?: {
+		domain?: SkillNodeDomain;
+		parent_id?: string;
+		is_skilluv_specific?: boolean;
+		q?: string;
+		page?: number;
+		per_page?: number;
+	}) {
+		return api.get<ApiPaginatedResponse<SkillNodeAdmin>>(
+			'/admin/skills',
+			params as Record<string, string | number | boolean>
+		);
+	},
+
+	/** Extras Phase 5 — POST /admin/skills (create skill node). */
+	createSkillNode(body: CreateSkillNodeBody) {
+		return api.post<ApiResponse<{ skill: SkillNodeAdmin }>>('/admin/skills', body);
+	},
+
+	/** Extras Phase 5 — PUT /admin/skills/{id} (edit skill node). */
+	updateSkillNode(id: string, body: UpdateSkillNodeBody) {
+		return api.put<ApiResponse<{ updated: boolean; id: string }>>(
+			`/admin/skills/${id}`,
 			body
 		);
 	},

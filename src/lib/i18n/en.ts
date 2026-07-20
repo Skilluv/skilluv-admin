@@ -355,7 +355,8 @@ export const en: Translations = {
 			tenantsLabel: 'Tenants',
 			fraud: 'Fraud',
 			catalog: 'Catalog',
-			enterprises: 'Enterprises'
+			enterprises: 'Enterprises',
+			skills: 'Skills'
 		},
 		dashboard: {
 			title: 'Admin Dashboard', platform: 'Platform', moderation: 'Moderation',
@@ -810,6 +811,64 @@ export const en: Translations = {
 				dialogDescription: 'The user will receive the full archive by email within a few minutes.',
 				reasonPlaceholder: 'e.g. support ticket #1234, legal request',
 				queuedToast: 'Export queued.'
+			},
+			recomputeCap: {
+				sectionTitle: 'Recompute capabilities',
+				sectionHint: 'Reduced proof-engine scope: recomputes only capabilities (mentor, forum_moderator…), without touching badges or rank.',
+				runBtn: 'Recompute capabilities',
+				resultGranted: 'granted',
+				resultAlreadyActive: 'already active',
+				successToast: 'Capabilities recomputed.'
+			}
+		},
+		skills: {
+			title: 'Skill nodes',
+			subtitle: 'Atomic skill graph used by orientations, deliverables and badges.',
+			filterDomain: 'Domain',
+			filterDomainAll: 'All',
+			filterQ: 'Search',
+			filterQPlaceholder: 'Slug or name…',
+			filterSkilluvSpecific: 'Skilluv-specific',
+			filterAny: 'All',
+			filterYes: 'Yes',
+			filterNo: 'No',
+			createBtn: 'Create skill',
+			empty: 'No skill for these filters.',
+			table: {
+				slug: 'Slug',
+				displayName: 'Name',
+				domain: 'Domain',
+				flags: 'Flags',
+				actions: 'Actions'
+			},
+			skilluvSpecificBadge: 'Skilluv-specific',
+			editBtn: 'Edit',
+			copyIdBtn: 'Copy UUID',
+			idCopiedToast: 'UUID copied.',
+			create: {
+				title: 'New skill node',
+				slugLabel: 'Slug (immutable)',
+				slugHint: '2 to 80 chars, lowercase, digits, hyphens and underscores.',
+				displayNameLabel: 'Display name',
+				descriptionLabel: 'Description',
+				domainLabel: 'Domain',
+				parentIdLabel: 'Parent (UUID, optional)',
+				parentIdHint: 'For a 2-level hierarchy (category → atomic skill).',
+				aliasesLabel: 'Aliases (comma-separated)',
+				aliasesHint: 'e.g. "useState, react-state-hooks" for react-hooks.',
+				externalRefsLabel: 'external_refs (JSON, optional)',
+				externalRefsHint: 'e.g. { "mdn": "https://…", "wikipedia": "…" }.',
+				externalRefsInvalidJson: 'Invalid JSON.',
+				isSkilluvSpecificLabel: 'Marked Skilluv-specific (African context, internal stack).',
+				submit: 'Create',
+				successToast: 'Skill node created.'
+			},
+			edit: {
+				title: 'Edit skill',
+				submit: 'Save',
+				successToast: 'Skill node updated.',
+				parentIdHint: 'Empty + checkbox ticked = detach from parent.',
+				clearParentLabel: 'Detach from parent'
 			}
 		},
 		enterprises: {
@@ -882,6 +941,38 @@ export const en: Translations = {
 			subtitle: 'Career orientations and proof-engine badge rules. Every mutation is audited.',
 			tabOrientations: 'Orientations',
 			tabBadgeRules: 'Badge rules',
+			tabEvents: 'Events',
+			events: {
+				subtitle: 'Dated events (Hacktoberfest, Skilluv Fest, partner hackathons) — produce an event_stamp via the badge engine.',
+				createBtn: 'Create event',
+				empty: 'No active event.',
+				table: {
+					slug: 'Slug',
+					name: 'Name',
+					starts: 'Start',
+					ends: 'End',
+					partner: 'Partner'
+				},
+				partnerYes: 'Partner',
+				partnerNo: '—',
+				noEnd: 'open',
+				create: {
+					title: 'New event',
+					slugLabel: 'Slug (immutable)',
+					slugHint: '3 to 60 chars, lowercase, digits and hyphens only.',
+					nameLabel: 'Display name',
+					descriptionLabel: 'Description',
+					startsAtLabel: 'Start date',
+					endsAtLabel: 'End date (optional)',
+					endsAtHint: 'Leave empty for an open event (annual Hacktoberfest).',
+					visualThemeLabel: 'Visual theme (JSON, optional)',
+					visualThemeHint: 'e.g. { "color": "#ff6b35", "icon": "leaf" } — consumed by the frontend.',
+					visualThemeInvalidJson: 'Invalid JSON.',
+					isPartnerLabel: 'Partner event (unique badge charter)',
+					submit: 'Create',
+					successToast: 'Event created.'
+				}
+			},
 			orientations: {
 				filterDomain: 'Domain',
 				filterDomainAll: 'All',

@@ -363,7 +363,8 @@ export const ar: Translations = {
 			tenantsLabel: 'المستأجرون',
 			fraud: 'الاحتيال',
 			catalog: 'الكتالوج',
-			enterprises: 'الشركات'
+			enterprises: 'الشركات',
+			skills: 'المهارات'
 		},
 		dashboard: {
 			title: 'لوحة الإدارة', platform: 'المنصة', moderation: 'الإشراف',
@@ -818,6 +819,64 @@ export const ar: Translations = {
 				dialogDescription: 'سيتلقى المستخدم الأرشيف الكامل بالبريد الإلكتروني خلال بضع دقائق.',
 				reasonPlaceholder: 'مثال : تذكرة دعم #1234، طلب قانوني',
 				queuedToast: 'تمت جدولة التصدير.'
+			},
+			recomputeCap: {
+				sectionTitle: 'إعادة حساب الصلاحيات',
+				sectionHint: 'نطاق مصغر لمحرك الإثبات : يعيد حساب الصلاحيات فقط (mentor، forum_moderator…) دون المساس بالشارات أو الرتبة.',
+				runBtn: 'إعادة حساب الصلاحيات',
+				resultGranted: 'ممنوحة',
+				resultAlreadyActive: 'نشطة بالفعل',
+				successToast: 'تم إعادة حساب الصلاحيات.'
+			}
+		},
+		skills: {
+			title: 'عقد المهارات',
+			subtitle: 'رسم بياني للمهارات الذرية يستخدمه التوجهات، deliverables والشارات.',
+			filterDomain: 'المجال',
+			filterDomainAll: 'الكل',
+			filterQ: 'بحث',
+			filterQPlaceholder: 'المُعرِّف أو الاسم…',
+			filterSkilluvSpecific: 'خاص بـ Skilluv',
+			filterAny: 'الكل',
+			filterYes: 'نعم',
+			filterNo: 'لا',
+			createBtn: 'إنشاء مهارة',
+			empty: 'لا توجد مهارة لهذه الفلاتر.',
+			table: {
+				slug: 'المُعرِّف',
+				displayName: 'الاسم',
+				domain: 'المجال',
+				flags: 'العلامات',
+				actions: 'إجراءات'
+			},
+			skilluvSpecificBadge: 'خاص بـ Skilluv',
+			editBtn: 'تعديل',
+			copyIdBtn: 'نسخ UUID',
+			idCopiedToast: 'تم نسخ UUID.',
+			create: {
+				title: 'عقدة مهارة جديدة',
+				slugLabel: 'المُعرِّف (غير قابل للتعديل)',
+				slugHint: 'من 2 إلى 80 حرفًا، أحرف صغيرة وأرقام وشرطات وشرطات سفلية.',
+				displayNameLabel: 'الاسم المعروض',
+				descriptionLabel: 'الوصف',
+				domainLabel: 'المجال',
+				parentIdLabel: 'الأب (UUID، اختياري)',
+				parentIdHint: 'لإنشاء هرمية من مستويين (فئة ← مهارة ذرية).',
+				aliasesLabel: 'الأسماء البديلة (مفصولة بفواصل)',
+				aliasesHint: 'مثال : « useState, react-state-hooks » لـ react-hooks.',
+				externalRefsLabel: 'external_refs (JSON، اختياري)',
+				externalRefsHint: 'مثال : { "mdn": "https://…", "wikipedia": "…" }.',
+				externalRefsInvalidJson: 'JSON غير صالح.',
+				isSkilluvSpecificLabel: 'مُعلَّم Skilluv-specific (السياق الأفريقي، الحزمة الداخلية).',
+				submit: 'إنشاء',
+				successToast: 'تم إنشاء عقدة المهارة.'
+			},
+			edit: {
+				title: 'تعديل المهارة',
+				submit: 'حفظ',
+				successToast: 'تم تحديث عقدة المهارة.',
+				parentIdHint: 'فارغ + خانة محددة = فصل من الأب.',
+				clearParentLabel: 'فصل من الأب'
 			}
 		},
 		enterprises: {
@@ -890,6 +949,38 @@ export const ar: Translations = {
 			subtitle: 'التوجهات المهنية وقواعد الشارات لمحرك الإثبات. جميع التعديلات مُدقَّقة.',
 			tabOrientations: 'التوجهات',
 			tabBadgeRules: 'قواعد الشارات',
+			tabEvents: 'الأحداث',
+			events: {
+				subtitle: 'أحداث مؤرَّخة (Hacktoberfest، Skilluv Fest، هاكاثونات الشركاء) — تُنتج event_stamp عبر محرك الشارات.',
+				createBtn: 'إنشاء حدث',
+				empty: 'لا يوجد حدث نشط.',
+				table: {
+					slug: 'المُعرِّف',
+					name: 'الاسم',
+					starts: 'البداية',
+					ends: 'النهاية',
+					partner: 'شريك'
+				},
+				partnerYes: 'شريك',
+				partnerNo: '—',
+				noEnd: 'مفتوح',
+				create: {
+					title: 'حدث جديد',
+					slugLabel: 'المُعرِّف (غير قابل للتعديل)',
+					slugHint: 'من 3 إلى 60 حرفًا، أحرف صغيرة وأرقام وشرطات فقط.',
+					nameLabel: 'الاسم المعروض',
+					descriptionLabel: 'الوصف',
+					startsAtLabel: 'تاريخ البداية',
+					endsAtLabel: 'تاريخ النهاية (اختياري)',
+					endsAtHint: 'اترك فارغًا لحدث مفتوح (Hacktoberfest السنوي).',
+					visualThemeLabel: 'الموضوع البصري (JSON، اختياري)',
+					visualThemeHint: 'مثال : { "color": "#ff6b35", "icon": "leaf" } — يستهلكه الواجهة الأمامية.',
+					visualThemeInvalidJson: 'JSON غير صالح.',
+					isPartnerLabel: 'حدث شراكة (ميثاق شارة فريد)',
+					submit: 'إنشاء',
+					successToast: 'تم إنشاء الحدث.'
+				}
+			},
 			orientations: {
 				filterDomain: 'المجال',
 				filterDomainAll: 'الكل',

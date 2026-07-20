@@ -3,8 +3,9 @@
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
 	import OrientationsTab from '$components/admin/OrientationsTab.svelte';
 	import BadgeRulesTab from '$components/admin/BadgeRulesTab.svelte';
+	import EventsTab from '$components/admin/EventsTab.svelte';
 
-	type Tab = 'orientations' | 'badge-rules';
+	type Tab = 'orientations' | 'badge-rules' | 'events';
 
 	let activeTab = $state<Tab>('orientations');
 </script>
@@ -23,7 +24,8 @@
 		<SegmentedControl
 			items={[
 				{ value: 'orientations', label: i18n.t('admin.catalog.tabOrientations') },
-				{ value: 'badge-rules', label: i18n.t('admin.catalog.tabBadgeRules') }
+				{ value: 'badge-rules', label: i18n.t('admin.catalog.tabBadgeRules') },
+				{ value: 'events', label: i18n.t('admin.catalog.tabEvents') }
 			]}
 			bind:value={activeTab}
 			size="md"
@@ -32,7 +34,9 @@
 
 	{#if activeTab === 'orientations'}
 		<OrientationsTab />
-	{:else}
+	{:else if activeTab === 'badge-rules'}
 		<BadgeRulesTab />
+	{:else}
+		<EventsTab />
 	{/if}
 </div>

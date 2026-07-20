@@ -491,6 +491,7 @@ export interface Translations {
 			fraud: string;
 			catalog: string;
 			enterprises: string;
+			skills: string;
 		};
 		dashboard: {
 			title: string;
@@ -1055,6 +1056,64 @@ export interface Translations {
 				reasonPlaceholder: string;
 				queuedToast: string;
 			};
+			recomputeCap: {
+				sectionTitle: string;
+				sectionHint: string;
+				runBtn: string;
+				resultGranted: string;
+				resultAlreadyActive: string;
+				successToast: string;
+			};
+		};
+		skills: {
+			title: string;
+			subtitle: string;
+			filterDomain: string;
+			filterDomainAll: string;
+			filterQ: string;
+			filterQPlaceholder: string;
+			filterSkilluvSpecific: string;
+			filterAny: string;
+			filterYes: string;
+			filterNo: string;
+			createBtn: string;
+			empty: string;
+			table: {
+				slug: string;
+				displayName: string;
+				domain: string;
+				flags: string;
+				actions: string;
+			};
+			skilluvSpecificBadge: string;
+			editBtn: string;
+			copyIdBtn: string;
+			idCopiedToast: string;
+			create: {
+				title: string;
+				slugLabel: string;
+				slugHint: string;
+				displayNameLabel: string;
+				descriptionLabel: string;
+				domainLabel: string;
+				parentIdLabel: string;
+				parentIdHint: string;
+				aliasesLabel: string;
+				aliasesHint: string;
+				externalRefsLabel: string;
+				externalRefsHint: string;
+				externalRefsInvalidJson: string;
+				isSkilluvSpecificLabel: string;
+				submit: string;
+				successToast: string;
+			};
+			edit: {
+				title: string;
+				submit: string;
+				successToast: string;
+				parentIdHint: string;
+				clearParentLabel: string;
+			};
 		};
 		enterprises: {
 			title: string;
@@ -1126,6 +1185,38 @@ export interface Translations {
 			subtitle: string;
 			tabOrientations: string;
 			tabBadgeRules: string;
+			tabEvents: string;
+			events: {
+				subtitle: string;
+				createBtn: string;
+				empty: string;
+				table: {
+					slug: string;
+					name: string;
+					starts: string;
+					ends: string;
+					partner: string;
+				};
+				partnerYes: string;
+				partnerNo: string;
+				noEnd: string;
+				create: {
+					title: string;
+					slugLabel: string;
+					slugHint: string;
+					nameLabel: string;
+					descriptionLabel: string;
+					startsAtLabel: string;
+					endsAtLabel: string;
+					endsAtHint: string;
+					visualThemeLabel: string;
+					visualThemeHint: string;
+					visualThemeInvalidJson: string;
+					isPartnerLabel: string;
+					submit: string;
+					successToast: string;
+				};
+			};
 			orientations: {
 				filterDomain: string;
 				filterDomainAll: string;
