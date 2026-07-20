@@ -48,6 +48,30 @@
 	let showDigestConfirm = $state(false);
 	let showDissolveConfirm = $state(false);
 
+	// ADM-M5+ : proof engine sweep + GDPR export admin-triggered
+	let sweepWithinDays = $state(7);
+	let sweeping = $state(false);
+	let sweepPreviewCount = $state<number | null>(null);
+	let sweepProcessedCount = $state<number | null>(null);
+	let gdprTargetUserId = $state('');
+	let gdprReason = $state('');
+	let gdprReasonTouched = $state(false);
+	let gdprSubmitting = $state(false);
+
+	const gdprReasonError = $derived.by(() => {
+		if (!gdprReasonTouched) return null;
+		const t = gdprReason.trim();
+		if (t.length === 0) return i18n.t('admin.confirmDialog.reasonRequired');
+		if (t.length < 8) return i18n.t('admin.confirmDialog.reasonTooShort', { n: 8 });
+		return null;
+	});
+	const canTriggerGdpr = $derived(
+		!gdprSubmitting &&
+			gdprTargetUserId.trim().length > 0 &&
+			gdprReasonError === null &&
+			gdprReason.trim().length >= 8
+	);
+
 	function record(label: string, body: unknown) {
 		lastResult = { label, body };
 	}
@@ -96,6 +120,60 @@
 			toast.error(errorMessage(e));
 		} finally {
 			runningGems = false;
+		}
+	}
+
+	async function runSweepDryRun() {
+		if (sweeping) return;
+		sweeping = true;
+		sweepProcessedCount = null;
+		try {
+			const res = await adminApi.sweepProofHooks(sweepWithinDays, true);
+			const data = res.data as { would_process_count: number };
+			sweepPreviewCount = data.would_process_count;
+			record('sweepProofHooks(dry-run)', res.data);
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			sweeping = false;
+		}
+	}
+
+	async function runSweep() {
+		if (sweeping) return;
+		sweeping = true;
+		try {
+			const res = await adminApi.sweepProofHooks(sweepWithinDays, false);
+			const data = res.data as { processed_count: number };
+			sweepProcessedCount = data.processed_count;
+			sweepPreviewCount = null;
+			toast.success(i18n.t('admin.operations.proofSweepDone'));
+			record('sweepProofHooks', res.data);
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			sweeping = false;
+		}
+	}
+
+	async function submitGdprExport(e: SubmitEvent) {
+		e.preventDefault();
+		gdprReasonTouched = true;
+		if (!canTriggerGdpr) return;
+		gdprSubmitting = true;
+		try {
+			const res = await adminApi.triggerUserGdprExport(gdprTargetUserId.trim(), {
+				reason: gdprReason.trim()
+			});
+			toast.success(i18n.t('admin.operations.gdprExportQueuedToast'));
+			record('triggerUserGdprExport', res.data);
+			gdprTargetUserId = '';
+			gdprReason = '';
+			gdprReasonTouched = false;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			gdprSubmitting = false;
 		}
 	}
 
@@ -263,7 +341,113 @@
 					{i18n.t('admin.operations.trigger')}
 				</Button>
 			</div>
+
+			<!-- ADM-M5+ : proof engine sweep -->
+			<div class="rounded-2xl border border-border bg-surface-elevated p-5">
+				<div class="mb-2 flex items-center gap-2">
+					<RefreshCw size={16} strokeWidth={2} class="text-primary" />
+					<h3 class="font-bold">{i18n.t('admin.operations.proofSweep')}</h3>
+				</div>
+				<p class="text-xs text-text-muted mb-3">
+					{i18n.t('admin.operations.proofSweepHint')}
+				</p>
+				<label class="mb-3 flex items-center gap-2 text-xs text-text-primary">
+					<span class="text-text-muted">
+						{i18n.t('admin.operations.proofSweepWithinDays')}:
+					</span>
+					<input
+						type="number"
+						min="1"
+						max="90"
+						bind:value={sweepWithinDays}
+						class="no-spinner h-8 w-16 rounded-lg border border-border bg-surface-elevated px-2 text-center text-sm text-text-primary focus:border-primary focus:ring-1 focus:ring-primary"
+					/>
+				</label>
+				<div class="flex flex-wrap gap-2">
+					<Button variant="ghost" size="sm" onclick={runSweepDryRun} loading={sweeping} disabled={sweeping}>
+						{i18n.t('admin.operations.proofSweepDryRunBtn')}
+					</Button>
+					<Button variant="secondary" size="sm" onclick={runSweep} loading={sweeping} disabled={sweeping}>
+						<RefreshCw size={14} strokeWidth={2} />
+						{i18n.t('admin.operations.proofSweepRunBtn')}
+					</Button>
+				</div>
+				{#if sweepPreviewCount !== null}
+					<p class="mt-2 text-xs text-info">
+						{sweepPreviewCount} {i18n.t('admin.operations.proofSweepDryRunPreview')}
+					</p>
+				{/if}
+				{#if sweepProcessedCount !== null}
+					<p class="mt-2 text-xs text-success">
+						{sweepProcessedCount} · {i18n.t('admin.operations.proofSweepDone')}
+					</p>
+				{/if}
+			</div>
 		</div>
+	</section>
+
+	<!-- ADM-M5+ : GDPR export admin-triggered -->
+	<section class="mb-10">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">
+			{i18n.t('admin.operations.gdprExport')}
+		</h2>
+		<form
+			onsubmit={submitGdprExport}
+			class="rounded-2xl border border-border bg-surface-elevated p-5"
+		>
+			<div class="mb-2 flex items-center gap-2">
+				<Download size={16} strokeWidth={2} class="text-accent" />
+				<h3 class="font-bold">{i18n.t('admin.operations.gdprExport')}</h3>
+			</div>
+			<p class="mb-4 text-xs text-text-muted">
+				{i18n.t('admin.operations.gdprExportHint')}
+			</p>
+			<div class="mb-3 flex flex-col gap-3 sm:flex-row">
+				<div class="flex flex-1 flex-col gap-1.5">
+					<label
+						for="gdpr-target"
+						class="text-xs font-medium uppercase tracking-wider text-text-muted"
+					>
+						{i18n.t('admin.operations.gdprExportTargetUserId')}
+					</label>
+					<input
+						id="gdpr-target"
+						type="text"
+						bind:value={gdprTargetUserId}
+						placeholder="00000000-0000-0000-0000-000000000000"
+						class="h-11 w-full rounded-xl border border-border bg-surface-elevated px-4 font-mono text-xs text-text-primary focus:border-primary focus:ring-1 focus:ring-primary"
+					/>
+				</div>
+			</div>
+			<div class="mb-3 flex flex-col gap-1.5">
+				<label
+					for="gdpr-reason"
+					class="text-xs font-medium uppercase tracking-wider text-text-muted"
+				>
+					{i18n.t('admin.operations.gdprExportReason')}
+				</label>
+				<textarea
+					id="gdpr-reason"
+					bind:value={gdprReason}
+					oninput={() => (gdprReasonTouched = true)}
+					rows="2"
+					placeholder={i18n.t('admin.operations.gdprExportReasonPlaceholder')}
+					class="w-full rounded-xl border border-border bg-surface-elevated px-4 py-2.5 text-sm text-text-primary focus:border-primary focus:ring-1 focus:ring-primary"
+				></textarea>
+				{#if gdprReasonError}
+					<p class="text-xs text-error">{gdprReasonError}</p>
+				{/if}
+			</div>
+			<Button
+				variant="danger"
+				size="sm"
+				disabled={!canTriggerGdpr}
+				loading={gdprSubmitting}
+			>
+				<Download size={14} strokeWidth={2} />
+				{i18n.t('admin.operations.gdprExportTriggerBtn')}
+			</Button>
+		</form>
 	</section>
 
 	<!-- ID-based ops -->

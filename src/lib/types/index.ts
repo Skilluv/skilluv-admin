@@ -315,6 +315,30 @@ export interface RankOverrideResult {
 	override_id: string;
 }
 
+// --- ADM-M5+ — Ops (sweep proof engine + admin-triggered GDPR export) ---
+
+export interface ProofHooksSweepDryRun {
+	dry_run: true;
+	within_days: number;
+	would_process_count: number;
+}
+
+export interface ProofHooksSweepResult {
+	within_days: number;
+	processed_count: number;
+	user_ids: string[];
+}
+
+export interface AdminGdprExportTrigger {
+	reason: string;
+}
+
+export interface AdminGdprExportResult {
+	status: 'queued';
+	target_user_id: string;
+	message: string;
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

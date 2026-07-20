@@ -39,7 +39,11 @@ import type {
 	RecomputeProofsReport,
 	RankOverrideBody,
 	RankOverrideResult,
-	Rank
+	Rank,
+	ProofHooksSweepDryRun,
+	ProofHooksSweepResult,
+	AdminGdprExportTrigger,
+	AdminGdprExportResult
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -608,6 +612,31 @@ export const adminApi = {
 		}
 		return api.post<ApiResponse<RecomputeProofsReport>>(
 			`/admin/users/${userId}/recompute-proofs${suffix}`,
+			body
+		);
+	},
+
+	/** ADM-M5+ : POST /admin/proof-hooks/sweep — recompute batch pour tous
+	 *  les users ayant eu de l'activité récente. Dry-run = preview count. */
+	sweepProofHooks(withinDays: number, dryRun = false) {
+		const qs = new URLSearchParams();
+		qs.set('within_days', String(withinDays));
+		if (dryRun) qs.set('dry_run', 'true');
+		if (dryRun) {
+			return api.post<ApiResponse<ProofHooksSweepDryRun>>(
+				`/admin/proof-hooks/sweep?${qs.toString()}`
+			);
+		}
+		return api.post<ApiResponse<ProofHooksSweepResult>>(
+			`/admin/proof-hooks/sweep?${qs.toString()}`
+		);
+	},
+
+	/** ADM-M5+ : POST /admin/users/{id}/gdpr-export — déclenche l'export
+	 *  admin-side (background task, envoi par email au user cible). */
+	triggerUserGdprExport(userId: string, body: AdminGdprExportTrigger) {
+		return api.post<ApiResponse<AdminGdprExportResult>>(
+			`/admin/users/${userId}/gdpr-export`,
 			body
 		);
 	},

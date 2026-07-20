@@ -648,7 +648,21 @@ export const fr: Translations = {
 			month: 'Mois',
 			downloadCsv: 'Télécharger CSV',
 			lastResult: 'Dernier résultat',
-			rebuildTriggered: 'Leaderboards rebuild lancé'
+			rebuildTriggered: 'Leaderboards rebuild lancé',
+			proofSweep: 'Proof engine sweep',
+			proofSweepHint: 'Recompute capabilities + badges + rank pour tous les users avec activité récente. Utile après un déploiement de règle badge ou un fix engine.',
+			proofSweepWithinDays: 'Fenêtre (jours)',
+			proofSweepDryRunBtn: 'Prévisualiser',
+			proofSweepRunBtn: 'Lancer le sweep',
+			proofSweepDryRunPreview: 'utilisateurs seraient traités',
+			proofSweepDone: 'Sweep terminé.',
+			gdprExport: 'Export RGPD (admin-triggered)',
+			gdprExportHint: 'Déclenche un export RGPD pour un user cible (background task, envoi par email). Pour l\'export self-service, utiliser /users/[id] → panel RGPD.',
+			gdprExportTargetUserId: 'user_id cible',
+			gdprExportReason: 'Raison (min. 8 caractères, auditée)',
+			gdprExportReasonPlaceholder: 'Ex : ticket support #1234, demande légale',
+			gdprExportTriggerBtn: 'Déclencher l\'export',
+			gdprExportQueuedToast: 'Export mis en file — le user recevra un email.'
 		},
 		reset2fa: {
 			sectionTitle: 'Récupération 2FA',
@@ -787,6 +801,15 @@ export const fr: Translations = {
 				reportRankAfter: 'Rang après',
 				reportErrors: 'Erreurs partielles',
 				runSuccessToast: 'Recompute terminé.'
+			},
+			gdpr: {
+				sectionTitle: 'Export RGPD (admin)',
+				sectionHint: 'Déclenche un export complet des données de cet utilisateur (background task, envoi par email au user cible).',
+				triggerBtn: 'Déclencher un export',
+				dialogTitle: 'Déclencher l\'export RGPD',
+				dialogDescription: 'Le user recevra l\'archive complète par email dans quelques minutes.',
+				reasonPlaceholder: 'Ex : ticket support #1234, demande légale',
+				queuedToast: 'Export mis en file.'
 			}
 		},
 		enterprises: {

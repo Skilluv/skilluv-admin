@@ -20,6 +20,7 @@
 	import UserBadgesSection from '$components/admin/UserBadgesSection.svelte';
 	import UserRankSection from '$components/admin/UserRankSection.svelte';
 	import UserRecomputeSection from '$components/admin/UserRecomputeSection.svelte';
+	import UserGdprSection from '$components/admin/UserGdprSection.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
 		ChevronRight,
@@ -314,6 +315,9 @@
 
 		<!-- ADM-M5 — Recompute proof engine (P19). -->
 		<UserRecomputeSection userId={user.id} onchange={triggerRefresh} />
+
+		<!-- ADM-M5+ — Admin-triggered GDPR export. -->
+		<UserGdprSection userId={user.id} />
 
 		<!-- Security card -->
 		<div class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">

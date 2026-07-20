@@ -648,7 +648,21 @@ export const en: Translations = {
 			month: 'Month',
 			downloadCsv: 'Download CSV',
 			lastResult: 'Last result',
-			rebuildTriggered: 'Leaderboards rebuild triggered'
+			rebuildTriggered: 'Leaderboards rebuild triggered',
+			proofSweep: 'Proof engine sweep',
+			proofSweepHint: 'Recompute capabilities + badges + rank for all users with recent activity. Useful after a badge rule deploy or engine fix.',
+			proofSweepWithinDays: 'Window (days)',
+			proofSweepDryRunBtn: 'Preview',
+			proofSweepRunBtn: 'Run sweep',
+			proofSweepDryRunPreview: 'users would be processed',
+			proofSweepDone: 'Sweep complete.',
+			gdprExport: 'GDPR export (admin-triggered)',
+			gdprExportHint: 'Trigger a GDPR export for a target user (background task, email delivery). For self-service export, use /users/[id] → GDPR panel.',
+			gdprExportTargetUserId: 'target user_id',
+			gdprExportReason: 'Reason (min 8 chars, audited)',
+			gdprExportReasonPlaceholder: 'e.g. support ticket #1234, legal request',
+			gdprExportTriggerBtn: 'Trigger export',
+			gdprExportQueuedToast: 'Export queued — user will receive an email.'
 		},
 		reset2fa: {
 			sectionTitle: '2FA recovery',
@@ -787,6 +801,15 @@ export const en: Translations = {
 				reportRankAfter: 'Rank after',
 				reportErrors: 'Partial errors',
 				runSuccessToast: 'Recompute complete.'
+			},
+			gdpr: {
+				sectionTitle: 'GDPR export (admin)',
+				sectionHint: 'Trigger a full data export for this user (background task, delivered by email to the target user).',
+				triggerBtn: 'Trigger an export',
+				dialogTitle: 'Trigger GDPR export',
+				dialogDescription: 'The user will receive the full archive by email within a few minutes.',
+				reasonPlaceholder: 'e.g. support ticket #1234, legal request',
+				queuedToast: 'Export queued.'
 			}
 		},
 		enterprises: {

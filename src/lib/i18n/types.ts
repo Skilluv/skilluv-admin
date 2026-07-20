@@ -839,6 +839,20 @@ export interface Translations {
 			downloadCsv: string;
 			lastResult: string;
 			rebuildTriggered: string;
+			proofSweep: string;
+			proofSweepHint: string;
+			proofSweepWithinDays: string;
+			proofSweepDryRunBtn: string;
+			proofSweepRunBtn: string;
+			proofSweepDryRunPreview: string;
+			proofSweepDone: string;
+			gdprExport: string;
+			gdprExportHint: string;
+			gdprExportTargetUserId: string;
+			gdprExportReason: string;
+			gdprExportReasonPlaceholder: string;
+			gdprExportTriggerBtn: string;
+			gdprExportQueuedToast: string;
 		};
 		reset2fa: {
 			sectionTitle: string;
@@ -1031,6 +1045,15 @@ export interface Translations {
 				reportRankAfter: string;
 				reportErrors: string;
 				runSuccessToast: string;
+			};
+			gdpr: {
+				sectionTitle: string;
+				sectionHint: string;
+				triggerBtn: string;
+				dialogTitle: string;
+				dialogDescription: string;
+				reasonPlaceholder: string;
+				queuedToast: string;
 			};
 		};
 		enterprises: {

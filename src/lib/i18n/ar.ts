@@ -656,7 +656,21 @@ export const ar: Translations = {
 			month: 'الشهر',
 			downloadCsv: 'تنزيل CSV',
 			lastResult: 'آخر نتيجة',
-			rebuildTriggered: 'انطلقت إعادة بناء لوحات المتصدرين'
+			rebuildTriggered: 'انطلقت إعادة بناء لوحات المتصدرين',
+			proofSweep: 'مسح محرك الإثبات',
+			proofSweepHint: 'إعادة حساب الصلاحيات + الشارات + الرتب لجميع المستخدمين ذوي نشاط حديث. مفيد بعد نشر قاعدة شارة أو إصلاح المحرك.',
+			proofSweepWithinDays: 'النافذة (أيام)',
+			proofSweepDryRunBtn: 'معاينة',
+			proofSweepRunBtn: 'تشغيل المسح',
+			proofSweepDryRunPreview: 'مستخدم سيتم معالجته',
+			proofSweepDone: 'اكتمل المسح.',
+			gdprExport: 'تصدير RGPD (بمبادرة المسؤول)',
+			gdprExportHint: 'يُطلق تصدير RGPD لمستخدم مستهدف (مهمة خلفية، إرسال بالبريد الإلكتروني). للتصدير الذاتي، استخدم /users/[id] ← لوحة RGPD.',
+			gdprExportTargetUserId: 'user_id المستهدف',
+			gdprExportReason: 'السبب (8 أحرف على الأقل، مُدقَّق)',
+			gdprExportReasonPlaceholder: 'مثال : تذكرة دعم #1234، طلب قانوني',
+			gdprExportTriggerBtn: 'إطلاق التصدير',
+			gdprExportQueuedToast: 'تمت جدولة التصدير — سيتلقى المستخدم بريدًا إلكترونيًا.'
 		},
 		reset2fa: {
 			sectionTitle: 'استعادة المصادقة الثنائية',
@@ -795,6 +809,15 @@ export const ar: Translations = {
 				reportRankAfter: 'الرتبة بعد',
 				reportErrors: 'أخطاء جزئية',
 				runSuccessToast: 'اكتملت إعادة الحساب.'
+			},
+			gdpr: {
+				sectionTitle: 'تصدير RGPD (المسؤول)',
+				sectionHint: 'يُطلق تصديرًا كاملًا لبيانات هذا المستخدم (مهمة خلفية، يُرسل بالبريد الإلكتروني إلى المستخدم المستهدف).',
+				triggerBtn: 'إطلاق تصدير',
+				dialogTitle: 'إطلاق تصدير RGPD',
+				dialogDescription: 'سيتلقى المستخدم الأرشيف الكامل بالبريد الإلكتروني خلال بضع دقائق.',
+				reasonPlaceholder: 'مثال : تذكرة دعم #1234، طلب قانوني',
+				queuedToast: 'تمت جدولة التصدير.'
 			}
 		},
 		enterprises: {
