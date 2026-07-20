@@ -69,31 +69,16 @@
 		loading = true;
 		notFound = false;
 		try {
-			// Fetch the enterprise via the list endpoint (no admin GET /admin/enterprises/{id})
-			// with a per_page=1 filter — we can't; instead we call type-config which 404s if absent,
-			// and reuse the payload to derive minimal identity. For the full row we rely on the
-			// listAdminEnterprises endpoint filtered by id via a manual scan (small pages).
-			// Simpler: use type-config as the identity probe, then hydrate from
-			// listAdminEnterprises when needed. Since the back does not expose GET /admin/enterprises/{id},
-			// we display type + type_config directly; the top row (company_name, slug, etc.) is fetched
-			// via a paginated call and matched by id — acceptable for < 5k enterprises.
-			const [tcRes, clientsRes, listRes] = await Promise.all([
+			// Phase 6 gap-fix : GET /admin/enterprises/{id} existe désormais.
+			// Plus de scan paginé de la liste.
+			const [entRes, tcRes, clientsRes] = await Promise.all([
+				adminApi.getAdminEnterprise(enterpriseId),
 				adminApi.getEnterpriseTypeConfig(enterpriseId),
-				adminApi.listEnterpriseAgencyClients(enterpriseId),
-				adminApi.listAdminEnterprises({ per_page: 100 })
+				adminApi.listEnterpriseAgencyClients(enterpriseId)
 			]);
+			enterprise = entRes.data.enterprise;
 			typeConfig = tcRes.data;
 			agencyClients = clientsRes.data.clients;
-			enterprise = listRes.data.find((e) => e.id === enterpriseId) ?? {
-				id: enterpriseId,
-				company_name: enterpriseId,
-				slug: '',
-				industry: null,
-				verified: false,
-				enterprise_type: tcRes.data.enterprise_type,
-				type_config: tcRes.data.type_config,
-				created_at: ''
-			};
 		} catch (e) {
 			if (e instanceof SkilluError && e.status === 404) {
 				notFound = true;

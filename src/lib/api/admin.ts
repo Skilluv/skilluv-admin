@@ -587,6 +587,14 @@ export const adminApi = {
 		);
 	},
 
+	/** GET /admin/enterprises/{id} — fiche complète (comble le gap : la
+	 *  détail page utilisait un scan paginé de la liste avant Phase 6). */
+	getAdminEnterprise(id: string) {
+		return api.get<ApiResponse<{ enterprise: EnterpriseAdmin }>>(
+			`/admin/enterprises/${id}`
+		);
+	},
+
 	// --- ADM-M5 — Users enrichment (backend routes admin_users.rs + public reads) ---
 
 	/** GET public : orientations d'un user (respecte profile_active). */
@@ -651,6 +659,19 @@ export const adminApi = {
 	/** Extras Phase 5 — POST /admin/badge-events (Hacktoberfest, Skilluv Fest…). */
 	createBadgeEvent(body: CreateBadgeEventBody) {
 		return api.post<ApiResponse<{ event: BadgeEvent }>>('/admin/badge-events', body);
+	},
+
+	/** Phase 6 gap-fix — GET /admin/badge-events (paginé, filtres is_active/is_partner). */
+	listBadgeEvents(params?: {
+		is_active?: boolean;
+		is_partner?: boolean;
+		page?: number;
+		per_page?: number;
+	}) {
+		return api.get<ApiPaginatedResponse<BadgeEvent & { description: string; is_active: boolean; created_at: string }>>(
+			'/admin/badge-events',
+			params as Record<string, string | number | boolean>
+		);
 	},
 
 	/** Extras Phase 5 — POST /admin/users/{id}/recompute-capabilities (scope réduit). */

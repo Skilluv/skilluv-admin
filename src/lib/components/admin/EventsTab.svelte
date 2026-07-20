@@ -3,12 +3,24 @@
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
 	import { i18n } from '$lib/i18n';
-	import type { CreateBadgeEventBody } from '$lib/types';
+	import type { BadgeEvent, CreateBadgeEventBody } from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
 	import Input from '$components/ui/Input.svelte';
 	import Modal from '$components/ui/Modal.svelte';
 	import Badge from '$components/ui/Badge.svelte';
-	import { Plus, CalendarDays, Info } from '@lucide/svelte';
+	import Table from '$components/ui/Table.svelte';
+	import Skeleton from '$components/ui/Skeleton.svelte';
+	import Pagination from '$components/ui/Pagination.svelte';
+	import { Plus, CalendarDays } from '@lucide/svelte';
+
+	type FullEvent = BadgeEvent & { description: string; is_active: boolean; created_at: string };
+
+	let events = $state<FullEvent[]>([]);
+	let loading = $state(true);
+	let page = $state(1);
+	let perPage = $state(30);
+	let totalPages = $state(0);
+	let total = $state(0);
 
 	// --- Create dialog state ---
 	let showCreate = $state(false);
@@ -49,6 +61,26 @@
 			visualThemeError === null
 	);
 
+	$effect(() => {
+		void loadList();
+	});
+
+	async function loadList() {
+		loading = true;
+		try {
+			const res = await adminApi.listBadgeEvents({ page, per_page: perPage });
+			events = res.data;
+			total = res.pagination.total;
+			totalPages = res.pagination.total_pages;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			loading = false;
+		}
+	}
+
+	const rows = $derived(events.map((e) => e as unknown as Record<string, unknown>));
+
 	function openCreate() {
 		createSlug = '';
 		createName = '';
@@ -62,7 +94,6 @@
 	}
 
 	function toRfc3339(local: string): string {
-		// datetime-local returns "YYYY-MM-DDTHH:mm"
 		return new Date(local).toISOString();
 	}
 
@@ -84,10 +115,23 @@
 			await adminApi.createBadgeEvent(body);
 			toast.success(i18n.t('admin.catalog.events.create.successToast'));
 			showCreate = false;
+			await loadList();
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
 			creating = false;
+		}
+	}
+
+	function fmtDate(iso: string | null): string {
+		if (!iso) return i18n.t('admin.catalog.events.noEnd');
+		try {
+			return new Date(iso).toLocaleDateString(
+				i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US',
+				{ day: '2-digit', month: 'short', year: 'numeric' }
+			);
+		} catch {
+			return iso;
 		}
 	}
 </script>
@@ -95,31 +139,73 @@
 <div class="flex flex-col gap-4">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<p class="text-xs text-text-muted">{i18n.t('admin.catalog.events.subtitle')}</p>
-		<Button variant="primary" size="sm" onclick={openCreate}>
-			<Plus size={14} strokeWidth={2} />
-			{i18n.t('admin.catalog.events.createBtn')}
-		</Button>
-	</div>
-
-	<div class="rounded-2xl border border-border bg-surface-elevated p-6">
-		<div class="flex items-start gap-3">
-			<div class="rounded-xl bg-primary/15 p-2 text-primary">
-				<CalendarDays size={18} strokeWidth={2} />
-			</div>
-			<div class="min-w-0 flex-1">
-				<p class="text-sm text-text-primary">
-					{i18n.t('admin.catalog.events.subtitle')}
-				</p>
-				<p class="mt-2 flex items-start gap-2 text-xs text-text-muted">
-					<Info size={12} strokeWidth={2} class="mt-0.5 shrink-0" />
-					<span>
-						Le back n'expose pas encore de <code class="font-mono">GET /admin/badge-events</code> ;
-						cette section est en création seule. La liste consultable arrivera avec ADM-M8.
-					</span>
-				</p>
-			</div>
+		<div class="flex items-center gap-3">
+			<p class="text-xs text-text-muted">{total}</p>
+			<Button variant="primary" size="sm" onclick={openCreate}>
+				<Plus size={14} strokeWidth={2} />
+				{i18n.t('admin.catalog.events.createBtn')}
+			</Button>
 		</div>
 	</div>
+
+	{#if loading}
+		<div class="flex flex-col gap-2">
+			<Skeleton class="h-12 w-full" rounded="xl" />
+			<Skeleton class="h-12 w-full" rounded="xl" />
+			<Skeleton class="h-12 w-full" rounded="xl" />
+		</div>
+	{:else}
+		<Table
+			columns={[
+				{ key: 'slug', label: i18n.t('admin.catalog.events.table.slug'), width: '22%' },
+				{ key: 'name', label: i18n.t('admin.catalog.events.table.name') },
+				{ key: 'starts', label: i18n.t('admin.catalog.events.table.starts'), width: '15%' },
+				{ key: 'ends', label: i18n.t('admin.catalog.events.table.ends'), width: '15%' },
+				{ key: 'partner', label: i18n.t('admin.catalog.events.table.partner'), width: '14%' }
+			]}
+			rows={rows}
+			emptyLabel={i18n.t('admin.catalog.events.empty')}
+		>
+			{#snippet cell(row, col)}
+				{@const ev = row as unknown as FullEvent}
+				{#if col.key === 'slug'}
+					<code class="font-mono text-xs text-text-muted">{ev.slug}</code>
+				{:else if col.key === 'name'}
+					<span class="font-medium text-text-primary">{ev.name}</span>
+				{:else if col.key === 'starts'}
+					<span class="text-xs text-text-muted">
+						<CalendarDays size={12} strokeWidth={2} class="inline-block me-1" />
+						{fmtDate(ev.starts_at)}
+					</span>
+				{:else if col.key === 'ends'}
+					<span class="text-xs text-text-muted">{fmtDate(ev.ends_at)}</span>
+				{:else if col.key === 'partner'}
+					{#if ev.is_partner}
+						<Badge variant="accent" size="sm">
+							{i18n.t('admin.catalog.events.partnerYes')}
+						</Badge>
+					{:else}
+						<span class="text-xs text-text-muted">
+							{i18n.t('admin.catalog.events.partnerNo')}
+						</span>
+					{/if}
+				{/if}
+			{/snippet}
+		</Table>
+
+		{#if totalPages > 1}
+			<div class="flex justify-center">
+				<Pagination
+					current={page}
+					total={totalPages}
+					onchange={(p) => {
+						page = p;
+						void loadList();
+					}}
+				/>
+			</div>
+		{/if}
+	{/if}
 </div>
 
 <Modal
@@ -209,11 +295,6 @@
 			/>
 			{i18n.t('admin.catalog.events.create.isPartnerLabel')}
 		</label>
-		{#if createIsPartner}
-			<Badge variant="accent" size="sm">
-				{i18n.t('admin.catalog.events.partnerYes')}
-			</Badge>
-		{/if}
 	</div>
 
 	{#snippet actions()}
