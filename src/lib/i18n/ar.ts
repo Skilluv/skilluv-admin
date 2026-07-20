@@ -361,7 +361,8 @@ export const ar: Translations = {
 			auditLabel: 'التدقيق',
 			ssoSessions: 'جلسات SSO',
 			tenantsLabel: 'المستأجرون',
-			fraud: 'الاحتيال'
+			fraud: 'الاحتيال',
+			catalog: 'الكتالوج'
 		},
 		dashboard: {
 			title: 'لوحة الإدارة', platform: 'المنصة', moderation: 'الإشراف',
@@ -716,6 +717,153 @@ export const ar: Translations = {
 			evalBestMatch: 'أفضل تطابق',
 			evalComparedCount: 'تمت المقارنة',
 			auditGap: 'ملاحظة : لم تُسجَّل إجراءات الاحتيال بعد في سجل التدقيق (فجوة خلفية متتبَّعة).'
+		},
+		catalog: {
+			title: 'الكتالوج',
+			subtitle: 'التوجهات المهنية وقواعد الشارات لمحرك الإثبات. جميع التعديلات مُدقَّقة.',
+			tabOrientations: 'التوجهات',
+			tabBadgeRules: 'قواعد الشارات',
+			orientations: {
+				filterDomain: 'المجال',
+				filterDomainAll: 'الكل',
+				includeArchived: 'تضمين المؤرشفة',
+				createBtn: 'إنشاء توجه',
+				empty: 'لا يوجد أي توجه في الكتالوج لهذه الفلاتر.',
+				empty404: 'هذا التوجه غير موجود أو تم حذفه.',
+				table: {
+					slug: 'المُعرِّف',
+					name: 'الاسم',
+					domain: 'المجال',
+					status: 'الحالة',
+					actions: 'إجراءات'
+				},
+				statusArchived: 'مؤرشف',
+				statusCurated: 'مُعتمد',
+				statusDraft: 'مقترح',
+				editBtn: 'تعديل',
+				archiveBtn: 'أرشفة',
+				unarchiveBtn: 'إلغاء الأرشفة',
+				skillsBtn: 'المهارات',
+				create: {
+					title: 'توجه جديد',
+					slugLabel: 'المُعرِّف (غير قابل للتعديل)',
+					slugHint: 'من 3 إلى 60 حرفًا، أحرف صغيرة وأرقام وشرطات فقط.',
+					nameLabel: 'الاسم المعروض',
+					descriptionLabel: 'الوصف',
+					primaryDomainLabel: 'المجال الأساسي',
+					secondaryDomainsLabel: 'المجالات الثانوية (مفصولة بفواصل)',
+					secondaryDomainsHint: 'التوجه متعدد التخصصات يمكن أن يشمل مجالات أخرى ذات صلة (مثال : « design, ops »).',
+					tagsLabel: 'العلامات (مفصولة بفواصل)',
+					tagsHint: 'مثال : « web, mobile, blockchain ». قابلة للبحث من جانب المستخدم.',
+					isCuratedLabel: 'نشر في الكتالوج الرسمي',
+					submit: 'إنشاء',
+					successToast: 'تم إنشاء التوجه.'
+				},
+				edit: {
+					title: 'تعديل التوجه',
+					dryRunBtn: 'معاينة (dry-run)',
+					dryRunPreviewLabel: 'التغيير المتوقع',
+					submit: 'حفظ',
+					successToast: 'تم تحديث التوجه.',
+					slugImmutableHint: 'المُعرِّف غير قابل للتعديل بعد الإنشاء (سيكسر روابط المهارات وuser_orientations).'
+				},
+				skills: {
+					title: 'المهارات المرتبطة',
+					subtitle: 'اربط skill_nodes بالتوجه مع وزن وعلامة core/موصى بها.',
+					skillIdLabel: 'skill_id (UUID)',
+					skillIdHint: 'التقط UUID من تبويب المهارات (Extras). الربط مُتكرِّر (upsert).',
+					isCoreLabel: 'مهارة أساسية (إلزامية)',
+					isRecommendedLabel: 'مهارة موصى بها',
+					weightLabel: 'الوزن (>0)',
+					weightHint: 'يُوازن قرب المهارة ↔ التوجه لمطابقة جهات التوظيف.',
+					attachBtn: 'ربط',
+					attachedToast: 'تم ربط المهارة.',
+					detachBtn: 'فصل',
+					detachConfirmTitle: 'فصل هذه المهارة ؟',
+					detachConfirmDescription: 'يُزيل علاقة التوجه ↔ المهارة. user_orientations التاريخية لا تتأثر.',
+					detachedToast: 'تم فصل المهارة.',
+					noSkills: 'لا توجد مهارة مرتبطة بهذا التوجه.',
+					coreBadge: 'أساسية'
+				}
+			},
+			badgeRules: {
+				filterOutputType: 'النوع',
+				filterOutputTypeAll: 'الكل',
+				createBtn: 'إنشاء قاعدة',
+				empty: 'لا توجد قاعدة شارة نشطة.',
+				table: {
+					slug: 'المُعرِّف',
+					displayName: 'الاسم',
+					outputType: 'النوع',
+					rarity: 'الندرة',
+					status: 'الحالة',
+					actions: 'إجراءات'
+				},
+				statusDeprecated: 'مُهملة',
+				statusActive: 'نشطة',
+				editBtn: 'تعديل',
+				deprecateBtn: 'إهمال',
+				create: {
+					title: 'قاعدة شارة جديدة',
+					slugLabel: 'المُعرِّف (غير قابل للتعديل)',
+					slugHint: 'من 3 إلى 80 حرفًا، أحرف صغيرة وأرقام وشرطات وشرطات سفلية.',
+					outputTypeLabel: 'نوع الإخراج',
+					outputVariantLabel: 'المتغيّر (اختياري)',
+					displayNameLabel: 'الاسم المعروض',
+					descriptionLabel: 'الوصف',
+					iconKeyLabel: 'مفتاح الأيقونة (اختياري)',
+					conditionsLabel: 'الشروط (JSON)',
+					conditionsHint: 'كائن JSON يقيّمه محرك القواعد (proof_types, min_count, skill_tag, verified_by, within_days).',
+					conditionsInvalidJson: 'JSON غير صالح.',
+					conditionsInvalidRoot: 'يجب أن يكون الجذر كائنًا.',
+					rarityLabel: 'الندرة',
+					adminEditableLabel: 'قابلة للتعديل من قِبل المسؤول (ألغِ التحديد لقاعدة أساسية محمية)',
+					uiMetadataLabel: 'ui_metadata (JSON، اختياري)',
+					uiMetadataHint: 'بيانات وصفية للعرض (لون بديل، علامات UX).',
+					submit: 'إنشاء',
+					successToast: 'تم إنشاء قاعدة الشارة.'
+				},
+				edit: {
+					title: 'تعديل قاعدة الشارة',
+					dryRunBtn: 'معاينة (dry-run)',
+					dryRunUsersImpacted: 'مستخدمًا متأثرًا',
+					submit: 'حفظ',
+					successToast: 'تم تحديث قاعدة الشارة.',
+					protectedHint: 'هذه القاعدة محمية (admin_editable = false). فعِّل هذا العلم أولًا لتعديلها.',
+					deprecatedHint: 'هذه القاعدة مُهملة. أنشئ مُعرِّفًا جديدًا إن أردت إعادة تفعيلها.'
+				},
+				deprecate: {
+					title: 'إهمال هذه القاعدة ؟',
+					description: 'تبقى user_badges الحالية مرئية ؛ القاعدة تتوقف فقط عن إنتاج شارات جديدة.',
+					reasonPlaceholder: 'السبب (8 أحرف كحد أدنى)',
+					usersWithBadgeCount: 'مستخدمًا يمتلك هذه الشارة نشطة',
+					successToast: 'تم إهمال القاعدة.'
+				}
+			},
+			domains: {
+				code: 'برمجة',
+				design: 'تصميم',
+				game: 'ألعاب',
+				security: 'أمن',
+				soft_skills: 'مهارات لينة',
+				ai: 'ذكاء اصطناعي / بيانات',
+				ops: 'عمليات / بنية تحتية'
+			},
+			outputTypes: {
+				skill_patch: 'رقعة مهارة',
+				rank: 'رتبة',
+				guild_crest: 'شعار نقابة',
+				challenge_seal: 'ختم تحدٍّ',
+				event_stamp: 'ختم حدث',
+				medal: 'ميدالية'
+			},
+			rarities: {
+				auto: 'تلقائي',
+				common: 'شائع',
+				rare: 'نادر',
+				epic: 'ملحمي',
+				legendary: 'أسطوري'
+			}
 		},
 		capabilities: {
 			sectionTitle: 'الصلاحيات',

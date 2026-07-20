@@ -353,7 +353,8 @@ export const en: Translations = {
 			auditLabel: 'Audit',
 			ssoSessions: 'SSO sessions',
 			tenantsLabel: 'Tenants',
-			fraud: 'Fraud'
+			fraud: 'Fraud',
+			catalog: 'Catalog'
 		},
 		dashboard: {
 			title: 'Admin Dashboard', platform: 'Platform', moderation: 'Moderation',
@@ -708,6 +709,153 @@ export const en: Translations = {
 			evalBestMatch: 'Best match',
 			evalComparedCount: 'compared',
 			auditGap: 'Note: fraud actions are not yet written to the audit log (tracked backend gap).'
+		},
+		catalog: {
+			title: 'Catalog',
+			subtitle: 'Career orientations and proof-engine badge rules. Every mutation is audited.',
+			tabOrientations: 'Orientations',
+			tabBadgeRules: 'Badge rules',
+			orientations: {
+				filterDomain: 'Domain',
+				filterDomainAll: 'All',
+				includeArchived: 'Include archived',
+				createBtn: 'Create orientation',
+				empty: 'No orientation in the catalog for these filters.',
+				empty404: 'This orientation does not exist or was deleted.',
+				table: {
+					slug: 'Slug',
+					name: 'Name',
+					domain: 'Domain',
+					status: 'Status',
+					actions: 'Actions'
+				},
+				statusArchived: 'Archived',
+				statusCurated: 'Curated',
+				statusDraft: 'Proposed',
+				editBtn: 'Edit',
+				archiveBtn: 'Archive',
+				unarchiveBtn: 'Unarchive',
+				skillsBtn: 'Skills',
+				create: {
+					title: 'New orientation',
+					slugLabel: 'Slug (immutable)',
+					slugHint: '3 to 60 chars, lowercase letters, digits and hyphens only.',
+					nameLabel: 'Display name',
+					descriptionLabel: 'Description',
+					primaryDomainLabel: 'Primary domain',
+					secondaryDomainsLabel: 'Secondary domains (comma-separated)',
+					secondaryDomainsHint: 'Multi-disciplinary orientations can list additional relevant domains (e.g. "design, ops").',
+					tagsLabel: 'Tags (comma-separated)',
+					tagsHint: 'e.g. "web, mobile, blockchain". Searchable user-side.',
+					isCuratedLabel: 'Publish to the official catalog',
+					submit: 'Create',
+					successToast: 'Orientation created.'
+				},
+				edit: {
+					title: 'Edit orientation',
+					dryRunBtn: 'Preview (dry-run)',
+					dryRunPreviewLabel: 'Diff preview',
+					submit: 'Save',
+					successToast: 'Orientation updated.',
+					slugImmutableHint: 'Slug is immutable after creation (would break skill mappings and user_orientations links).'
+				},
+				skills: {
+					title: 'Mapped skills',
+					subtitle: 'Attach skill_nodes to the orientation with a weight and core/recommended flag.',
+					skillIdLabel: 'skill_id (UUID)',
+					skillIdHint: 'Grab the UUID from the Skills tab (Extras). Attach is idempotent (upsert).',
+					isCoreLabel: 'Core skill (mandatory)',
+					isRecommendedLabel: 'Recommended skill',
+					weightLabel: 'Weight (>0)',
+					weightHint: 'Weights the skill ↔ orientation proximity for recruiter matching.',
+					attachBtn: 'Attach',
+					attachedToast: 'Skill attached.',
+					detachBtn: 'Detach',
+					detachConfirmTitle: 'Detach this skill?',
+					detachConfirmDescription: 'Removes the orientation ↔ skill relationship. Historical user_orientations are not affected.',
+					detachedToast: 'Skill detached.',
+					noSkills: 'No skill mapped for this orientation.',
+					coreBadge: 'CORE'
+				}
+			},
+			badgeRules: {
+				filterOutputType: 'Type',
+				filterOutputTypeAll: 'All',
+				createBtn: 'Create rule',
+				empty: 'No active badge rule.',
+				table: {
+					slug: 'Slug',
+					displayName: 'Name',
+					outputType: 'Type',
+					rarity: 'Rarity',
+					status: 'Status',
+					actions: 'Actions'
+				},
+				statusDeprecated: 'Deprecated',
+				statusActive: 'Active',
+				editBtn: 'Edit',
+				deprecateBtn: 'Deprecate',
+				create: {
+					title: 'New badge rule',
+					slugLabel: 'Slug (immutable)',
+					slugHint: '3 to 80 chars, lowercase, digits, hyphens and underscores.',
+					outputTypeLabel: 'Output type',
+					outputVariantLabel: 'Variant (optional)',
+					displayNameLabel: 'Display name',
+					descriptionLabel: 'Description',
+					iconKeyLabel: 'Icon key (optional)',
+					conditionsLabel: 'Conditions (JSON)',
+					conditionsHint: 'JSON object evaluated by the rules engine (proof_types, min_count, skill_tag, verified_by, within_days).',
+					conditionsInvalidJson: 'Invalid JSON.',
+					conditionsInvalidRoot: 'Root must be an object.',
+					rarityLabel: 'Rarity',
+					adminEditableLabel: 'Editable by admin (uncheck for a protected core rule)',
+					uiMetadataLabel: 'ui_metadata (JSON, optional)',
+					uiMetadataHint: 'Display metadata (color override, UX tags).',
+					submit: 'Create',
+					successToast: 'Badge rule created.'
+				},
+				edit: {
+					title: 'Edit badge rule',
+					dryRunBtn: 'Preview (dry-run)',
+					dryRunUsersImpacted: 'impacted users',
+					submit: 'Save',
+					successToast: 'Badge rule updated.',
+					protectedHint: 'This rule is protected (admin_editable = false). Toggle that flag first to edit.',
+					deprecatedHint: 'This rule is deprecated. Create a new slug if you want to re-activate it.'
+				},
+				deprecate: {
+					title: 'Deprecate this rule?',
+					description: 'Existing user_badges stay visible; the rule simply stops producing new ones.',
+					reasonPlaceholder: 'Reason (min 8 chars)',
+					usersWithBadgeCount: 'users with this badge active',
+					successToast: 'Rule deprecated.'
+				}
+			},
+			domains: {
+				code: 'Code',
+				design: 'Design',
+				game: 'Game',
+				security: 'Security',
+				soft_skills: 'Soft skills',
+				ai: 'AI / Data',
+				ops: 'Ops / Infra'
+			},
+			outputTypes: {
+				skill_patch: 'Skill patch',
+				rank: 'Rank',
+				guild_crest: 'Guild crest',
+				challenge_seal: 'Challenge seal',
+				event_stamp: 'Event stamp',
+				medal: 'Medal'
+			},
+			rarities: {
+				auto: 'Auto',
+				common: 'Common',
+				rare: 'Rare',
+				epic: 'Epic',
+				legendary: 'Legendary'
+			}
 		},
 		capabilities: {
 			sectionTitle: 'Capabilities',

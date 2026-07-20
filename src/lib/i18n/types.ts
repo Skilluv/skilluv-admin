@@ -489,6 +489,7 @@ export interface Translations {
 			ssoSessions: string;
 			tenantsLabel: string;
 			fraud: string;
+			catalog: string;
 		};
 		dashboard: {
 			title: string;
@@ -951,6 +952,153 @@ export interface Translations {
 				plagiarism_reviewer: string;
 				kyc_reviewer: string;
 				community_curator: string;
+			};
+		};
+		catalog: {
+			title: string;
+			subtitle: string;
+			tabOrientations: string;
+			tabBadgeRules: string;
+			orientations: {
+				filterDomain: string;
+				filterDomainAll: string;
+				includeArchived: string;
+				createBtn: string;
+				empty: string;
+				empty404: string;
+				table: {
+					slug: string;
+					name: string;
+					domain: string;
+					status: string;
+					actions: string;
+				};
+				statusArchived: string;
+				statusCurated: string;
+				statusDraft: string;
+				editBtn: string;
+				archiveBtn: string;
+				unarchiveBtn: string;
+				skillsBtn: string;
+				create: {
+					title: string;
+					slugLabel: string;
+					slugHint: string;
+					nameLabel: string;
+					descriptionLabel: string;
+					primaryDomainLabel: string;
+					secondaryDomainsLabel: string;
+					secondaryDomainsHint: string;
+					tagsLabel: string;
+					tagsHint: string;
+					isCuratedLabel: string;
+					submit: string;
+					successToast: string;
+				};
+				edit: {
+					title: string;
+					dryRunBtn: string;
+					dryRunPreviewLabel: string;
+					submit: string;
+					successToast: string;
+					slugImmutableHint: string;
+				};
+				skills: {
+					title: string;
+					subtitle: string;
+					skillIdLabel: string;
+					skillIdHint: string;
+					isCoreLabel: string;
+					isRecommendedLabel: string;
+					weightLabel: string;
+					weightHint: string;
+					attachBtn: string;
+					attachedToast: string;
+					detachBtn: string;
+					detachConfirmTitle: string;
+					detachConfirmDescription: string;
+					detachedToast: string;
+					noSkills: string;
+					coreBadge: string;
+				};
+			};
+			badgeRules: {
+				filterOutputType: string;
+				filterOutputTypeAll: string;
+				createBtn: string;
+				empty: string;
+				table: {
+					slug: string;
+					displayName: string;
+					outputType: string;
+					rarity: string;
+					status: string;
+					actions: string;
+				};
+				statusDeprecated: string;
+				statusActive: string;
+				editBtn: string;
+				deprecateBtn: string;
+				create: {
+					title: string;
+					slugLabel: string;
+					slugHint: string;
+					outputTypeLabel: string;
+					outputVariantLabel: string;
+					displayNameLabel: string;
+					descriptionLabel: string;
+					iconKeyLabel: string;
+					conditionsLabel: string;
+					conditionsHint: string;
+					conditionsInvalidJson: string;
+					conditionsInvalidRoot: string;
+					rarityLabel: string;
+					adminEditableLabel: string;
+					uiMetadataLabel: string;
+					uiMetadataHint: string;
+					submit: string;
+					successToast: string;
+				};
+				edit: {
+					title: string;
+					dryRunBtn: string;
+					dryRunUsersImpacted: string;
+					submit: string;
+					successToast: string;
+					protectedHint: string;
+					deprecatedHint: string;
+				};
+				deprecate: {
+					title: string;
+					description: string;
+					reasonPlaceholder: string;
+					usersWithBadgeCount: string;
+					successToast: string;
+				};
+			};
+			domains: {
+				code: string;
+				design: string;
+				game: string;
+				security: string;
+				soft_skills: string;
+				ai: string;
+				ops: string;
+			};
+			outputTypes: {
+				skill_patch: string;
+				rank: string;
+				guild_crest: string;
+				challenge_seal: string;
+				event_stamp: string;
+				medal: string;
+			};
+			rarities: {
+				auto: string;
+				common: string;
+				rare: string;
+				epic: string;
+				legendary: string;
 			};
 		};
 	};

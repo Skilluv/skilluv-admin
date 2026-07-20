@@ -16,7 +16,16 @@ import type {
 	FraudSuspectedUser,
 	FraudSuspectGroup,
 	FraudScanOutcome,
-	FraudLlmEvaluation
+	FraudLlmEvaluation,
+	Orientation,
+	OrientationDomain,
+	CreateOrientationBody,
+	PatchOrientationBody,
+	AttachSkillBody,
+	BadgeRule,
+	BadgeRuleCatalogEntry,
+	CreateBadgeRuleBody,
+	PatchBadgeRuleBody
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -422,6 +431,100 @@ export const adminApi = {
 			`/admin/tournaments/${id}/conclude`,
 			reason ? { reason } : {}
 		);
+	},
+
+	// --- ADM-M3.1 — Orientations catalog (backend mig 0088, routes admin_orientations.rs) ---
+
+	/** Liste publique paginée du catalogue orientations. Le back n'expose pas
+	 *  de GET admin-scoped ; la vue admin filtre côté client sur ces données. */
+	listOrientationsCatalog(params?: {
+		domain?: OrientationDomain;
+		tag?: string;
+		limit?: number;
+		offset?: number;
+		include_archived?: boolean;
+	}) {
+		return api.get<ApiResponse<{ orientations: Orientation[]; total: number }>>(
+			'/orientations',
+			params as Record<string, string | number | boolean>
+		);
+	},
+
+	/** Détail d'une orientation + skills mappés. */
+	getOrientation(slug: string) {
+		return api.get<
+			ApiResponse<{
+				orientation: Orientation;
+				skills: Array<{
+					id: string;
+					slug: string;
+					name: string;
+					is_core: boolean;
+					is_recommended: boolean;
+					weight: number;
+				}>;
+			}>
+		>(`/orientations/${slug}`);
+	},
+
+	createOrientation(body: CreateOrientationBody) {
+		return api.post<ApiResponse<{ orientation: Orientation }>>('/admin/orientations', body);
+	},
+
+	patchOrientation(slug: string, body: PatchOrientationBody, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		return api.patch<
+			ApiResponse<{ orientation: Orientation }> & {
+				meta: { dry_run_preview?: { before: Orientation; after: Orientation } };
+			}
+		>(`/admin/orientations/${slug}${suffix}`, body);
+	},
+
+	attachOrientationSkill(slug: string, body: AttachSkillBody) {
+		return api.post<
+			ApiResponse<{ attached: boolean; orientation_slug: string; skill_id: string }>
+		>(`/admin/orientations/${slug}/skills`, body);
+	},
+
+	detachOrientationSkill(slug: string, skillId: string) {
+		return api.delete<ApiResponse<{ detached: boolean }>>(
+			`/admin/orientations/${slug}/skills/${skillId}`
+		);
+	},
+
+	// --- ADM-M3.2 — Badge rules (backend mig 0090, routes admin_badge_rules.rs) ---
+
+	/** Catalogue public (rules non dépréciées uniquement). */
+	listBadgeRulesCatalog() {
+		return api.get<ApiResponse<{ rules: BadgeRuleCatalogEntry[] }>>('/badge-rules');
+	},
+
+	createBadgeRule(body: CreateBadgeRuleBody) {
+		return api.post<ApiResponse<{ rule: BadgeRule }>>('/admin/badge-rules', body);
+	},
+
+	patchBadgeRule(slug: string, body: PatchBadgeRuleBody, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		return api.patch<
+			ApiResponse<{ rule: BadgeRule }> & {
+				meta: {
+					dry_run_preview?: {
+						before: BadgeRule;
+						patch: PatchBadgeRuleBody;
+						users_impacted_count: number;
+					};
+				};
+			}
+		>(`/admin/badge-rules/${slug}${suffix}`, body);
+	},
+
+	deprecateBadgeRule(slug: string, reason: string, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		return api.post<
+			ApiResponse<{ deprecated: boolean; slug: string; deprecated_at?: string }> & {
+				meta: { dry_run_preview?: { users_with_badge_count: number } };
+			}
+		>(`/admin/badge-rules/${slug}/deprecate${suffix}`, { reason });
 	}
 };
 

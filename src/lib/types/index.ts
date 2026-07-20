@@ -4,6 +4,31 @@
 
 // --- Enums ---
 
+/** Backend P16.1 — primary_domain enum côté orientations (mig 0088).
+ *  Sur-ensemble strict de `SkillDomain` (challenges) : orientations couvrent
+ *  aussi `soft_skills`, `ai`, `ops` qui ne sont pas des domaines de challenge. */
+export type OrientationDomain =
+	| 'code'
+	| 'design'
+	| 'game'
+	| 'security'
+	| 'soft_skills'
+	| 'ai'
+	| 'ops';
+
+/** Backend P17.1 — output_type des badge_rules (mig 0090). */
+export type BadgeOutputType =
+	| 'skill_patch'
+	| 'rank'
+	| 'guild_crest'
+	| 'challenge_seal'
+	| 'event_stamp'
+	| 'medal';
+
+/** Backend P17.1 — rarity des badge_rules. `auto` = dérivée par l'engine
+ *  depuis `min_count` (skill_patch surtout). */
+export type BadgeRarity = 'auto' | 'common' | 'rare' | 'epic' | 'legendary';
+
 export type SkillDomain = 'code' | 'design' | 'game' | 'security';
 export type Title = 'apprenti' | 'artisan' | 'maitre' | 'legende';
 export type ChallengeDifficulty = 1 | 2 | 3 | 4 | 5;
@@ -91,6 +116,84 @@ export interface FraudLlmEvaluation {
 	llm_reachable: boolean;
 	notes: string | null;
 }
+
+// --- ADM-M3 — Orientations catalog (backend P16.1 / mig 0088) ---
+
+export interface Orientation {
+	id: string;
+	slug: string;
+	name: string;
+	description: string;
+	primary_domain: OrientationDomain;
+	secondary_domains: string[];
+	tags: string[];
+	is_curated: boolean;
+	is_archived: boolean;
+}
+
+/** Payload for `POST /api/admin/orientations` (ADM-M3.1). Slug is immutable
+ *  once created — `PATCH` refuses any `slug` field. */
+export interface CreateOrientationBody {
+	slug: string;
+	name: string;
+	description?: string;
+	primary_domain: OrientationDomain;
+	secondary_domains?: string[];
+	tags?: string[];
+	is_curated?: boolean;
+}
+
+export type PatchOrientationBody = Partial<Omit<CreateOrientationBody, 'slug'>> & {
+	is_archived?: boolean;
+};
+
+export interface AttachSkillBody {
+	skill_id: string;
+	is_core?: boolean;
+	is_recommended?: boolean;
+	weight?: number;
+}
+
+// --- ADM-M3 — Badge rules (backend P17.1 / mig 0090) ---
+
+export interface BadgeRule {
+	id: string;
+	slug: string;
+	output_type: BadgeOutputType;
+	output_variant: string | null;
+	display_name: string;
+	description: string;
+	icon_key: string | null;
+	conditions: Record<string, unknown>;
+	rarity: BadgeRarity;
+	admin_editable: boolean;
+	ui_metadata: Record<string, unknown>;
+	deprecated_at?: string | null;
+}
+
+/** Public catalog projection (from `GET /api/badge-rules`) — used by the
+ *  admin list view. Some backend-only fields (`id`, `admin_editable`,
+ *  `ui_metadata`, `deprecated_at`) are absent, so we widen `BadgeRule` to
+ *  optional partiality when we consume the public shape. */
+export type BadgeRuleCatalogEntry = Pick<
+	BadgeRule,
+	'slug' | 'output_type' | 'output_variant' | 'display_name' | 'description' | 'icon_key' | 'conditions' | 'rarity'
+>;
+
+export interface CreateBadgeRuleBody {
+	slug: string;
+	output_type: BadgeOutputType;
+	output_variant?: string;
+	display_name: string;
+	description?: string;
+	icon_key?: string;
+	conditions: Record<string, unknown>;
+	rarity?: BadgeRarity;
+	admin_editable?: boolean;
+	ui_metadata?: Record<string, unknown>;
+}
+
+export type PatchBadgeRuleBody = Partial<Omit<CreateBadgeRuleBody, 'slug'>>;
 
 export type NotificationType =
 	| 'interest_request_received'
