@@ -25,7 +25,12 @@ import type {
 	BadgeRule,
 	BadgeRuleCatalogEntry,
 	CreateBadgeRuleBody,
-	PatchBadgeRuleBody
+	PatchBadgeRuleBody,
+	EnterpriseType,
+	EnterpriseAdmin,
+	EnterpriseTypeConfig,
+	AgencyClient,
+	PatchEnterpriseTypeBody
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -525,6 +530,41 @@ export const adminApi = {
 				meta: { dry_run_preview?: { users_with_badge_count: number } };
 			}
 		>(`/admin/badge-rules/${slug}/deprecate${suffix}`, { reason });
+	},
+
+	// --- ADM-M4 — Enterprise type manager (backend P24, routes admin_enterprises.rs) ---
+
+	listAdminEnterprises(params?: {
+		type?: EnterpriseType;
+		verified?: boolean;
+		page?: number;
+		per_page?: number;
+	}) {
+		return api.get<ApiPaginatedResponse<EnterpriseAdmin>>(
+			'/admin/enterprises',
+			params as Record<string, string | number | boolean>
+		);
+	},
+
+	patchEnterpriseType(id: string, body: PatchEnterpriseTypeBody, dryRun = false) {
+		const suffix = dryRun ? '?dry_run=true' : '';
+		return api.patch<
+			ApiResponse<{ enterprise: { id: string; enterprise_type: EnterpriseType; type_config: Record<string, unknown> } }> & {
+				meta: { dry_run_preview?: { will_reset_type_config: boolean; target_type: EnterpriseType } };
+			}
+		>(`/admin/enterprises/${id}/type${suffix}`, body);
+	},
+
+	getEnterpriseTypeConfig(id: string) {
+		return api.get<ApiResponse<EnterpriseTypeConfig>>(
+			`/admin/enterprises/${id}/type-config`
+		);
+	},
+
+	listEnterpriseAgencyClients(id: string) {
+		return api.get<ApiResponse<{ clients: AgencyClient[] }>>(
+			`/admin/enterprises/${id}/agency-clients`
+		);
 	}
 };
 

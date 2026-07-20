@@ -195,6 +195,40 @@ export interface CreateBadgeRuleBody {
 
 export type PatchBadgeRuleBody = Partial<Omit<CreateBadgeRuleBody, 'slug'>>;
 
+// --- ADM-M4 — Enterprise types manager (backend P24 / mig 0095-0097) ---
+
+export type EnterpriseType = 'direct_hire' | 'staffing_agency' | 'remote_international';
+
+export interface EnterpriseAdmin {
+	id: string;
+	company_name: string;
+	slug: string;
+	industry: string | null;
+	verified: boolean;
+	enterprise_type: EnterpriseType;
+	type_config: Record<string, unknown>;
+	created_at: string;
+}
+
+export interface EnterpriseTypeConfig {
+	enterprise_type: EnterpriseType;
+	type_config: Record<string, unknown>;
+}
+
+export interface AgencyClient {
+	id: string;
+	client_name: string;
+	client_contact_email: string | null;
+	notes: string | null;
+	active: boolean;
+	created_at: string;
+}
+
+export interface PatchEnterpriseTypeBody {
+	enterprise_type: EnterpriseType;
+	reason: string;
+}
+
 export type NotificationType =
 	| 'interest_request_received'
 	| 'interest_accepted'

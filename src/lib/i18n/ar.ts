@@ -362,7 +362,8 @@ export const ar: Translations = {
 			ssoSessions: 'جلسات SSO',
 			tenantsLabel: 'المستأجرون',
 			fraud: 'الاحتيال',
-			catalog: 'الكتالوج'
+			catalog: 'الكتالوج',
+			enterprises: 'الشركات'
 		},
 		dashboard: {
 			title: 'لوحة الإدارة', platform: 'المنصة', moderation: 'الإشراف',
@@ -717,6 +718,71 @@ export const ar: Translations = {
 			evalBestMatch: 'أفضل تطابق',
 			evalComparedCount: 'تمت المقارنة',
 			auditGap: 'ملاحظة : لم تُسجَّل إجراءات الاحتيال بعد في سجل التدقيق (فجوة خلفية متتبَّعة).'
+		},
+		enterprises: {
+			title: 'الشركات',
+			subtitle: 'إدارة أنواع الشركات (direct_hire / staffing_agency / remote_international) وتكوينها.',
+			filterType: 'النوع',
+			filterTypeAll: 'الكل',
+			filterVerified: 'KYC',
+			filterVerifiedAny: 'الكل',
+			filterVerifiedYes: 'مُتحقَّق منها',
+			filterVerifiedNo: 'غير مُتحقَّق منها',
+			empty: 'لا توجد شركة لهذه الفلاتر.',
+			table: {
+				company: 'الشركة',
+				industry: 'القطاع',
+				type: 'النوع',
+				verified: 'KYC',
+				created: 'أُنشئت'
+			},
+			verifiedYes: 'مُتحقَّق منها',
+			verifiedNo: 'قيد الانتظار',
+			detailTitle: 'ملف الشركة',
+			backToList: 'العودة إلى القائمة',
+			detail: {
+				sectionOverview: 'نظرة عامة',
+				sectionTypeConfig: 'التكوين المُصنَّف (type_config)',
+				sectionAgencyClients: 'دفتر العملاء',
+				changeTypeBtn: 'تغيير النوع',
+				companyLabel: 'الاسم التجاري',
+				slugLabel: 'المُعرِّف',
+				industryLabel: 'القطاع',
+				verifiedLabel: 'حالة KYC',
+				typeLabel: 'النوع الحالي',
+				createdAtLabel: 'تاريخ الإنشاء',
+				typeConfigEmpty: 'لا يوجد تكوين خاص لهذا النوع ({} افتراضيًا).',
+				agencyClientsEmpty: 'لا يوجد عميل في الدفتر.',
+				agencyClientsOnlyStaffingHint: 'دفتر العملاء ذو معنى فقط لوكالات التوظيف. حساب direct_hire يعيد دائمًا قائمة فارغة.',
+				agencyClientContact: 'جهة الاتصال',
+				agencyClientNotes: 'ملاحظات',
+				agencyClientActive: 'نشط',
+				agencyClientInactive: 'غير نشط',
+				loading404: 'هذه الشركة غير موجودة أو تم حذفها.'
+			},
+			changeType: {
+				title: 'تغيير نوع الشركة',
+				currentTypeLabel: 'النوع الحالي',
+				targetTypeLabel: 'النوع الجديد',
+				reasonLabel: 'السبب (8 أحرف على الأقل، مُدقَّق)',
+				reasonPlaceholder: 'مبرِّر تغيير النوع',
+				dryRunBtn: 'معاينة (dry-run)',
+				dryRunPreviewLabel: 'التأثير المتوقع',
+				dryRunResetWarning: 'تحذير : سيتم إعادة تعيين type_config إلى {} عند التغيير.',
+				dryRunNoReset: 'لا يوجد تأثير على type_config (نفس النوع).',
+				submit: 'تطبيق',
+				successToast: 'تم تحديث نوع الشركة.'
+			},
+			types: {
+				direct_hire: 'توظيف مباشر',
+				staffing_agency: 'وكالة توظيف',
+				remote_international: 'عن بُعد دولي'
+			},
+			typeDescriptions: {
+				direct_hire: 'الشركة توظِّف لحسابها الخاص.',
+				staffing_agency: 'الشركة توظِّف لعملاء آخرين ؛ يتطلب دفتر عملاء (عميل واحد على الأقل) قبل التحويل.',
+				remote_international: 'توظيف عابر للحدود ؛ بلد المنشأ خاضع لقائمة SKILLUV_REMOTE_INTL_ORIGINS البيضاء.'
+			}
 		},
 		catalog: {
 			title: 'الكتالوج',

@@ -490,6 +490,7 @@ export interface Translations {
 			tenantsLabel: string;
 			fraud: string;
 			catalog: string;
+			enterprises: string;
 		};
 		dashboard: {
 			title: string;
@@ -952,6 +953,71 @@ export interface Translations {
 				plagiarism_reviewer: string;
 				kyc_reviewer: string;
 				community_curator: string;
+			};
+		};
+		enterprises: {
+			title: string;
+			subtitle: string;
+			filterType: string;
+			filterTypeAll: string;
+			filterVerified: string;
+			filterVerifiedAny: string;
+			filterVerifiedYes: string;
+			filterVerifiedNo: string;
+			empty: string;
+			table: {
+				company: string;
+				industry: string;
+				type: string;
+				verified: string;
+				created: string;
+			};
+			verifiedYes: string;
+			verifiedNo: string;
+			detailTitle: string;
+			backToList: string;
+			detail: {
+				sectionOverview: string;
+				sectionTypeConfig: string;
+				sectionAgencyClients: string;
+				changeTypeBtn: string;
+				companyLabel: string;
+				slugLabel: string;
+				industryLabel: string;
+				verifiedLabel: string;
+				typeLabel: string;
+				createdAtLabel: string;
+				typeConfigEmpty: string;
+				agencyClientsEmpty: string;
+				agencyClientsOnlyStaffingHint: string;
+				agencyClientContact: string;
+				agencyClientNotes: string;
+				agencyClientActive: string;
+				agencyClientInactive: string;
+				loading404: string;
+			};
+			changeType: {
+				title: string;
+				currentTypeLabel: string;
+				targetTypeLabel: string;
+				reasonLabel: string;
+				reasonPlaceholder: string;
+				dryRunBtn: string;
+				dryRunPreviewLabel: string;
+				dryRunResetWarning: string;
+				dryRunNoReset: string;
+				submit: string;
+				successToast: string;
+			};
+			types: {
+				direct_hire: string;
+				staffing_agency: string;
+				remote_international: string;
+			};
+			typeDescriptions: {
+				direct_hire: string;
+				staffing_agency: string;
+				remote_international: string;
 			};
 		};
 		catalog: {

@@ -354,7 +354,8 @@ export const en: Translations = {
 			ssoSessions: 'SSO sessions',
 			tenantsLabel: 'Tenants',
 			fraud: 'Fraud',
-			catalog: 'Catalog'
+			catalog: 'Catalog',
+			enterprises: 'Enterprises'
 		},
 		dashboard: {
 			title: 'Admin Dashboard', platform: 'Platform', moderation: 'Moderation',
@@ -709,6 +710,71 @@ export const en: Translations = {
 			evalBestMatch: 'Best match',
 			evalComparedCount: 'compared',
 			auditGap: 'Note: fraud actions are not yet written to the audit log (tracked backend gap).'
+		},
+		enterprises: {
+			title: 'Enterprises',
+			subtitle: 'Manage enterprise types (direct-hire / staffing_agency / remote_international) and their config.',
+			filterType: 'Type',
+			filterTypeAll: 'All',
+			filterVerified: 'KYC',
+			filterVerifiedAny: 'All',
+			filterVerifiedYes: 'Verified',
+			filterVerifiedNo: 'Unverified',
+			empty: 'No enterprise for these filters.',
+			table: {
+				company: 'Company',
+				industry: 'Industry',
+				type: 'Type',
+				verified: 'KYC',
+				created: 'Created'
+			},
+			verifiedYes: 'Verified',
+			verifiedNo: 'Pending',
+			detailTitle: 'Enterprise sheet',
+			backToList: 'Back to list',
+			detail: {
+				sectionOverview: 'Overview',
+				sectionTypeConfig: 'Typed config (type_config)',
+				sectionAgencyClients: 'Client book',
+				changeTypeBtn: 'Change type',
+				companyLabel: 'Company name',
+				slugLabel: 'Slug',
+				industryLabel: 'Industry',
+				verifiedLabel: 'KYC status',
+				typeLabel: 'Current type',
+				createdAtLabel: 'Created at',
+				typeConfigEmpty: 'No specific config for this type ({} by default).',
+				agencyClientsEmpty: 'No client in the book.',
+				agencyClientsOnlyStaffingHint: 'The client book only makes sense for staffing agencies. A direct_hire account always returns an empty list.',
+				agencyClientContact: 'Contact',
+				agencyClientNotes: 'Notes',
+				agencyClientActive: 'Active',
+				agencyClientInactive: 'Inactive',
+				loading404: 'This enterprise does not exist or was deleted.'
+			},
+			changeType: {
+				title: 'Change enterprise type',
+				currentTypeLabel: 'Current type',
+				targetTypeLabel: 'New type',
+				reasonLabel: 'Reason (min 8 chars, audited)',
+				reasonPlaceholder: 'Justification for the type change',
+				dryRunBtn: 'Preview (dry-run)',
+				dryRunPreviewLabel: 'Expected impact',
+				dryRunResetWarning: 'WARNING: type_config will be reset to {} on change.',
+				dryRunNoReset: 'No impact on type_config (same type).',
+				submit: 'Apply',
+				successToast: 'Enterprise type updated.'
+			},
+			types: {
+				direct_hire: 'Direct hire',
+				staffing_agency: 'Staffing agency',
+				remote_international: 'Remote international'
+			},
+			typeDescriptions: {
+				direct_hire: 'The enterprise hires for its own account.',
+				staffing_agency: 'The enterprise hires for third-party clients; requires a client book (at least 1) before conversion.',
+				remote_international: 'Cross-border hiring; origin country subject to the SKILLUV_REMOTE_INTL_ORIGINS allow-list.'
+			}
 		},
 		catalog: {
 			title: 'Catalog',

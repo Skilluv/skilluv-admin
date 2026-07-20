@@ -20,6 +20,7 @@
 		Wrench,
 		Fingerprint,
 		BookMarked,
+		Briefcase,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -47,6 +48,7 @@
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
 		{ href: '/enterprise-kyc', label: i18n.t('admin.nav.kycEnterprises'), icon: ShieldCheck },
+		{ href: '/enterprises', label: i18n.t('admin.nav.enterprises'), icon: Briefcase },
 		{ href: '/sponsored-challenges', label: i18n.t('admin.nav.sponsorings'), icon: Megaphone },
 		{ href: '/tournaments', label: i18n.t('admin.nav.tournamentsSeasons'), icon: Swords },
 		{ href: '/audit-log', label: i18n.t('admin.nav.auditLabel'), icon: Clock },

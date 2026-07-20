@@ -354,7 +354,8 @@ export const fr: Translations = {
 			ssoSessions: 'SSO sessions',
 			tenantsLabel: 'Tenants',
 			fraud: 'Fraude',
-			catalog: 'Catalogue'
+			catalog: 'Catalogue',
+			enterprises: 'Entreprises'
 		},
 		dashboard: {
 			title: 'Dashboard Admin', platform: 'Plateforme', moderation: 'Modération',
@@ -709,6 +710,71 @@ export const fr: Translations = {
 			evalBestMatch: 'Meilleur match',
 			evalComparedCount: 'comparés',
 			auditGap: 'Note : les actions fraude ne sont pas encore inscrites dans le journal d\'audit (gap backend suivi).'
+		},
+		enterprises: {
+			title: 'Entreprises',
+			subtitle: 'Gestion des types d\'entreprise (direct-hire / staffing_agency / remote_international) et de leur configuration.',
+			filterType: 'Type',
+			filterTypeAll: 'Tous',
+			filterVerified: 'KYC',
+			filterVerifiedAny: 'Toutes',
+			filterVerifiedYes: 'Vérifiées',
+			filterVerifiedNo: 'Non vérifiées',
+			empty: 'Aucune entreprise pour ces filtres.',
+			table: {
+				company: 'Entreprise',
+				industry: 'Secteur',
+				type: 'Type',
+				verified: 'KYC',
+				created: 'Créée'
+			},
+			verifiedYes: 'Vérifiée',
+			verifiedNo: 'En attente',
+			detailTitle: 'Fiche entreprise',
+			backToList: 'Retour à la liste',
+			detail: {
+				sectionOverview: 'Vue d\'ensemble',
+				sectionTypeConfig: 'Configuration typée (type_config)',
+				sectionAgencyClients: 'Carnet clients',
+				changeTypeBtn: 'Changer le type',
+				companyLabel: 'Raison sociale',
+				slugLabel: 'Slug',
+				industryLabel: 'Secteur',
+				verifiedLabel: 'Statut KYC',
+				typeLabel: 'Type actuel',
+				createdAtLabel: 'Créée le',
+				typeConfigEmpty: 'Aucune configuration spécifique pour ce type ({} par défaut).',
+				agencyClientsEmpty: 'Aucun client dans le carnet.',
+				agencyClientsOnlyStaffingHint: 'Le carnet clients n\'est pertinent que pour les agences de staffing. Un compte direct_hire retourne systématiquement une liste vide.',
+				agencyClientContact: 'Contact',
+				agencyClientNotes: 'Notes',
+				agencyClientActive: 'Actif',
+				agencyClientInactive: 'Inactif',
+				loading404: 'Cette entreprise n\'existe pas ou a été supprimée.'
+			},
+			changeType: {
+				title: 'Changer le type d\'entreprise',
+				currentTypeLabel: 'Type actuel',
+				targetTypeLabel: 'Nouveau type',
+				reasonLabel: 'Raison (min. 8 caractères, auditée)',
+				reasonPlaceholder: 'Justification du changement de type',
+				dryRunBtn: 'Prévisualiser (dry-run)',
+				dryRunPreviewLabel: 'Impact prévu',
+				dryRunResetWarning: 'ATTENTION : le type_config sera réinitialisé à {} lors du changement.',
+				dryRunNoReset: 'Aucun impact sur type_config (type identique).',
+				submit: 'Appliquer',
+				successToast: 'Type d\'entreprise mis à jour.'
+			},
+			types: {
+				direct_hire: 'Recrutement direct',
+				staffing_agency: 'Agence de staffing',
+				remote_international: 'Remote international'
+			},
+			typeDescriptions: {
+				direct_hire: 'L\'entreprise recrute pour son propre compte.',
+				staffing_agency: 'L\'entreprise recrute pour des clients tiers ; nécessite un carnet clients (au moins 1) avant conversion.',
+				remote_international: 'Recrutement cross-border ; pays d\'origine soumis à la liste blanche SKILLUV_REMOTE_INTL_ORIGINS.'
+			}
 		},
 		catalog: {
 			title: 'Catalogue',
