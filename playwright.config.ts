@@ -14,7 +14,13 @@ export default defineConfig({
 	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
 
 	use: {
-		baseURL: 'http://127.0.0.1:4173',
+		// baseURL points at the vite dev server (`npm run dev` sur :5174) —
+		// this is required by admin-back-e2e.spec.ts which hits `/api/*` routes
+		// proxied to a real backend on :3001.
+		// Smoke specs (auth-*, auth-redirect) also work at :5174 because vite's
+		// SSR calls hooks.server.ts which still 303-redirects unauthenticated
+		// visitors — no backend needed for those tests to pass.
+		baseURL: 'http://127.0.0.1:5174',
 		trace: 'retain-on-failure',
 		screenshot: 'only-on-failure'
 	},
@@ -27,14 +33,12 @@ export default defineConfig({
 	],
 
 	webServer: {
-		// adapter-node ships a plain Node.js server at build/index.js. `vite
-		// preview` doesn't run that entry — we invoke node directly. hooks.server.ts
-		// still fires on every request, so guarded-route redirects work end-to-end
-		// without a backend (the /api/auth/me call fails → user stays null → 303).
-		command: 'node build',
-		env: { PORT: '4173', HOST: '127.0.0.1' },
-		url: 'http://127.0.0.1:4173',
+		// Vite dev server exposes the /api → :3001 proxy declared in vite.config.ts,
+		// which admin-back-e2e.spec.ts requires. `strictPort: true` in vite guarantees
+		// port 5174 (fails loudly if it is already taken).
+		command: 'npm run dev -- --host 127.0.0.1',
+		url: 'http://127.0.0.1:5174',
 		reuseExistingServer: !process.env.CI,
-		timeout: 60_000
+		timeout: 90_000
 	}
 });
