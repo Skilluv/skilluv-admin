@@ -11,3 +11,7 @@ coverage
 playwright-report
 test-results
 .playwright
+
+# AI coding assistant caches
+.claude/
+.claude.*

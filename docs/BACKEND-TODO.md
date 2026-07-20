@@ -492,6 +492,6 @@ endpoint indépendamment.
 
 ## Contact & questions
 
-Front lead : session actuelle Claude Code sur skilluv-admin.
+Front lead : équipe skilluv-admin.
 Traçabilité back : commits P1 (`e40fc87`), P2 (`e289d37`).
 Traçabilité front : commits `b614ba4` (M0), `9950799` (M1), `3b29837` (M2).

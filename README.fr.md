@@ -14,7 +14,7 @@ Ce depot fournit l'interface web utilisee par les administrateurs de Skilluv pou
 
 - Node.js 22 ou superieur
 - npm 10 ou superieur
-- Un backend Skilluv en cours d'execution (voir [skilluv-backend](https://github.com/jeremie0342/skilluv-backend))
+- Un backend Skilluv en cours d'execution (voir [skilluv-backend](https://github.com/skilluv/skilluv-backend))
 
 ---
 

@@ -15,3 +15,7 @@ docs
 .idea
 Dockerfile
 docker-compose*.yml
+
+# AI coding assistant caches
+.claude/
+.claude.*

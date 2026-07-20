@@ -13,7 +13,7 @@
 
 Skilluv is a community platform training the African OSS generation through real contributions to real open source projects. Every completed challenge produces a verifiable artifact — a merged pull request, a delivered Figma component, a submitted CVE report, a playable game build — exportable to recruiters.
 
-Full product vision in the [backend repository](https://github.com/jeremie0342/skilluv-backend).
+Full product vision in the [backend repository](https://github.com/skilluv/skilluv-backend).
 
 ## What this repo contains
 
@@ -37,16 +37,16 @@ Roadmap for the remaining MVP phases (M3 orientations catalog + M4 enterprise ty
 
 ## Companion repositories
 
-- [`skilluv-backend`](https://github.com/jeremie0342/skilluv-backend) — Rust + Axum API
-- [`skilluv-frontend`](https://github.com/jeremie0342/skilluv-frontend) — SvelteKit web app for talents
-- [`skilluv-ia`](https://github.com/jeremie0342/skilluv-ia) — Python AI microservice
+- [`skilluv-backend`](https://github.com/skilluv/skilluv-backend) — Rust + Axum API
+- [`skilluv-frontend`](https://github.com/skilluv/skilluv-frontend) — SvelteKit web app for talents
+- [`skilluv-ia`](https://github.com/skilluv/skilluv-ia) — Python AI microservice
 
 ## Quick start
 
 **Prerequisites**: Node.js 22+, npm 10+, and a running Skilluv backend on port 3001.
 
 ```bash
-git clone https://github.com/jeremie0342/skilluv-admin.git
+git clone https://github.com/skilluv/skilluv-admin.git
 cd skilluv-admin
 npm install
 cp .env.example .env
@@ -133,4 +133,4 @@ Distributed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.
 
 ## Origin
 
-Skilluv is built solo by [Jeremie Zitti](https://github.com/jeremie0342), a Beninese engineer. Public launch: **January 2027**.
+Skilluv is built solo by [Jeremie Zitti](https://github.com/skilluv), a Beninese engineer. Public launch: **January 2027**.
