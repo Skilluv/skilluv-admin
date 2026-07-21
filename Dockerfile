@@ -3,7 +3,7 @@
 # Multi-stage build for the SvelteKit admin panel.
 # Stage 1: install and build. Stage 2: minimal runtime with adapter-node output.
 
-ARG NODE_VERSION=22.11.0
+ARG NODE_VERSION=24.18.0
 
 FROM node:${NODE_VERSION}-alpine AS deps
 WORKDIR /app
