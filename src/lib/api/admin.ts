@@ -4,6 +4,11 @@ import type {
 	ChallengeDifficulty,
 	ChallengeMode,
 	ChallengeTone,
+	ProjectListItem,
+	ProjectListFilters,
+	ProjectDetail,
+	ProjectCreateBody,
+	ProjectPatchBody,
 	Report,
 	ReportStatus,
 	ReportTargetType,
@@ -355,6 +360,45 @@ export const adminApi = {
 
 	rebuildLeaderboards() {
 		return api.post<ApiResponse<{ message: string }>>('/admin/leaderboards/rebuild');
+	},
+
+	// --- Admin projects (content-strategy §4, annexes E + F) ---
+
+	listAdminProjects(filters?: ProjectListFilters) {
+		const params = new URLSearchParams();
+		if (filters?.is_flagship !== undefined) params.set('is_flagship', String(filters.is_flagship));
+		if (filters?.curated_by_admin !== undefined)
+			params.set('curated_by_admin', String(filters.curated_by_admin));
+		if (filters?.partnership_level !== undefined)
+			params.set('partnership_level', String(filters.partnership_level));
+		if (filters?.include_archived) params.set('include_archived', 'true');
+		if (filters?.page) params.set('page', String(filters.page));
+		if (filters?.per_page) params.set('per_page', String(filters.per_page));
+		const qs = params.toString();
+		return api.get<
+			ApiPaginatedResponse<ProjectListItem>
+		>(`/admin/projects${qs ? `?${qs}` : ''}`);
+	},
+
+	getAdminProject(slug: string) {
+		return api.get<ApiResponse<ProjectDetail>>(`/admin/projects/${slug}`);
+	},
+
+	createAdminProject(data: ProjectCreateBody) {
+		return api.post<ApiResponse<{ id: string; slug: string }>>('/admin/projects', data);
+	},
+
+	patchAdminProject(slug: string, data: ProjectPatchBody) {
+		return api.patch<ApiResponse<{ slug: string; updated: boolean }>>(
+			`/admin/projects/${slug}`,
+			data
+		);
+	},
+
+	archiveAdminProject(slug: string) {
+		return api.delete<ApiResponse<{ slug: string; archived: boolean }>>(
+			`/admin/projects/${slug}`
+		);
 	},
 
 	// --- Community ---
