@@ -734,3 +734,79 @@ export const ERROR_CODES = {
 	CONTACT_BLOCKED: 'CONTACT_BLOCKED',
 	CONVERSATION_CLOSED: 'CONVERSATION_CLOSED'
 } as const;
+
+// ─── Admin projects — content-strategy-2027-2028 §4 + annexes E, F ───────────
+
+export type ProjectOwnerType = 'user' | 'guild';
+export type PartnershipLevel = 1 | 2 | 3;
+
+/** Row returned by `GET /admin/projects` list endpoint. */
+export interface ProjectListItem {
+	id: string;
+	slug: string;
+	name: string;
+	description: string | null;
+	repo_url: string | null;
+	is_flagship: boolean;
+	curated_by_admin: boolean;
+	skilluv_partnership_level: PartnershipLevel | null;
+	flagship_steward_user_id: string | null;
+	created_at: string;
+	archived_at: string | null;
+}
+
+/** Full row returned by `GET /admin/projects/{slug}`. */
+export interface ProjectDetail extends ProjectListItem {
+	demo_url: string | null;
+	tech_stack: string[];
+	is_oss: boolean;
+	looking_for_contributors: boolean;
+	owner_type: ProjectOwnerType;
+	owner_id: string;
+	skilluv_editorial_notes: string | null;
+	updated_at: string;
+}
+
+/** Payload for `POST /admin/projects`. */
+export interface ProjectCreateBody {
+	slug: string;
+	name: string;
+	description?: string | null;
+	repo_url?: string | null;
+	demo_url?: string | null;
+	tech_stack?: string[];
+	is_oss?: boolean;
+	looking_for_contributors?: boolean;
+	owner_type: ProjectOwnerType;
+	owner_id: string;
+	curated_by_admin?: boolean;
+	is_flagship?: boolean;
+	flagship_steward_user_id?: string | null;
+	skilluv_partnership_level?: PartnershipLevel | null;
+	skilluv_editorial_notes?: string | null;
+}
+
+/** Payload for `PATCH /admin/projects/{slug}`. All fields optional. */
+export interface ProjectPatchBody {
+	name?: string;
+	description?: string | null;
+	repo_url?: string | null;
+	demo_url?: string | null;
+	tech_stack?: string[];
+	is_oss?: boolean;
+	looking_for_contributors?: boolean;
+	curated_by_admin?: boolean;
+	is_flagship?: boolean;
+	flagship_steward_user_id?: string | null;
+	skilluv_partnership_level?: PartnershipLevel | null;
+	skilluv_editorial_notes?: string | null;
+}
+
+export interface ProjectListFilters {
+	is_flagship?: boolean;
+	curated_by_admin?: boolean;
+	partnership_level?: PartnershipLevel;
+	include_archived?: boolean;
+	page?: number;
+	per_page?: number;
+}

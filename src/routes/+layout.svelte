@@ -22,6 +22,7 @@
 		BookMarked,
 		Briefcase,
 		Network,
+		FolderGit2,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -45,6 +46,7 @@
 		{ href: '/reports', label: i18n.t('admin.reports.title'), icon: Flag },
 		{ href: '/fraud', label: i18n.t('admin.nav.fraud'), icon: Fingerprint },
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
+		{ href: '/projects', label: 'Projets', icon: FolderGit2 },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
