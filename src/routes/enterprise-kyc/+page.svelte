@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$stores/toast.svelte';
@@ -98,9 +98,6 @@
 	}
 
 	// Intl formatters : la locale est un tag BCP-47, pas une chaîne UI.
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
-	}
 
 	function fmtEur(cents: number): string {
 		return new Intl.NumberFormat(intlLocale(), {

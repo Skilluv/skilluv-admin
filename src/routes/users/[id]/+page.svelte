@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
@@ -135,9 +135,6 @@
 		return r === 'admin' ? 'accent' : r === 'enterprise' ? 'primary' : r === 'recruiter' ? 'warning' : 'default';
 	}
 
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
-	}
 
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';

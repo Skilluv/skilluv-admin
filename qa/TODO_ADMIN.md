@@ -73,6 +73,19 @@
 
 **Statut :** open
 
+### [P2] Migrer les ~37 strings inline restantes vers i18n.t (ar cassé)
+**Zone :** `src/routes/sso-sessions/+page.svelte` (18), `src/routes/auth/login/+page.svelte` (10), `src/lib/components/ui/{LevelUpAnimation,MultiSelect,ReplayPlayer,ShareButton}.svelte` (9)
+**Type :** implementation
+**Contexte :** ces strings utilisent le pattern `i18n.locale === 'fr' ? 'FR' : 'EN'` — elles bypassent complètement `ar.ts`. Un utilisateur admin en arabe voit le fallback anglais partout. Le helper `intlLocale()` a déjà été extrait pour tous les mappings de tags Intl.* (~15 occurrences), reste ces vraies traductions.
+**Détail :** pour chaque bloc :
+1. Ajouter la clé dans `src/lib/i18n/types.ts` (typing strict)
+2. Ajouter les valeurs fr/en/ar dans `fr.ts` / `en.ts` / `ar.ts`
+3. Remplacer `i18n.locale === 'fr' ? 'x' : 'y'` par `i18n.t('admin.<ns>.<key>')`
+
+Grouper par écran pour limiter le rework. Priorité `sso-sessions` (bug UI déjà tracké côté back — refactor bienvenu quand on y touche).
+
+**Statut :** open
+
 ### [P3] CI GitHub Actions — étendre au projet `admin` Playwright
 **Zone :** `.github/workflows/ci.yml`
 **Type :** implementation

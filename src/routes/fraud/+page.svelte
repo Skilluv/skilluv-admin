@@ -2,7 +2,7 @@
 	import { adminApi } from '$api/admin';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import type {
 		FraudFlaggedDeliverable,
 		FraudSuspectedUser,
@@ -190,9 +190,7 @@
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';
 		try {
-			return new Date(iso).toLocaleString(
-				i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US'
-			);
+			return new Date(iso).toLocaleString(intlLocale());
 		} catch {
 			return iso;
 		}

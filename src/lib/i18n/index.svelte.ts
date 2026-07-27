@@ -66,3 +66,20 @@ class I18nState {
 }
 
 export const i18n = new I18nState();
+
+/**
+ * BCP-47 tag matching the current UI locale, for `Intl.DateTimeFormat` /
+ * `.toLocaleString()` / `.toLocaleDateString()` etc. Duplicated inline as
+ * `function intlLocale()` in ~10 pages before extraction; centralize here so
+ * a future locale addition only touches one place.
+ */
+export function intlLocale(): string {
+	switch (i18n.locale) {
+		case 'ar':
+			return 'ar';
+		case 'en':
+			return 'en-US';
+		default:
+			return 'fr-FR';
+	}
+}
