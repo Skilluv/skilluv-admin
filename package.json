@@ -31,6 +31,7 @@
 		"@vitest/coverage-v8": "^4.1.10",
 		"argon2": "^0.45.0",
 		"jsdom": "^29.1.1",
+		"otpauth": "^9.5.1",
 		"pg": "^8.22.0",
 		"svelte": "^5.56.7",
 		"svelte-check": "^4.7.3",

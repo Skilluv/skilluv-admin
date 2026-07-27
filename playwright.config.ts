@@ -1,8 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { STORAGE_STATE } from './e2e/global-setup';
 
-// Smoke-only e2e config. Purpose: catch a broken deploy before it hits users
-// (login redirect, guarded routes, key public pages render). Not an exhaustive
-// suite — the interaction-heavy component tests live in Vitest.
+// E2E config. Two project buckets:
+//   - `public` : specs that don't need auth (auth-redirect, login page render, …)
+//   - `admin`  : specs that reuse an authenticated admin storageState produced
+//                by `global-setup.ts`. Requires backend on :3001 and the file
+//                `e2e/setup/admin-credentials.json` (see qa/README.md).
 export default defineConfig({
 	testDir: './e2e',
 	timeout: 30_000,
@@ -12,23 +15,26 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 2 : undefined,
 	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+	globalSetup: './e2e/global-setup.ts',
 
 	use: {
-		// baseURL points at the vite dev server (`npm run dev` sur :5174) —
-		// this is required by admin-back-e2e.spec.ts which hits `/api/*` routes
-		// proxied to a real backend on :3001.
-		// Smoke specs (auth-*, auth-redirect) also work at :5174 because vite's
-		// SSR calls hooks.server.ts which still 303-redirects unauthenticated
-		// visitors — no backend needed for those tests to pass.
 		baseURL: 'http://127.0.0.1:5174',
 		trace: 'retain-on-failure',
-		screenshot: 'only-on-failure'
+		screenshot: 'only-on-failure',
+		video: 'retain-on-failure'
 	},
 
 	projects: [
 		{
-			name: 'chromium',
+			name: 'public',
+			testDir: './e2e',
+			testIgnore: ['admin/**', 'setup/**', 'global-setup.ts'],
 			use: { ...devices['Desktop Chrome'] }
+		},
+		{
+			name: 'admin',
+			testDir: './e2e/admin',
+			use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE }
 		}
 	],
 
