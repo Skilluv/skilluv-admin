@@ -234,13 +234,8 @@
 		}
 	});
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto(`/auth/login?redirect=/tenants/${tenantId}`);
-			return;
-		}
-		void loadTenant();
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
+	onMount(() => void loadTenant());
 </script>
 
 <svelte:head>

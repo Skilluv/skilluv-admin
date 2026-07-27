@@ -120,13 +120,8 @@
 		}).format(new Date(iso));
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto('/auth/login?redirect=/enterprise-kyc');
-			return;
-		}
-		void load();
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
+	onMount(() => void load());
 </script>
 
 <svelte:head>

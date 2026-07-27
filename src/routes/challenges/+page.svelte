@@ -61,9 +61,11 @@
 	async function publish(id: string) {
 		try {
 			await adminApi.publishChallenge(id);
-			const c = challenges.find((ch) => ch.id === id);
-			if (c) c.status = 'published';
 			toast.success(i18n.t('admin.challenges.published'));
+			// Refetch instead of mutating the array item in place — see
+			// qa/BUGS_FRONT.md (Corrigés): mutating a $state<T[]> property
+			// doesn't always re-render `{#if}` blocks in Svelte 5 dev mode.
+			await loadChallenges();
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		}
@@ -72,9 +74,8 @@
 	async function archive(id: string) {
 		try {
 			await adminApi.archiveChallenge(id);
-			const c = challenges.find((ch) => ch.id === id);
-			if (c) c.status = 'archived';
 			toast.success(i18n.t('admin.challenges.archived'));
+			await loadChallenges();
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		}

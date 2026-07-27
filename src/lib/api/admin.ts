@@ -73,7 +73,7 @@ interface UserSummary {
 	title: string;
 	total_fragments: number;
 	profile_active: boolean;
-	banned: boolean;
+	is_banned: boolean;
 	created_at: string;
 }
 

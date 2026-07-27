@@ -73,11 +73,10 @@
 		}
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated && !pathname.startsWith('/auth/')) {
-			window.location.href = '/auth/login';
-		}
-	});
+	// Auth is enforced by hooks.server.ts (SSR 303 to /auth/login when user is
+	// null). The old client-side check here fired before the `$effect` above
+	// had migrated `data.user` into the store, so it kicked out authenticated
+	// users on direct navigation. Removed — SSR is the single source of truth.
 </script>
 
 <svelte:head>

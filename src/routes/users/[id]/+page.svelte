@@ -156,13 +156,11 @@
 		return u.created_at ?? null;
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto(`/auth/login?redirect=/users/${userId}`);
-			return;
-		}
-		void load();
-	});
+	// Auth is enforced by hooks.server.ts (SSR) — no client-side re-check.
+	// The old `if (!auth.isAuthenticated) goto('/auth/login')` was racy: it fires
+	// before the layout's `$effect` has migrated `data.user` into the store on
+	// direct-navigation, breaking every deep-link (P0 bug pre-launch).
+	onMount(() => void load());
 </script>
 
 <svelte:head>

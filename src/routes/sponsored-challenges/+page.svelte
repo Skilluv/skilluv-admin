@@ -193,13 +193,8 @@
 		return '★'.repeat(Math.max(1, Math.min(5, d)));
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto('/auth/login?redirect=/sponsored-challenges');
-			return;
-		}
-		void load();
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
+	onMount(() => void load());
 </script>
 
 <svelte:head>
