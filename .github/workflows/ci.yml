@@ -32,7 +32,7 @@ jobs:
         run: npm run build
 
   e2e:
-    name: Playwright smoke tests
+    name: Playwright public smoke
     runs-on: ubuntu-latest
     needs: check
     timeout-minutes: 15
@@ -54,13 +54,164 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run smoke tests
-        run: npm run test:e2e
+      - name: Run public smoke tests
+        run: npx playwright test --project=public
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-public-report
+          path: playwright-report/
+          retention-days: 7
+
+  e2e-admin:
+    # Runs the authenticated `admin` Playwright project against a real backend
+    # pulled from GHCR. Requires the backend team's publish workflow to be
+    # merged first (see skilluv-backend PR #33). This job will stay red on
+    # PRs until that image is published — that's intentional; we don't skip
+    # tests when a dependency isn't ready, we surface the gap.
+    name: Playwright admin flows (needs backend image)
+    runs-on: ubuntu-latest
+    needs: check
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_USER: skilluv
+          POSTGRES_PASSWORD: skilluv_secret
+          POSTGRES_DB: skilluv
+          # postgres 18+ warns when data lives at /var/lib/postgresql/data
+          # (the legacy mount path). Force a subdir to silence the check.
+          PGDATA: /var/lib/postgresql/data/pgdata
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U skilluv"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:8.8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "wget -q --spider http://localhost:8025 || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # MinIO can't be a GHA service (the image needs a `server /data` arg;
+      # services don't support commands). Docker-run it on host network so
+      # the backend (also host-net) reaches it via localhost:9000.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio --network host \
+            -e MINIO_ROOT_USER=skilluv \
+            -e MINIO_ROOT_PASSWORD=skilluv_secret \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z \
+            server /data
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:9000/minio/health/live > /dev/null 2>&1 && \
+              echo "minio ready after ${i}s" && exit 0
+            sleep 1
+          done
+          docker logs minio
+          exit 1
+
+      - name: Start backend from GHCR image
+        env:
+          # `:master` is republished on every green master merge — see
+          # skilluv-backend/.github/workflows/ci.yml `publish` job.
+          BACKEND_IMAGE: ghcr.io/skilluv/skilluv-backend:master
+        run: |
+          docker pull "$BACKEND_IMAGE"
+          # Host network — backend reaches postgres/redis/mailpit/minio via
+          # the ports GHA services (and MinIO above) already bound to the
+          # runner. Admin origin allowlist added so the API accepts
+          # requests from the test's Origin: http://localhost:5174.
+          docker run -d --name backend --network host \
+            -e HOST=0.0.0.0 \
+            -e PORT=3001 \
+            -e ENVIRONMENT=dev \
+            -e DATABASE_URL=postgres://skilluv:skilluv_secret@localhost:5433/skilluv \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e JWT_SECRET=ci-test-secret-please-rotate \
+            -e BASE_URL=http://localhost:3001 \
+            -e MINIO_ENDPOINT=http://localhost:9000 \
+            -e MINIO_ACCESS_KEY=skilluv \
+            -e MINIO_SECRET_KEY=skilluv_secret \
+            -e MINIO_BUCKET=avatars \
+            -e SMTP_HOST=localhost \
+            -e SMTP_PORT=1025 \
+            -e SMTP_TLS=none \
+            -e EMAIL_FROM=noreply@skilluv.test \
+            -e ADMIN_ORIGINS=http://localhost:5174 \
+            -e RUST_LOG=skilluv_backend=info,tower_http=info \
+            "$BACKEND_IMAGE"
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "backend ready after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "backend never became healthy — dumping logs:"
+          docker logs backend
+          exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Bootstrap admin user (register + elevate + enable 2FA)
+        env:
+          BACKEND_URL: http://localhost:3001
+          DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
+        run: node e2e/setup/bootstrap-admin.mjs
+
+      - name: Run admin Playwright project
+        env:
+          BACKEND_URL: http://localhost:3001
+          DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
+        run: npx playwright test --project=admin
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: docker logs backend
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-admin-report
           path: playwright-report/
           retention-days: 7
