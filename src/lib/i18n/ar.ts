@@ -1177,6 +1177,27 @@ export const ar: Translations = {
 				community_curator: '3+ تحديات مجتمعية منشورة (تلقائي).'
 			}
 		},
+		deepScan: {
+			btn: 'فحص عميق (IA)',
+			runningToast: 'بدأ الفحص العميق…',
+			successToast: 'اكتمل الفحص العميق',
+			resultLabel: 'نتيجة الفحص العميق',
+			resultScore: 'النتيجة',
+			resultVerdict: 'الحكم',
+			resultPool: 'مجموعة المقارنة',
+			flaggedAt: 'تم الإبلاغ في'
+		},
+		variant: {
+			btn: 'إنشاء نسخة IA',
+			dialogTitle: 'إنشاء نسخة',
+			typeLabel: 'النوع',
+			typeHarder: 'أصعب',
+			typeEasier: 'أسهل',
+			targetParamLabel: 'إرشاد (اختياري)',
+			targetParamHint: 'نص حر لضبط IA — مثلا « زد عامل التفرع »',
+			submit: 'إنشاء',
+			successToast: 'تم إنشاء النسخة كمسودة'
+		},
 		backendStatus: {
 			banner: 'الخادم غير متاح — إعادة المحاولة خلال {seconds} ث',
 			bannerNow: 'الخادم غير متاح — جاري المحاولة…',

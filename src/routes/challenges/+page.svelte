@@ -6,10 +6,11 @@
 	import Button from '$components/ui/Button.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import ChallengeFormModal from '$components/admin/ChallengeFormModal.svelte';
+	import ChallengeVariantDialog from '$components/admin/ChallengeVariantDialog.svelte';
 	import { i18n } from '$lib/i18n';
 	import { toast } from '$stores/toast.svelte';
 	import type { Challenge } from '$types';
-	import { Plus, Pencil } from '@lucide/svelte';
+	import { Plus, Pencil, Sparkles } from '@lucide/svelte';
 
 	let challenges = $state<Challenge[]>([]);
 	let total = $state(0);
@@ -21,6 +22,10 @@
 	let showForm = $state(false);
 	let editing = $state<Challenge | null>(null); // null → create mode
 	let submitting = $state(false);
+
+	// Variant dialog — IA-C.1. Only offered on published challenges.
+	let variantSource = $state<Challenge | null>(null);
+	let generatingVariant = $state(false);
 
 	async function loadChallenges() {
 		loading = true;
@@ -66,6 +71,25 @@
 	function openEdit(ch: Challenge) {
 		editing = ch;
 		showForm = true;
+	}
+
+	function openVariant(ch: Challenge) {
+		variantSource = ch;
+	}
+
+	async function submitVariant(body: { variant_type: 'harder' | 'easier'; target_param?: string }) {
+		if (!variantSource) return;
+		generatingVariant = true;
+		try {
+			await adminApi.generateChallengeVariant(variantSource.id, body);
+			toast.success(i18n.t('admin.variant.successToast'));
+			variantSource = null;
+			await loadChallenges();
+		} catch (e) {
+			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
+		} finally {
+			generatingVariant = false;
+		}
 	}
 
 	async function submit(body: ChallengeCreateBody | ChallengePatchBody) {
@@ -164,6 +188,10 @@
 							</Button>
 						{/if}
 						{#if ch.status === 'published'}
+							<Button variant="ghost" size="sm" onclick={() => openVariant(ch)}>
+								<Sparkles size={14} strokeWidth={2} />
+								{i18n.t('admin.variant.btn')}
+							</Button>
 							<Button variant="ghost" size="sm" onclick={() => archive(ch.id)}>
 								{i18n.t('admin.challenges.archiveBtn')}
 							</Button>
@@ -181,5 +209,13 @@
 	{submitting}
 	onclose={() => { showForm = false; editing = null; }}
 	onsubmit={submit}
+/>
+
+<ChallengeVariantDialog
+	open={variantSource !== null}
+	source={variantSource}
+	submitting={generatingVariant}
+	onclose={() => (variantSource = null)}
+	onsubmit={submitVariant}
 />
 

@@ -1359,6 +1359,27 @@ export interface Translations {
 				legendary: string;
 			};
 		};
+		deepScan: {
+			btn: string;
+			runningToast: string;
+			successToast: string;
+			resultLabel: string;
+			resultScore: string;
+			resultVerdict: string;
+			resultPool: string;
+			flaggedAt: string;
+		};
+		variant: {
+			btn: string;
+			dialogTitle: string;
+			typeLabel: string;
+			typeHarder: string;
+			typeEasier: string;
+			targetParamLabel: string;
+			targetParamHint: string;
+			submit: string;
+			successToast: string;
+		};
 		backendStatus: {
 			banner: string;
 			bannerNow: string;

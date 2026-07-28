@@ -1169,6 +1169,27 @@ export const en: Translations = {
 				community_curator: '3+ published community challenges (auto).'
 			}
 		},
+		deepScan: {
+			btn: 'Deep scan (AI)',
+			runningToast: 'Deep scan started…',
+			successToast: 'Deep scan completed',
+			resultLabel: 'Deep scan result',
+			resultScore: 'Score',
+			resultVerdict: 'Verdict',
+			resultPool: 'Comparison pool',
+			flaggedAt: 'Flagged at'
+		},
+		variant: {
+			btn: 'Generate AI variant',
+			dialogTitle: 'Generate a variant',
+			typeLabel: 'Type',
+			typeHarder: 'Harder',
+			typeEasier: 'Easier',
+			targetParamLabel: 'Hint (optional)',
+			targetParamHint: 'Free-text prompt tuning — e.g. "increase branching factor"',
+			submit: 'Generate',
+			successToast: 'Variant generated + created as draft'
+		},
 		backendStatus: {
 			banner: 'Backend unreachable — retrying in {seconds}s',
 			bannerNow: 'Backend unreachable — probing now…',

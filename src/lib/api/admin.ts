@@ -238,6 +238,32 @@ export const adminApi = {
 		);
 	},
 
+	/**
+	 * IA-B — Deep plagiarism scan. Slower (2-5s IA + Redis queue), stricter
+	 * than the cosine `scanDeliverable` (P14.3). Query params tune the
+	 * comparison pool + threshold. Result is merged into
+	 * `deliverables.verification_signal.deep_plagiarism` (JSONB).
+	 * Rate-limited via admin_destructive.
+	 */
+	deepScanDeliverable(deliverableId: string, opts?: { threshold?: number; window_days?: number; pool_cap?: number }) {
+		const params = new URLSearchParams();
+		if (opts?.threshold !== undefined) params.set('threshold', String(opts.threshold));
+		if (opts?.window_days !== undefined) params.set('window_days', String(opts.window_days));
+		if (opts?.pool_cap !== undefined) params.set('pool_cap', String(opts.pool_cap));
+		const qs = params.toString();
+		return api.post<
+			ApiResponse<{
+				deliverable_id: string;
+				deep_plagiarism: {
+					similarity_score?: number;
+					verdict?: string;
+					flagged_at?: string;
+					comparison_pool_size?: number;
+				};
+			}>
+		>(`/admin/fraud/deep-scan/${deliverableId}${qs ? `?${qs}` : ''}`);
+	},
+
 	// --- Reports ---
 
 	listReports(params?: { status?: ReportStatus; target_type?: ReportTargetType; page?: number; per_page?: number }) {
@@ -356,6 +382,19 @@ export const adminApi = {
 
 	archiveChallenge(id: string) {
 		return api.post<ApiResponse<{ challenge: Challenge }>>(`/admin/challenges/${id}/archive`);
+	},
+
+	/**
+	 * IA-C.1 — Generate a harder/easier variant of an existing challenge.
+	 * Backend delegates to the AI gRPC service; rate-limited by
+	 * admin_destructive (10/min, 100/hr). `target_param` is a free-form hint
+	 * used by the AI prompt (e.g. "increase branching factor").
+	 */
+	generateChallengeVariant(id: string, body: { variant_type: 'harder' | 'easier'; target_param?: string }) {
+		return api.post<ApiResponse<{ challenge: Challenge; message?: string }>>(
+			`/admin/challenges/${id}/variant`,
+			body
+		);
 	},
 
 	rebuildLeaderboards() {
