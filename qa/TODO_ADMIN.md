@@ -73,7 +73,23 @@
 
 **Statut :** open
 
-### [P2] Migrer les ~37 strings inline restantes vers i18n.t (ar cassé)
+### [P2] Extraire les modales des `+page.svelte` restants
+**Zone :** `src/routes/{projects,tournaments,operations,skills,fraud,challenges}/+page.svelte`
+**Type :** implementation
+**Contexte :** 6 pages font 400+ lignes. La revue de code y est difficile, chaque modification touche un fichier énorme, les tests unitaires sur des sous-parties impossibles. `sponsored-challenges` a été fait comme proof-of-concept (`SponsoredDecideModal.svelte` — 489 → 421 lignes sur la page, modal isolé + testable).
+
+**Détail (pattern à répliquer) :**
+1. Créer `src/lib/components/admin/<Feature>Modal.svelte` avec props `{ open, target/data, submitting?, onclose, onsubmit }` + i18n imports locaux
+2. Dans le parent : remplacer la balise `<Modal>...` par la nouvelle balise composée, retirer les states locaux devenus internes au modal (form fields), garder seulement `open` + `target` + `submitting`
+3. Adapter le handler `onsubmit` du parent : passer d'un `SubmitEvent` inline à `(payload) => Promise<void>` — le composant fait déjà le `e.preventDefault`
+4. Attention Svelte 5 : `let x = $state(propX)` capture uniquement la valeur initiale du prop → utiliser un `$effect(() => { if (open) x = propX })` pour re-sync à chaque ouverture
+5. Ajouter un vitest unit spec pour le modal (validation form, onsubmit fires, close via bouton/backdrop)
+
+Pages ciblées (par priorité de longueur) : `projects` (602), `tournaments` (593), `operations` (591), `skills` (559), `fraud` (527), `challenges` (411).
+
+**Statut :** in_progress (1/7 fait)
+
+### [P2] ✅ (fait) Migrer les strings inline restantes vers i18n.t (ar cassé)
 **Zone :** `src/routes/sso-sessions/+page.svelte` (18), `src/routes/auth/login/+page.svelte` (10), `src/lib/components/ui/{LevelUpAnimation,MultiSelect,ReplayPlayer,ShareButton}.svelte` (9)
 **Type :** implementation
 **Contexte :** ces strings utilisent le pattern `i18n.locale === 'fr' ? 'FR' : 'EN'` — elles bypassent complètement `ar.ts`. Un utilisateur admin en arabe voit le fallback anglais partout. Le helper `intlLocale()` a déjà été extrait pour tous les mappings de tags Intl.* (~15 occurrences), reste ces vraies traductions.
@@ -84,7 +100,9 @@
 
 Grouper par écran pour limiter le rework. Priorité `sso-sessions` (bug UI déjà tracké côté back — refactor bienvenu quand on y touche).
 
-**Statut :** open
+**Fix appliqué :** 3 nouveaux sous-namespaces sous `admin` (`admin.sso`, `admin.loginPage`, `admin.levelUp`, `admin.multiSelect`, `admin.replayPlayer`, `admin.shareButton`) — 30+ clés ajoutées en fr/en/ar avec types stricts. Grep `i18n.locale ===` retourne 0 dans src/.
+
+**Statut :** fixed
 
 ### [P3] CI GitHub Actions — étendre au projet `admin` Playwright
 **Zone :** `.github/workflows/ci.yml`

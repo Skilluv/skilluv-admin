@@ -13,9 +13,9 @@
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import Modal from '$components/ui/Modal.svelte';
-	import Select from '$components/ui/Select.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
+	import SponsoredDecideModal from '$components/admin/SponsoredDecideModal.svelte';
 	import {
 		Megaphone,
 		Check,
@@ -33,12 +33,12 @@
 	let loading = $state(true);
 	let statusFilter = $state<'all' | SponsoredStatus>('pending');
 
-	// Decide modal
+	// Decide modal — the form itself lives in <SponsoredDecideModal>; this
+	// page keeps ownership of the open flag + which request is being decided.
 	let showDecide = $state(false);
 	let deciding = $state(false);
 	let target = $state<SponsoredRequest | null>(null);
-	let action = $state<'approve' | 'reject' | 'negotiate'>('approve');
-	let adminNotes = $state('');
+	let initialDecideAction = $state<'approve' | 'reject' | 'negotiate'>('approve');
 
 	// Link modal
 	let showLink = $state(false);
@@ -74,10 +74,9 @@
 		rejected: requests.filter((r) => r.status === 'rejected').length
 	});
 
-	function openDecide(entry: SponsoredRequest, initialAction: 'approve' | 'reject' | 'negotiate') {
+	function openDecide(entry: SponsoredRequest, action: 'approve' | 'reject' | 'negotiate') {
 		target = entry;
-		action = initialAction;
-		adminNotes = '';
+		initialDecideAction = action;
 		showDecide = true;
 	}
 
@@ -95,14 +94,13 @@
 		showLink = true;
 	}
 
-	async function submitDecide(e: SubmitEvent) {
-		e.preventDefault();
+	async function submitDecide(action: 'approve' | 'reject' | 'negotiate', adminNotes: string) {
 		if (!target || deciding) return;
 		deciding = true;
 		try {
 			await adminApi.decideSponsored(target.id, {
 				action,
-				admin_notes: adminNotes.trim() || undefined
+				admin_notes: adminNotes || undefined
 			});
 			toast.success(
 				action === 'approve'
@@ -315,80 +313,14 @@
 	{/if}
 </div>
 
-<Modal
+<SponsoredDecideModal
 	open={showDecide}
-	title={action === 'approve'
-		? i18n.t('admin.sponsored.approveTitle')
-		: action === 'reject'
-			? i18n.t('admin.sponsored.rejectTitle')
-			: i18n.t('admin.sponsored.negotiateTitle')}
+	{target}
+	initialAction={initialDecideAction}
+	submitting={deciding}
 	onclose={() => (showDecide = false)}
->
-	<form onsubmit={submitDecide} class="space-y-4">
-		{#if target}
-			<div class="rounded-xl border border-border bg-surface-overlay p-4">
-				<p class="text-xs uppercase tracking-wider text-text-muted mb-1">
-					{i18n.t('admin.sponsored.requestLabel')}
-				</p>
-				<p class="font-bold">{target.proposed_title}</p>
-				<p class="text-xs text-text-muted mt-1">
-					{fmtEur(target.budget_eur_cents)} · {target.duration_days} {i18n.t('admin.sponsored.daysSuffix')} · {target.skill_domain}
-				</p>
-			</div>
-		{/if}
-
-		<div>
-			<label for="s-action" class="mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted">
-				{i18n.t('admin.sponsored.actionLabel')}
-			</label>
-			<Select
-				items={[
-					{ value: 'approve', label: i18n.t('admin.common.approve') },
-					{ value: 'negotiate', label: i18n.t('admin.sponsored.negotiate') },
-					{ value: 'reject', label: i18n.t('admin.common.reject') }
-				]}
-				bind:value={action}
-				class="w-full"
-			/>
-		</div>
-
-		<div>
-			<label for="s-notes" class="mb-1 block text-xs font-bold uppercase tracking-wider text-text-muted">
-				{i18n.t('admin.sponsored.internalNotes')}
-				{#if action === 'reject' || action === 'negotiate'}
-					<span class="text-text-muted normal-case font-normal">
-						· {i18n.t('admin.common.recommended')}
-					</span>
-				{/if}
-			</label>
-			<textarea
-				id="s-notes"
-				bind:value={adminNotes}
-				rows="4"
-				placeholder={action === 'reject'
-					? i18n.t('admin.sponsored.notesRejectPlaceholder')
-					: action === 'negotiate'
-						? i18n.t('admin.sponsored.notesNegotiatePlaceholder')
-						: i18n.t('admin.sponsored.notesDefaultPlaceholder')}
-				class="w-full rounded-2xl border border-border bg-surface-overlay px-4 py-3 text-sm focus:border-primary focus:outline-none resize-none"
-			></textarea>
-			<p class="mt-2 text-xs text-text-muted">{i18n.t('admin.sponsored.notesHint')}</p>
-		</div>
-
-		<div class="flex justify-end gap-2 pt-2 border-t border-border">
-			<Button variant="ghost" onclick={() => (showDecide = false)}>
-				{i18n.t('admin.common.cancel')}
-			</Button>
-			<Button variant={action === 'reject' ? 'danger' : 'accent'} loading={deciding}>
-				{action === 'approve'
-					? i18n.t('admin.common.approve')
-					: action === 'reject'
-						? i18n.t('admin.common.reject')
-						: i18n.t('admin.sponsored.negotiate')}
-			</Button>
-		</div>
-	</form>
-</Modal>
+	onsubmit={submitDecide}
+/>
 
 <Modal
 	open={showLink}
