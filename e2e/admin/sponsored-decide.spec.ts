@@ -1,52 +1,38 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
+import { withDb, uniq, seedUser } from '../setup/db';
 
 // Phase 2 — sponsored challenge requests: decide (approve/reject) via UI.
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
 async function seedSponsoredRequest() {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
-		const { rows: ownerRows } = await client.query(
-			`INSERT INTO users (email, username, password_hash, first_name, last_name, display_name, skill_domain, role)
-			 VALUES ($1, $2, 'noop', 'O', 'W', 'Owner', 'code', 'enterprise') RETURNING id`,
-			[`sp-owner-${uniq}@x.test`, `spowner${uniq}`.slice(0, 30)]
-		);
+	const id = uniq();
+	const owner = await seedUser({ prefix: 'spowner', role: 'enterprise' });
+	return withDb(async (client) => {
 		const { rows: entRows } = await client.query(
 			`INSERT INTO enterprises (owner_id, company_name, slug, company_size)
 			 VALUES ($1, $2, $3, '11-50') RETURNING id`,
-			[ownerRows[0].id, `Sponsor Co ${uniq}`, `sponsor-${uniq}`.slice(0, 60)]
+			[owner.id, `Sponsor Co ${id}`, `sponsor-${id}`.slice(0, 60)]
 		);
-		const proposedTitle = `E2E Sponsored ${uniq}`;
+		const proposedTitle = `E2E Sponsored ${id}`;
 		const { rows } = await client.query(
 			`INSERT INTO sponsored_challenge_requests
 			   (enterprise_id, requested_by_user_id, proposed_title, brief,
 			    skill_domain, difficulty, duration_days, budget_eur_cents)
 			 VALUES ($1, $2, $3, 'E2E brief', 'code', 3, 14, 500000)
 			 RETURNING id`,
-			[entRows[0].id, ownerRows[0].id, proposedTitle]
+			[entRows[0].id, owner.id, proposedTitle]
 		);
 		return { requestId: rows[0].id as string, proposedTitle };
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 async function readRequestStatus(requestId: string) {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query(
 			'SELECT status FROM sponsored_challenge_requests WHERE id = $1',
 			[requestId]
 		);
 		return rows[0]?.status as string | undefined;
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 async function landOnPage(page: import('@playwright/test').Page, proposedTitle: string) {

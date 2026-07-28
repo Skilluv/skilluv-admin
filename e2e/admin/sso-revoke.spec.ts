@@ -1,48 +1,29 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { withDb, seedUser } from '../setup/db';
 
 // Phase 2 — admin can revoke an active SSO session.
 // The list endpoint filters on `login_method='sso' AND revoked_at IS NULL`.
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
 async function seedSsoSession() {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
-		const { rows: userRows } = await client.query(
-			`INSERT INTO users (email, username, password_hash, first_name, last_name, display_name, skill_domain)
-			 VALUES ($1, $2, 'noop', 'Sso', 'User', $3, 'code') RETURNING id`,
-			[`sso-${uniq}@x.test`, `sso${uniq}`.slice(0, 30), `Sso ${uniq}`]
-		);
-		// refresh_hash is BYTEA — any 32 random bytes work for a seed row.
-		const refreshHash = Buffer.from(randomUUID().replace(/-/g, ''), 'hex');
+	const user = await seedUser({ prefix: 'sso' });
+	// refresh_hash is BYTEA — any random bytes work for a seed row.
+	const refreshHash = Buffer.from(randomUUID().replace(/-/g, ''), 'hex');
+	return withDb(async (client) => {
 		const { rows } = await client.query(
 			`INSERT INTO user_sessions (user_id, refresh_hash, login_method)
 			 VALUES ($1, $2, 'sso') RETURNING id`,
-			[userRows[0].id, refreshHash]
+			[user.id, refreshHash]
 		);
-		return {
-			sessionId: rows[0].id as string,
-			userId: userRows[0].id as string,
-			username: `sso${uniq}`.slice(0, 30)
-		};
-	} finally {
-		await client.end();
-	}
+		return { sessionId: rows[0].id as string, userId: user.id, username: user.username };
+	});
 }
 
 async function readSessionRevokedAt(sessionId: string): Promise<Date | null> {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query('SELECT revoked_at FROM user_sessions WHERE id = $1', [sessionId]);
 		return (rows[0]?.revoked_at as Date | null) ?? null;
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 test('UI regression guard: SSO sessions list stays empty because of response shape mismatch', async ({ page }) => {

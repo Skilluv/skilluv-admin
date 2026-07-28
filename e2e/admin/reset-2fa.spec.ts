@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
+import { withDb, seedUser } from '../setup/db';
 
 // Phase 2 — admin can wipe another user's 2FA.
 //
@@ -14,33 +14,8 @@ import pg from 'pg';
 //   2. The backend endpoint end-to-end via a browser fetch (proves the wipe
 //      works so downstream UI fix is safe to ship)
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
-async function seedVictimWith2fa() {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const email = `victim-2fa-${uniq}@skilluv.test`;
-	const username = `victim2fa${uniq}`.slice(0, 30);
-	const display_name = `Victim2FA ${uniq}`;
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
-		const { rows } = await client.query(
-			`INSERT INTO users (email, username, password_hash, first_name, last_name, display_name, skill_domain,
-			                    totp_secret, totp_enabled)
-			 VALUES ($1, $2, 'noop', 'Victim', 'TwoFA', $3, 'code', $4, TRUE)
-			 RETURNING id`,
-			[email, username, display_name, Buffer.alloc(20, 1)]
-		);
-		return { id: rows[0].id as string, email, username, display_name };
-	} finally {
-		await client.end();
-	}
-}
-
 async function read2faState(userId: string) {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query(
 			'SELECT totp_enabled, totp_secret FROM users WHERE id = $1',
 			[userId]
@@ -49,13 +24,11 @@ async function read2faState(userId: string) {
 			totp_enabled: rows[0]?.totp_enabled as boolean,
 			totp_secret: rows[0]?.totp_secret as Buffer | null
 		};
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 test('UI regression guard: reset-2fa button is disabled because /admin/users/{id} omits totp_enabled', async ({ page }) => {
-	const victim = await seedVictimWith2fa();
+	const victim = await seedUser({ prefix: 'victim2fa', totpEnabled: true });
 	await page.goto(`/users/${victim.id}`);
 	await expect(page.getByRole('heading', { name: victim.display_name })).toBeVisible({ timeout: 10_000 });
 
@@ -68,7 +41,7 @@ test('UI regression guard: reset-2fa button is disabled because /admin/users/{id
 });
 
 test('API: POST /admin/users/{id}/reset-2fa wipes TOTP end-to-end', async ({ page }) => {
-	const victim = await seedVictimWith2fa();
+	const victim = await seedUser({ prefix: 'victim2fa', totpEnabled: true });
 	const before = await read2faState(victim.id);
 	expect(before.totp_enabled, 'pre-reset').toBe(true);
 	expect(before.totp_secret, 'pre-reset').not.toBeNull();

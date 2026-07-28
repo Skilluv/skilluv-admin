@@ -1,58 +1,42 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
+import { withDb, uniq, seedUser } from '../setup/db';
 
 // Phase 2 — reports moderation: resolve + dismiss via the UI, DB confirms.
 // Seed a reporter user + a target user + a pending report per test.
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
 async function seedReport() {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
-		const insertUser = `INSERT INTO users (email, username, password_hash, first_name, last_name, display_name, skill_domain)
-		 VALUES ($1, $2, 'noop', 'F', 'L', $3, 'code') RETURNING id`;
-		const { rows: reporterRows } = await client.query(insertUser, [
-			`reporter-${uniq}@x.test`,
-			`reporter${uniq}`.slice(0, 30),
-			`Reporter ${uniq}`
-		]);
-		const { rows: targetRows } = await client.query(insertUser, [
-			`target-${uniq}@x.test`,
-			`target${uniq}`.slice(0, 30),
-			`Target ${uniq}`
-		]);
-		const { rows: reportRows } = await client.query(
+	const id = uniq();
+	const reporter = await seedUser({ prefix: 'reporter' });
+	const target = await seedUser({ prefix: 'target' });
+	return withDb(async (client) => {
+		const { rows } = await client.query(
 			`INSERT INTO reports (reporter_id, target_type, target_id, reason, details)
 			 VALUES ($1, 'user', $2, 'spam', $3) RETURNING id`,
-			[reporterRows[0].id, targetRows[0].id, `E2E test details ${uniq}`]
+			[reporter.id, target.id, `E2E test details ${id}`]
 		);
-		return {
-			reportId: reportRows[0].id as string,
-			reporterUsername: `reporter${uniq}`.slice(0, 30)
-		};
-	} finally {
-		await client.end();
-	}
+		return { reportId: rows[0].id as string, reporterUsername: reporter.username };
+	});
 }
 
 async function readReportStatus(reportId: string): Promise<string | undefined> {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query('SELECT status FROM reports WHERE id = $1', [reportId]);
 		return rows[0]?.status as string | undefined;
-	} finally {
-		await client.end();
-	}
+	});
 }
 
-async function clickAction(page: import('@playwright/test').Page, reportId: string, buttonName: RegExp, expectedStatus: string) {
+async function clickAction(
+	page: import('@playwright/test').Page,
+	reportId: string,
+	buttonName: RegExp,
+	expectedStatus: string
+) {
 	// Anchor the report card by the report details text (unique per seed).
 	const detailsSpan = page.getByText(`E2E test details`).first();
 	await expect(detailsSpan).toBeVisible({ timeout: 10_000 });
-	const card = detailsSpan.locator('xpath=ancestor::div[contains(@class,"rounded-2xl") and contains(@class,"border-border")][1]');
+	const card = detailsSpan.locator(
+		'xpath=ancestor::div[contains(@class,"rounded-2xl") and contains(@class,"border-border")][1]'
+	);
 
 	const putReq = page.waitForResponse(
 		(r) => r.url().includes(`/admin/reports/${reportId}`) && r.request().method() === 'PUT'

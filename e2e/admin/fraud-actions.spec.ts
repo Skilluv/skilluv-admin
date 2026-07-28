@@ -1,46 +1,31 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
+import { withDb, seedUser } from '../setup/db';
 
 // Phase 2 — fraud queue: mark-valid + revoke a flagged deliverable via the UI.
 // Backend `list_flagged` returns deliverables with plagiarism_score >= 0.9.
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
 async function seedFlaggedDeliverable() {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
-		const { rows: userRows } = await client.query(
-			`INSERT INTO users (email, username, password_hash, first_name, last_name, display_name, skill_domain)
-			 VALUES ($1, $2, 'noop', 'F', 'L', $3, 'code') RETURNING id`,
-			[`fraud-${uniq}@x.test`, `fraud${uniq}`.slice(0, 30), `Fraud User ${uniq}`]
-		);
+	const user = await seedUser({ prefix: 'fraud' });
+	return withDb(async (client) => {
 		const { rows } = await client.query(
 			`INSERT INTO deliverables
 			   (user_id, artifact_type, artifact_url, verifiable_by, plagiarism_score)
 			 VALUES ($1, 'code', 'https://e2e.test/artifact', 'ai', 0.95)
 			 RETURNING id`,
-			[userRows[0].id]
+			[user.id]
 		);
 		return { deliverableId: rows[0].id as string };
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 async function readDeliverable(id: string) {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query(
 			'SELECT plagiarism_score, verification_status FROM deliverables WHERE id = $1',
 			[id]
 		);
 		return rows[0] as { plagiarism_score: string | null; verification_status: string } | undefined;
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 async function landOnFraudTab(page: import('@playwright/test').Page, deliverableId: string) {

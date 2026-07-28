@@ -1,17 +1,14 @@
 import { test, expect } from '@playwright/test';
-import pg from 'pg';
+import { withDb, uniq } from '../setup/db';
 
 // Phase 2 — challenge admin lifecycle: seeded challenge → publish via UI →
 // archive via UI. Backend enforces "hard rule #1" (challenges published must be
 // is_training=TRUE or have project_id); we set is_training when seeding so the
 // publish button doesn't 400.
 
-const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
-
 async function seedDraftChallenge(page: import('@playwright/test').Page) {
-	const uniq = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-	const title = `E2E Challenge ${uniq}`;
-	const created = await page.evaluate(async ({ title }) => {
+	const title = `E2E Challenge ${uniq()}`;
+	return await page.evaluate(async ({ title }) => {
 		const r = await fetch('/api/admin/challenges', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -27,18 +24,13 @@ async function seedDraftChallenge(page: import('@playwright/test').Page) {
 		if (!r.ok) throw new Error(`create failed: ${r.status} ${await r.text()}`);
 		return (await r.json()).data.challenge as { id: string; title: string };
 	}, { title });
-	return created;
 }
 
 async function readStatus(challengeId: string) {
-	const client = new pg.Client({ connectionString: PG_URL });
-	await client.connect();
-	try {
+	return withDb(async (client) => {
 		const { rows } = await client.query('SELECT status FROM challenge_templates WHERE id = $1', [challengeId]);
 		return rows[0]?.status as string | undefined;
-	} finally {
-		await client.end();
-	}
+	});
 }
 
 test('admin can publish then archive a draft challenge via the UI', async ({ page }) => {
