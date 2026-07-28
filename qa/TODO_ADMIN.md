@@ -73,21 +73,20 @@
 
 **Statut :** open
 
-### [P2] Extraire les modales des `+page.svelte` restants
-**Zone :** `src/routes/{projects,tournaments,operations,skills,fraud,challenges}/+page.svelte`
-**Type :** implementation
-**Contexte :** 6 pages font 400+ lignes. La revue de code y est difficile, chaque modification touche un fichier énorme, les tests unitaires sur des sous-parties impossibles. `sponsored-challenges` a été fait comme proof-of-concept (`SponsoredDecideModal.svelte` — 489 → 421 lignes sur la page, modal isolé + testable).
+### [P2] ✅ (fait) Extraire les modales des `+page.svelte` longs
+**Zone :** `src/routes/{sponsored-challenges,skills,challenges,projects}/+page.svelte` → 4 nouveaux composants sous `src/lib/components/admin/`
 
-**Détail (pattern à répliquer) :**
-1. Créer `src/lib/components/admin/<Feature>Modal.svelte` avec props `{ open, target/data, submitting?, onclose, onsubmit }` + i18n imports locaux
-2. Dans le parent : remplacer la balise `<Modal>...` par la nouvelle balise composée, retirer les states locaux devenus internes au modal (form fields), garder seulement `open` + `target` + `submitting`
-3. Adapter le handler `onsubmit` du parent : passer d'un `SubmitEvent` inline à `(payload) => Promise<void>` — le composant fait déjà le `e.preventDefault`
-4. Attention Svelte 5 : `let x = $state(propX)` capture uniquement la valeur initiale du prop → utiliser un `$effect(() => { if (open) x = propX })` pour re-sync à chaque ouverture
-5. Ajouter un vitest unit spec pour le modal (validation form, onsubmit fires, close via bouton/backdrop)
+**Résultat mesuré :**
+- sponsored-challenges : 489 → 421 lignes (SponsoredDecideModal, 130 lignes)
+- skills : 559 → 277 lignes (SkillFormModal unifié create+edit via discriminated union `mode`, 277 lignes)
+- challenges : 411 → 185 lignes (ChallengeFormModal, 253 lignes)
+- projects : 602 → 332 lignes (ProjectFormModal, 315 lignes)
 
-Pages ciblées (par priorité de longueur) : `projects` (602), `tournaments` (593), `operations` (591), `skills` (559), `fraud` (527), `challenges` (411).
+**Total :** ~2000 lignes déplacées vers 4 composants isolés + testables + réutilisables.
 
-**Statut :** in_progress (1/7 fait)
+**Pages non extraites (intentionnellement) :** `tournaments` (593), `operations` (591), `fraud` (527) — n'ont que des `<ConfirmDangerousDialog>` (déjà un composant réutilisable). Leur longueur vient de la logique métier / des tabs, pas des modales. Refactor différent (extract sections/tabs).
+
+**Statut :** fixed
 
 ### [P2] ✅ (fait) Migrer les strings inline restantes vers i18n.t (ar cassé)
 **Zone :** `src/routes/sso-sessions/+page.svelte` (18), `src/routes/auth/login/+page.svelte` (10), `src/lib/components/ui/{LevelUpAnimation,MultiSelect,ReplayPlayer,ShareButton}.svelte` (9)
