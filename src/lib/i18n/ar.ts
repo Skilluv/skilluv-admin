@@ -1176,6 +1176,61 @@ export const ar: Translations = {
 				kyc_reviewer: 'ترشيح موظفين للتحقق من KYC المؤسسات.',
 				community_curator: '3+ تحديات مجتمعية منشورة (تلقائي).'
 			}
+		},
+		backendStatus: {
+			banner: 'الخادم غير متاح — إعادة المحاولة خلال {seconds} ث',
+			bannerNow: 'الخادم غير متاح — جاري المحاولة…',
+			retryNow: 'إعادة المحاولة الآن',
+			probing: 'جاري التحقق…',
+			reconnected: 'تم استعادة الاتصال بالخادم'
+		},
+		sso: {
+			title: 'جلسات SSO',
+			headingActive: 'جلسات SSO نشطة',
+			subtitle:
+				'كل الجلسات الموثقة عبر IdP خارجي (login_method=\'sso\'). مفيدة للتدقيق ولإلغاء جلسة عن بعد في حالة الاختراق.',
+			filterEnterpriseLabel: 'تصفية حسب المؤسسة (UUID)',
+			filterBtn: 'تصفية',
+			resetFilterBtn: 'إعادة',
+			emptyState: 'لا توجد جلسات SSO نشطة.',
+			colUser: 'المستخدم',
+			colEnterprise: 'المؤسسة',
+			colCreated: 'أنشئت',
+			colLastUsed: 'آخر نشاط',
+			colActions: 'إجراءات',
+			revokeBtn: 'إلغاء',
+			revokedToast: 'تم إلغاء الجلسة',
+			revokeDialogTitle: 'إلغاء جلسة SSO',
+			revokeHint: 'اشتباه بالاختراق، جلسة معلقة، إلخ.'
+		},
+		loginPage: {
+			pageTitle: 'تسجيل دخول المسؤول',
+			controlPanel: 'لوحة التحكم',
+			emailOrUsername: 'البريد الإلكتروني أو اسم المستخدم',
+			password: 'كلمة المرور',
+			totpCode: 'رمز TOTP',
+			useBackupCode: 'استخدم رمز نسخ احتياطي',
+			signInBtn: 'تسجيل الدخول',
+			accessRestricted: 'هذا الوصول مقتصر على مسؤولي Skilluv.',
+			notAdminError: 'هذا الحساب ليس لديه صلاحيات المسؤول.',
+			unexpectedError: 'خطأ غير متوقع.'
+		},
+		levelUp: {
+			newTitle: 'عنوان جديد',
+			keepGoing: 'استمر هكذا!',
+			continueBtn: 'متابعة'
+		},
+		multiSelect: {
+			remove: 'إزالة',
+			clearAll: 'إزالة الكل'
+		},
+		replayPlayer: {
+			originalDuration: 'المدة الأصلية'
+		},
+		shareButton: {
+			linkCopied: 'تم نسخ الرابط!',
+			share: 'مشاركة',
+			copyLink: 'نسخ الرابط'
 		}
 	},
 	community: {

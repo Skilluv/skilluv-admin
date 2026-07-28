@@ -163,7 +163,7 @@
 						<button
 							type="button"
 							onclick={(e) => removeChip(e, v)}
-							aria-label={i18n.locale === 'fr' ? 'Retirer' : 'Remove'}
+							aria-label={i18n.t('admin.multiSelect.remove')}
 							class="rounded hover:bg-primary/20"
 						>
 							<X size={10} strokeWidth={2.5} />
@@ -182,7 +182,7 @@
 			<button
 				type="button"
 				onclick={clearAll}
-				aria-label={i18n.locale === 'fr' ? 'Tout retirer' : 'Clear all'}
+				aria-label={i18n.t('admin.multiSelect.clearAll')}
 				class="shrink-0 rounded-full p-0.5 text-text-muted hover:bg-surface-overlay hover:text-text-primary"
 			>
 				<X size={12} strokeWidth={2} />

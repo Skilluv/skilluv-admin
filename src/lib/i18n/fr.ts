@@ -1168,6 +1168,61 @@ export const fr: Translations = {
 				kyc_reviewer: 'Nomination staff pour valider les KYC entreprises.',
 				community_curator: '3+ challenges communautaires publiés (auto).'
 			}
+		},
+		backendStatus: {
+			banner: 'Backend indisponible — nouvelle tentative dans {seconds}s',
+			bannerNow: 'Backend indisponible — tentative en cours…',
+			retryNow: 'Réessayer maintenant',
+			probing: 'Vérification…',
+			reconnected: 'Connexion au backend rétablie'
+		},
+		sso: {
+			title: 'Sessions SSO',
+			headingActive: 'Sessions SSO actives',
+			subtitle:
+				"Toutes les sessions authentifiées via un IdP externe (login_method='sso'). Utile pour l'audit et pour révoquer une session à distance en cas de compromission.",
+			filterEnterpriseLabel: 'Filtrer par entreprise (UUID)',
+			filterBtn: 'Filtrer',
+			resetFilterBtn: 'Réinitialiser',
+			emptyState: 'Aucune session SSO active.',
+			colUser: 'Utilisateur',
+			colEnterprise: 'Entreprise',
+			colCreated: 'Créée',
+			colLastUsed: 'Dernière activité',
+			colActions: 'Actions',
+			revokeBtn: 'Révoquer',
+			revokedToast: 'Session révoquée',
+			revokeDialogTitle: 'Révoquer la session SSO',
+			revokeHint: 'Compromission suspectée, session zombie, etc.'
+		},
+		loginPage: {
+			pageTitle: 'Admin — Connexion',
+			controlPanel: 'Panneau de contrôle',
+			emailOrUsername: 'Email ou pseudo',
+			password: 'Mot de passe',
+			totpCode: 'Code TOTP',
+			useBackupCode: 'Utiliser un code de secours',
+			signInBtn: 'Se connecter',
+			accessRestricted: 'Cet accès est réservé aux administrateurs Skilluv.',
+			notAdminError: "Ce compte n'a pas les droits admin.",
+			unexpectedError: 'Erreur inattendue.'
+		},
+		levelUp: {
+			newTitle: 'Nouveau titre',
+			keepGoing: 'Continue comme ça !',
+			continueBtn: 'Continuer'
+		},
+		multiSelect: {
+			remove: 'Retirer',
+			clearAll: 'Tout retirer'
+		},
+		replayPlayer: {
+			originalDuration: 'Durée originale'
+		},
+		shareButton: {
+			linkCopied: 'Lien copié !',
+			share: 'Partager',
+			copyLink: 'Copier le lien'
 		}
 	},
 	community: {

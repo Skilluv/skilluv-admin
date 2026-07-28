@@ -1168,6 +1168,61 @@ export const en: Translations = {
 				kyc_reviewer: 'Staff nomination to validate enterprise KYC.',
 				community_curator: '3+ published community challenges (auto).'
 			}
+		},
+		backendStatus: {
+			banner: 'Backend unreachable — retrying in {seconds}s',
+			bannerNow: 'Backend unreachable — probing now…',
+			retryNow: 'Retry now',
+			probing: 'Probing…',
+			reconnected: 'Backend connection restored'
+		},
+		sso: {
+			title: 'SSO sessions',
+			headingActive: 'Active SSO sessions',
+			subtitle:
+				"All sessions authenticated via an external IdP (login_method='sso'). Useful for auditing and remote-revoking a compromised session.",
+			filterEnterpriseLabel: 'Filter by enterprise (UUID)',
+			filterBtn: 'Filter',
+			resetFilterBtn: 'Reset',
+			emptyState: 'No active SSO sessions.',
+			colUser: 'User',
+			colEnterprise: 'Enterprise',
+			colCreated: 'Created',
+			colLastUsed: 'Last used',
+			colActions: 'Actions',
+			revokeBtn: 'Revoke',
+			revokedToast: 'Session revoked',
+			revokeDialogTitle: 'Revoke SSO session',
+			revokeHint: 'Suspected compromise, stale session, etc.'
+		},
+		loginPage: {
+			pageTitle: 'Admin sign in',
+			controlPanel: 'Control panel',
+			emailOrUsername: 'Email or username',
+			password: 'Password',
+			totpCode: 'TOTP code',
+			useBackupCode: 'Use a backup code',
+			signInBtn: 'Sign in',
+			accessRestricted: 'This access is restricted to Skilluv administrators.',
+			notAdminError: 'This account does not have admin privileges.',
+			unexpectedError: 'Unexpected error.'
+		},
+		levelUp: {
+			newTitle: 'New title',
+			keepGoing: 'Keep going!',
+			continueBtn: 'Continue'
+		},
+		multiSelect: {
+			remove: 'Remove',
+			clearAll: 'Clear all'
+		},
+		replayPlayer: {
+			originalDuration: 'Original duration'
+		},
+		shareButton: {
+			linkCopied: 'Link copied!',
+			share: 'Share',
+			copyLink: 'Copy link'
 		}
 	},
 	community: {

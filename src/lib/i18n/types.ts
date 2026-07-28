@@ -1359,6 +1359,60 @@ export interface Translations {
 				legendary: string;
 			};
 		};
+		backendStatus: {
+			banner: string;
+			bannerNow: string;
+			retryNow: string;
+			probing: string;
+			reconnected: string;
+		};
+		sso: {
+			title: string;
+			headingActive: string;
+			subtitle: string;
+			filterEnterpriseLabel: string;
+			filterBtn: string;
+			resetFilterBtn: string;
+			emptyState: string;
+			colUser: string;
+			colEnterprise: string;
+			colCreated: string;
+			colLastUsed: string;
+			colActions: string;
+			revokeBtn: string;
+			revokedToast: string;
+			revokeDialogTitle: string;
+			revokeHint: string;
+		};
+		loginPage: {
+			pageTitle: string;
+			controlPanel: string;
+			emailOrUsername: string;
+			password: string;
+			totpCode: string;
+			useBackupCode: string;
+			signInBtn: string;
+			accessRestricted: string;
+			notAdminError: string;
+			unexpectedError: string;
+		};
+		levelUp: {
+			newTitle: string;
+			keepGoing: string;
+			continueBtn: string;
+		};
+		multiSelect: {
+			remove: string;
+			clearAll: string;
+		};
+		replayPlayer: {
+			originalDuration: string;
+		};
+		shareButton: {
+			linkCopied: string;
+			share: string;
+			copyLink: string;
+		};
 	};
 	community: {
 		title: string;
