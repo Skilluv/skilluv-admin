@@ -21,21 +21,21 @@
 **Contexte :** cross-ref BUGS_BACK P1 (même fix). Le front en a besoin pour activer le bouton reset-2FA, afficher le badge 2FA correct, etc. Sans ces champs, plusieurs UI restent grisées.
 **Détail :** enrichir le `json!` du handler `get_user` (l.249 de `src/routes/admin_moderation.rs`) avec les 3 champs + COUNT depuis `webauthn_credentials WHERE user_id = $1`.
 
-**Statut :** open (peut être fait dans le même commit que le fix BUGS_BACK P1)
+**Statut :** fixed (backend commit 4e857ad — les 3 champs sont exposés)
 
 ### [P3] Aligner tous les payloads liste admin sur `{data: T[], pagination}` (audit convention)
 **Type :** other
 **Contexte :** le bug SSO (BUGS_BACK P1 `{data:{sessions:[…]}}`) suggère qu'il peut y avoir d'autres endpoints admin qui dérogent à la convention paginée standard. Utile d'auditer tous les `GET /admin/*` pour cette cohérence avant que d'autres UIs cassent silencieusement.
 **Détail :** grep `.route("/admin/` + inspecter chaque handler qui renvoie une liste. Convention cible : `{data: T[], pagination: {…}, meta: {…}}`. Fix tout ce qui dévie.
 
-**Statut :** open
+**Statut :** deferred (backend team — scan rapide n'a rien révélé d'autre que le SSO fix. Follow-up ticket si des surprises apparaissent en E2E)
 
 ### [P3] Documenter les endpoints admin dans OpenAPI (utoipa)
 **Type :** implementation
 **Contexte :** l'audit initial du back a montré qu'il n'y a pas de doc OpenAPI. Utile pour synchroniser front/back sur les contrats (aurait évité le mismatch `is_banned`/`banned`).
 **Détail :** décorer chaque handler admin avec `#[utoipa::path(...)]`, exposer `/api/docs` (déjà partiellement fait via `openapi_routes()`).
 
-**Statut :** open
+**Statut :** deferred (doublon avec BE-P1-CONTRACT — infrastructure utoipa + Swagger UI déjà wirée backend commit c3ec13c, l'annotation exhaustive des ~86 handlers est le sujet d'un autre PR long-tail)
 
 ---
 

@@ -39,7 +39,7 @@
 
 **Fix suggéré :** soit déplacer ces routes dans un module `admin_*` mergé dans `admin_routes()`, soit les envelopper dans un `.nest("/api", admin_gate(...))` séparé.
 
-**Statut :** open
+**Statut :** fixed (backend commit 86688dc — wire 6 admin route modules that existed but were never nested)
 
 ### [P1] `GET /api/admin/users/{id}` n'expose pas `totp_enabled` (ni webauthn)
 **Route :** `GET /api/admin/users/{id}` — `src/routes/admin_moderation.rs` handler `get_user` (l.223)
@@ -53,12 +53,12 @@
 
 **Impact :** feature admin reset-2fa impossible depuis l'UI. Fonctionne uniquement en tapant l'API directement.
 
-**Statut :** open
+**Statut :** fixed (backend commit 4e857ad — totp_enabled + webauthn_credentials_count now returned)
 
 ### [P2] `GET /api/admin/users/{id}` n'expose pas `email_2fa_enabled`
 **Même route.** Le champ existe en DB (`users.email_2fa_enabled`) mais n'est pas dans la réponse — pas bloquant côté UI actuelle mais lié au [P1] ci-dessus.
 
-**Statut :** open
+**Statut :** fixed (backend commit 4e857ad — email_2fa_enabled exposed alongside totp_enabled)
 
 ### [P1] Seasons — mismatch de nom d'endpoint front/back
 **Route :** front appelle `POST /admin/seasons/{id}/status`, back expose `POST /admin/seasons/{slug}/activate` — `src/routes/seasons.rs`
@@ -70,7 +70,9 @@
 
 **Fix suggéré :** ajouter côté back une route `POST /admin/seasons/{id}/status` qui accepte `{status}` et route vers `activate_season` / futurs états. Ou aligner le front sur `/activate` si c'est la seule transition supportée. Confirmer avec le PO ce qui est attendu.
 
-**Statut :** open
+**Note post-fix :** ma qualification était partiellement erronée — l'endpoint `/status` existait déjà. Le vrai problème était que `/admin/seasons/*` + `/admin/tournaments/*` vivaient dans `tournament_routes` (public) sans `admin_gate` (juste un check `auth.role != "admin"` inline). Backend a split en `admin_tournament_routes` + wiré derrière `admin_gate`.
+
+**Statut :** fixed (backend commit a099d30 — split admin_tournament_routes out of tournament_routes + nest with admin_gate)
 
 ### [P1] `GET /admin/sso/sessions` renvoie `{data:{sessions:[…]}}` au lieu de `{data:[…]}`
 **Route :** `GET /api/admin/sso/sessions` — `src/routes/admin.rs` handler `list_sso_sessions` (l.655)
@@ -97,7 +99,7 @@ Ok(Json(json!({
 
 **Impact :** feature "voir les sessions SSO actives" complètement cassée en prod. L'admin ne peut pas révoquer une session compromise via l'UI. Fallback : psql direct — pas acceptable.
 
-**Statut :** open
+**Statut :** fixed (backend commit aa5e79b — unwrap nested `data.sessions` → `data: T[]`)
 
 ### [P1] `POST /admin/community/{id}/approve` renvoie 500 si le challenge n'a ni `is_training=TRUE` ni `project_id`
 **Route :** `POST /api/admin/community/{id}/approve` — `src/routes/admin_community.rs` handler `approve_challenge` (l.88)
@@ -124,7 +126,7 @@ Ou valider en amont et renvoyer 400 sinon.
 
 **Impact :** feature "approuver un challenge communautaire" cassée pour la majorité des cas usage (personne n'attache un project_id à une soumission communautaire).
 
-**Statut :** open
+**Statut :** fixed (backend commit d96bdb8 — pre-check business rule, return 400 with actionable message instead of 500)
 
 ### [P2] Projects — front utilise `DELETE /admin/projects/{slug}`, back n'expose que `POST /admin/projects/{slug}/archive`
 **Route :** `DELETE /admin/projects/{slug}` (front) vs `POST /admin/projects/{slug}/archive` (back)
@@ -136,7 +138,7 @@ Ou valider en amont et renvoyer 400 sinon.
 
 **Fix suggéré :** aligner le front sur `POST .../archive` (le back reflète mieux la sémantique — archive n'est pas une suppression). Ou ajouter côté back une route `DELETE` qui alias sur archive.
 
-**Statut :** open
+**Statut :** fixed (résolu indirectement par backend commit 86688dc — `admin_projects` module wiré expose `DELETE /admin/projects/{slug}` qui déclenche l'archive ; le front admin utilisait déjà DELETE, plus rien à changer)
 
 ---
 
