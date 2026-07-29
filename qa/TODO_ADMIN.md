@@ -73,7 +73,7 @@
 
 **Statut :** fixed
 
-### [P2] ✅ (fait) Extraire les modales des `+page.svelte` longs
+### [P2] Extraire les modales des `+page.svelte` restants
 **Zone :** `src/routes/{sponsored-challenges,skills,challenges,projects}/+page.svelte` → 4 nouveaux composants sous `src/lib/components/admin/`
 
 **Résultat mesuré :**
@@ -88,7 +88,7 @@
 
 **Statut :** fixed
 
-### [P2] ✅ (fait) Migrer les strings inline restantes vers i18n.t (ar cassé)
+### [P2] Migrer les ~37 strings inline restantes vers i18n.t (ar cassé)
 **Zone :** `src/routes/sso-sessions/+page.svelte` (18), `src/routes/auth/login/+page.svelte` (10), `src/lib/components/ui/{LevelUpAnimation,MultiSelect,ReplayPlayer,ShareButton}.svelte` (9)
 **Type :** implementation
 **Contexte :** ces strings utilisent le pattern `i18n.locale === 'fr' ? 'FR' : 'EN'` — elles bypassent complètement `ar.ts`. Un utilisateur admin en arabe voit le fallback anglais partout. Le helper `intlLocale()` a déjà été extrait pour tous les mappings de tags Intl.* (~15 occurrences), reste ces vraies traductions.
@@ -103,7 +103,7 @@ Grouper par écran pour limiter le rework. Priorité `sso-sessions` (bug UI déj
 
 **Statut :** fixed
 
-### [P3] ✅ (fait) CI GitHub Actions — job `e2e-admin` pulling backend image
+### [P3] CI GitHub Actions — étendre au projet `admin` Playwright
 **Zone :** `.github/workflows/ci.yml` — job `e2e-admin`
 **Type :** implementation
 **Fix appliqué :** commit `ci: add e2e-admin job pulling backend image from GHCR`. Nouveau job pull `ghcr.io/skilluv/skilluv-backend:master`, services postgres/redis/mailpit/minio, bootstrap admin, `npx playwright test --project=admin`. Reste rouge tant que la PR back #33 n'est pas mergée (image pas encore publiée) — comportement voulu.
