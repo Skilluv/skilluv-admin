@@ -2,8 +2,13 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { withDb, seedUser } from '../setup/db';
 
-// Phase 2 — admin can revoke an active SSO session.
+// Phase 2 — admin can revoke an active SSO session end-to-end via the UI.
 // The list endpoint filters on `login_method='sso' AND revoked_at IS NULL`.
+//
+// The former regression guard (empty `<tbody>` because the backend nested
+// the array in `{data:{sessions:[…]}}`) was flipped after Trello MshrIOYf
+// landed — the response now follows the standard `{data: T[], pagination}`
+// shape used by every other admin list.
 
 async function seedSsoSession() {
 	const user = await seedUser({ prefix: 'sso' });
@@ -26,36 +31,30 @@ async function readSessionRevokedAt(sessionId: string): Promise<Date | null> {
 	});
 }
 
-test('UI regression guard: SSO sessions list stays empty because of response shape mismatch', async ({ page }) => {
-	// Ensure at least one active SSO session exists in DB.
-	await seedSsoSession();
-
-	await page.goto('/sso-sessions');
-	await page.waitForResponse(
-		(r) => r.url().includes('/api/admin/sso/sessions') && r.request().method() === 'GET'
-	);
-	// The list should have rows once the backend fix ships (BUGS_BACK P1 — the
-	// response nests `{data:{sessions:[…]}}` instead of `{data:[…]}`). Until
-	// then, no <tr> in <tbody> is rendered — assert the broken state so we get
-	// notified via a test failure the day the back ships the fix.
-	await expect(page.locator('tbody tr'), 'expected: 0 rows today (list broken); flip to > 0 after backend fix').toHaveCount(0);
-});
-
-test('API: POST /admin/sso/sessions/{id}/revoke sets revoked_at', async ({ page }) => {
-	const { sessionId } = await seedSsoSession();
+test('admin revokes an active SSO session via the UI, DB revoked_at flips', async ({ page }) => {
+	const { sessionId, username } = await seedSsoSession();
 	expect(await readSessionRevokedAt(sessionId), 'pre-revoke').toBeNull();
 
-	// Land on an admin page for cookies + origin, then fire the revoke fetch
-	// directly (bypasses the broken list UI).
-	await page.goto('/');
-	const status = await page.evaluate(async ({ id, reason }) => {
-		const r = await fetch(`/api/admin/sso/sessions/${id}/revoke`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ reason })
-		});
-		return r.status;
-	}, { id: sessionId, reason: 'E2E — session compromise drill' });
-	expect(status, 'revoke POST').toBeLessThan(300);
+	const initialLoad = page.waitForResponse(
+		(r) => r.url().includes('/api/admin/sso/sessions') && r.request().method() === 'GET'
+	);
+	await page.goto('/sso-sessions');
+	await initialLoad;
+
+	// List must contain at least our seeded row (backend now returns the
+	// standard `{data: T[]}` envelope). The row is keyed by the seeded
+	// username, unique per test.
+	const cell = page.getByText(username, { exact: true });
+	await expect(cell).toBeVisible({ timeout: 10_000 });
+	const row = cell.locator('xpath=ancestor::tr[1]');
+
+	const revokeReq = page.waitForResponse(
+		(r) => r.url().includes(`/admin/sso/sessions/${sessionId}/revoke`) && r.request().method() === 'POST'
+	);
+	await row.getByRole('button', { name: /révoquer|revoke/i }).click();
+	await page.getByTestId('confirm-dangerous-reason').fill('E2E — session compromise drill');
+	await page.getByTestId('confirm-dangerous-action').click();
+
+	expect((await revokeReq).status(), 'revoke POST').toBeLessThan(300);
 	expect(await readSessionRevokedAt(sessionId), 'revoked_at set').not.toBeNull();
 });

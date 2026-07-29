@@ -60,6 +60,45 @@ test('admin can approve a community challenge under review', async ({ page }) =>
 	expect(state?.community_status, 'community_status after approve').toBe('approved');
 });
 
+test('approving a community challenge without is_training/project returns 400 with actionable message', async ({ page }) => {
+	// Regression guard for Trello hVImXbUS — backend used to bubble a
+	// generic 500 when the DB trigger for hard rule P3 (published requires
+	// is_training or project_id) fired. Now it pre-checks and returns 400
+	// with a message explaining what's missing.
+	const id = uniq();
+	const title = `E2E Bad Approve ${id}`;
+	const creator = await seedUser({ prefix: 'creator-bad' });
+	const { challengeId } = await withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO challenge_templates
+			   (title, description, instructions, skill_domain, difficulty, created_by,
+			    is_community, community_status, is_training, project_id, title_i18n)
+			 VALUES ($1, 'no-training no-project', 'x', 'code', 3, $2,
+			         TRUE, 'review', FALSE, NULL, $3::jsonb)
+			 RETURNING id`,
+			[title, creator.id, JSON.stringify({ fr: title })]
+		);
+		return { challengeId: rows[0].id as string };
+	});
+
+	await page.goto('/');
+	const status = await page.evaluate(async ({ id }) => {
+		const r = await fetch(`/api/admin/community/${id}/approve`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' }
+		});
+		return { status: r.status, body: await r.text() };
+	}, { id: challengeId });
+
+	expect(status.status, 'expected 400, not 500').toBe(400);
+	expect(status.body.toLowerCase()).toMatch(/is_training|project/);
+
+	// Verify the DB was NOT mutated (approve was properly refused).
+	const state = await readChallenge(challengeId);
+	expect(state?.community_status, 'community_status untouched').toBe('review');
+	expect(state?.status, 'status untouched').not.toBe('published');
+});
+
 test('admin can reject a community challenge with feedback', async ({ page }) => {
 	const { challengeId, title } = await seedCommunityChallenge();
 	const card = await landOnReviewPage(page, title);
