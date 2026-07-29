@@ -78,7 +78,12 @@ interface UserSummary {
 }
 
 interface UserDetail {
-	user: UserPrivate;
+	// Backend enriches this beyond the shared UserPrivate shape (Trello
+	// xHnNZa5G + gWSCzyz0 + RXEWNI6y): admin panel needs the 2FA + passkey
+	// posture so we can decide reset-2fa eligibility without a psql hop.
+	// `totp_enabled` + `email_2fa_enabled` are already on UserPrivate ;
+	// `webauthn_credentials_count` is admin-only, added via intersection.
+	user: UserPrivate & { webauthn_credentials_count: number };
 	reports_against: number;
 	total_submissions: number;
 }
