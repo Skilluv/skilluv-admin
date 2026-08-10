@@ -37,6 +37,19 @@ Espace de suivi qualité pour le front admin + son intégration au backend Rust 
 Les fichiers `.md` de ce dossier restent la source de vérité **descriptive**
 (reproduction, cause, fix) ; Linear porte l'**état** et la priorisation.
 
+## Avant de lancer les E2E
+
+```
+npm run test:e2e:preflight
+```
+
+Les specs P26 se `skip`ent sur un 404 — un endpoint absent est un état de
+déploiement connu, pas une régression. Conséquence : **un run peut être vert
+en n'ayant rien vérifié**. Le préflight répond à la seule question qui compte
+avant de lancer — l'environnement est-il capable de valider quelque chose ?
+Il vérifie la présence des routes P26, le niveau de migration de la base, et
+n'écrit jamais rien.
+
 ## Workflow
 
 1. Lancer les tests Playwright (`npm run test:e2e`)
