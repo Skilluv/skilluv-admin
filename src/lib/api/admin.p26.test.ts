@@ -93,6 +93,31 @@ describe('adminApi.getProjectChallengeStats (SKI-124)', () => {
 	});
 });
 
+describe('adminApi.triggerProjectIngest (SKI-110)', () => {
+	it('POSTs the ingest trigger and returns the report', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					issues_seen: 12,
+					slices_created: 3,
+					slices_skipped_existing: 9,
+					mode: 'curator_review',
+					labels_matched: ['skilluv-challenge']
+				},
+				meta: {}
+			})
+		);
+		const { adminApi } = await import('./admin');
+		const res = await adminApi.triggerProjectIngest('skilluv-backend');
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe('/api/admin/projects/skilluv-backend/ingest');
+		expect(init.method).toBe('POST');
+		// No body: the slug in the path is the whole input.
+		expect(init.body).toBeUndefined();
+		expect(res.data.slices_created).toBe(3);
+	});
+});
+
 describe('adminApi slice config (SKI-106)', () => {
 	it('reads a slice from the public detail endpoint', async () => {
 		fetchMock.mockResolvedValueOnce(

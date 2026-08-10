@@ -59,6 +59,7 @@ import type {
 	AdminSlice,
 	SliceConfigBody,
 	ProjectChallengeStats,
+	ProjectIngestReport,
 	ValidatorDomain,
 	ValidatorApplication,
 	ValidatorApplicationRow,
@@ -465,6 +466,13 @@ export const adminApi = {
 		return api.get<ApiResponse<ProjectChallengeStats>>(`/admin/projects/${slug}/stats`, {
 			window_days: windowDays
 		});
+	},
+
+	/** SKI-110 — force one ingestion pass on this project instead of waiting for
+	 *  the hourly poller. Read-only against GitHub, like the poller itself.
+	 *  Returns 400 when the project has no repo wired or is `manual_only`. */
+	triggerProjectIngest(slug: string) {
+		return api.post<ApiResponse<ProjectIngestReport>>(`/admin/projects/${slug}/ingest`);
 	},
 
 	/** Public list endpoint, admin-consumed: only `status='open'` slices come

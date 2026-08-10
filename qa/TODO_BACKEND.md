@@ -47,7 +47,7 @@
 | `GET /admin/validator-applications` — liste filtrée + stats live | SKI-107 | livré (backend `af93edc`) |
 | Stats validateurs + matrice collusion | SKI-108 | livré (backend `d06b5b8`) |
 | `GET /admin/projects/{slug}` doit renvoyer les 5 champs P26 v2 | SKI-109 | ouvert |
-| `POST /admin/projects/{slug}/ingest` — forcer l'ingestion | SKI-110 | ouvert |
+| `POST /admin/projects/{slug}/ingest` — forcer l'ingestion | SKI-110 | ouvert (UI livrée, en attente de l'endpoint) |
 
 **Note contrats :** les payloads livrés diffèrent de ceux décrits dans les tickets d'origine (`per_page` et non `limit` ; `live_stats` et non `stats` ; `claimant_*` et non `claimer_*` ; `reject_count_approx` ; `user` imbriqué). Le front est aligné sur l'implémentation réelle, pas sur la spec — voir `src/lib/types/index.ts` section « P26 v2 ».
 

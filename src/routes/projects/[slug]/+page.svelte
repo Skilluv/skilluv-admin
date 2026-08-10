@@ -10,14 +10,23 @@
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import ProjectFormModal from '$components/admin/ProjectFormModal.svelte';
 	import ProjectChallengeStatsPanel from '$components/admin/ProjectChallengeStatsPanel.svelte';
+	import PendingBackendNotice from '$components/admin/PendingBackendNotice.svelte';
 	import type {
 		AdminSlice,
 		ProjectDetail,
+		ProjectIngestReport,
 		ProjectPatchBody,
 		ProjectCreateBody,
 		SliceIngestionMode
 	} from '$types';
-	import { ArrowLeft, ExternalLink, Pencil, Settings2, FolderGit2 } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		ExternalLink,
+		Pencil,
+		Settings2,
+		FolderGit2,
+		RefreshCw
+	} from '@lucide/svelte';
 
 	const WINDOWS = [
 		{ value: 7, label: '7 jours' },
@@ -50,6 +59,12 @@
 
 	let showForm = $state(false);
 	let submitting = $state(false);
+
+	// SKI-110 — forçage d'ingestion. Le poller tourne à l'heure ; après avoir
+	// saisi une config on veut savoir tout de suite si elle est bonne.
+	let ingesting = $state(false);
+	let ingestReport = $state<ProjectIngestReport | null>(null);
+	let ingestError = $state<unknown>(null);
 
 	$effect(() => {
 		if (slug) void loadProject(slug);
@@ -124,6 +139,31 @@
 		}
 	}
 
+	async function triggerIngest() {
+		if (!project || ingesting) return;
+		ingesting = true;
+		ingestError = null;
+		ingestReport = null;
+		try {
+			const res = await adminApi.triggerProjectIngest(project.slug);
+			ingestReport = res.data;
+			toast.success(
+				`${res.data.slices_created} slice(s) créée(s) sur ${res.data.issues_seen} issue(s) vue(s)`
+			);
+			// De nouvelles slices changent la liste et les stats sous la page.
+			void loadSlices(project.id);
+		} catch (e) {
+			ingestError = e;
+			// Un 404 = endpoint pas encore déployé : le panneau l'explique déjà,
+			// un toast d'erreur en plus serait du bruit non actionnable.
+			if (!(e instanceof SkilluError && (e.status === 404 || e.status === 405))) {
+				toast.error(errorMessage(e));
+			}
+		} finally {
+			ingesting = false;
+		}
+	}
+
 	const githubRepo = $derived(
 		project?.github_repo_owner && project?.github_repo_name
 			? `${project.github_repo_owner}/${project.github_repo_name}`
@@ -183,10 +223,16 @@
 					<p class="mt-2 max-w-2xl text-sm text-text-muted">{project.description}</p>
 				{/if}
 			</div>
-			<Button variant="secondary" onclick={() => (showForm = true)}>
-				<Pencil size={15} strokeWidth={2} />
-				Éditer
-			</Button>
+			<div class="flex gap-2">
+				<Button variant="secondary" onclick={triggerIngest} loading={ingesting}>
+					<RefreshCw size={15} strokeWidth={2} />
+					Forcer l'ingestion
+				</Button>
+				<Button variant="secondary" onclick={() => (showForm = true)}>
+					<Pencil size={15} strokeWidth={2} />
+					Éditer
+				</Button>
+			</div>
 		</div>
 
 		<!-- ── Configuration challenge ──────────────────────────────────── -->
@@ -275,6 +321,79 @@
 				{/if}
 			</div>
 		</section>
+
+		<!-- ── Compte-rendu d'ingestion forcée ──────────────────────────── -->
+		{#if ingestReport}
+			<section class="mb-8">
+				<div class="rounded-2xl border border-border bg-surface-elevated p-5">
+					<h2 class="text-[11px] font-bold uppercase tracking-widest text-text-muted">
+						Dernière ingestion forcée
+					</h2>
+					<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+						<div class="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
+							<p class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+								Issues vues
+							</p>
+							<p class="mt-0.5 text-xl font-black tabular-nums text-text-primary">
+								{ingestReport.issues_seen}
+							</p>
+						</div>
+						<div
+							class="rounded-xl border px-3 py-2.5 {ingestReport.slices_created > 0
+								? 'border-success/40 bg-success-soft'
+								: 'border-border bg-surface/40'}"
+						>
+							<p class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+								Slices créées
+							</p>
+							<p
+								class="mt-0.5 text-xl font-black tabular-nums {ingestReport.slices_created > 0
+									? 'text-success'
+									: 'text-text-muted'}"
+							>
+								{ingestReport.slices_created}
+							</p>
+						</div>
+						<div class="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
+							<p class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+								Déjà connues
+							</p>
+							<p class="mt-0.5 text-xl font-black tabular-nums text-text-muted">
+								{ingestReport.slices_skipped_existing}
+							</p>
+						</div>
+					</div>
+					<p class="mt-3 text-xs text-text-muted">
+						Mode <span class="font-mono text-text-primary">{ingestReport.mode}</span>
+						{#if ingestReport.labels_matched.length > 0}
+							— labels retenus
+							{#each ingestReport.labels_matched as label (label)}
+								<span class="ml-1 rounded-md bg-surface-overlay px-1.5 py-0.5 font-mono">
+									{label}
+								</span>
+							{/each}
+						{:else}
+							— aucun label curé n'a matché.
+						{/if}
+					</p>
+					{#if ingestReport.issues_seen > 0 && ingestReport.slices_created === 0 && ingestReport.slices_skipped_existing === 0}
+						<p class="mt-2 text-xs text-warning">
+							Des issues ont été lues mais aucune n'a produit de slice : les labels curés ne
+							correspondent probablement à rien sur ce repo.
+						</p>
+					{/if}
+				</div>
+			</section>
+		{:else if ingestError}
+			<section class="mb-8">
+				<PendingBackendNotice
+					error={ingestError}
+					ticket="SKI-110"
+					endpoint="POST /api/admin/projects/{'{'}slug{'}'}/ingest"
+					description="Déclenchement manuel d'une passe d'ingestion sur ce projet, au lieu d'attendre le poller horaire. En attendant, il faut attendre le prochain tick."
+				/>
+			</section>
+		{/if}
 
 		<!-- ── Santé du workflow ────────────────────────────────────────── -->
 		<section class="mb-8">

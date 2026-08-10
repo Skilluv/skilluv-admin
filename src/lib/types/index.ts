@@ -944,6 +944,20 @@ export interface SliceConfigBody {
 	note?: string;
 }
 
+/** Compte-rendu de `POST /api/admin/projects/{slug}/ingest` (SKI-110).
+ *
+ *  Le poller P11 tourne à l'heure ; ce déclenchement manuel sert à valider une
+ *  config d'ingestion tout de suite après l'avoir saisie. Le compte-rendu doit
+ *  permettre de distinguer « la config est mauvaise » de « il n'y a rien à
+ *  ingérer » — d'où `issues_seen` en plus des slices créées. */
+export interface ProjectIngestReport {
+	issues_seen: number;
+	slices_created: number;
+	slices_skipped_existing: number;
+	mode: SliceIngestionMode;
+	labels_matched: string[];
+}
+
 /** `GET /api/admin/projects/{slug}/stats` (SKI-124). */
 export interface ProjectChallengeStats {
 	window_days: number;
