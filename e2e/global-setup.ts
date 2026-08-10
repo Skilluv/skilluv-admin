@@ -12,10 +12,19 @@ const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
 const ADMIN_ORIGIN = 'http://localhost:5174';
 
 export default async function globalSetup(_config: FullConfig) {
+	// No credentials → skip the auth bootstrap instead of failing the whole run.
+	// The `public` project needs no session, so it must stay runnable on a
+	// machine that has no backend/DB (see qa/README.md). The `admin` project
+	// will then fail fast on its missing storageState, which is the right
+	// signal — but only for the specs that actually need it.
 	if (!existsSync(CREDS_PATH)) {
-		throw new Error(
-			`Missing ${CREDS_PATH}. Run: node e2e/setup/bootstrap-admin.mjs (needs backend on :3001)`
+		console.warn(
+			`[global-setup] ${CREDS_PATH} not found — skipping admin login.\n` +
+				`  Only the \`public\` Playwright project will run.\n` +
+				`  To enable the \`admin\` project: node e2e/setup/bootstrap-admin.mjs ` +
+				`(needs BACKEND_URL + DATABASE_URL).`
 		);
+		return;
 	}
 	const creds = JSON.parse(readFileSync(CREDS_PATH, 'utf8'));
 

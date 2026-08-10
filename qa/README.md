@@ -22,16 +22,31 @@ Espace de suivi qualité pour le front admin + son intégration au backend Rust 
 - **P2** : Petit bug / edge case / implémentation planifiée
 - **P3** : Backlog long-terme (nice-to-have)
 
+## Tracker : Linear (depuis 2026-08-05)
+
+> **Tout nouveau ticket va dans Linear.** Trello est en lecture seule — il garde
+> l'historique des bugs déjà traités jusqu'à la fin de la campagne QA en cours,
+> puis sera archivé. Ne plus créer de card Trello.
+
+- **Équipe :** Skilluv (`SKI`)
+- **Projet QA/E2E :** [Hygiène pré-prod](https://linear.app/skilluv/project/hygiene-pre-prod-61fddb20f955)
+  — les tickets QA rejoignent ce projet, qui contient déjà smoke tests, alertes
+  ops et payment flows testés.
+- **Préfixe :** `[QA-xx]` dans le titre pour repérer les tickets issus de cette campagne.
+
+Les fichiers `.md` de ce dossier restent la source de vérité **descriptive**
+(reproduction, cause, fix) ; Linear porte l'**état** et la priorisation.
+
 ## Workflow
 
 1. Lancer les tests Playwright (`npm run test:e2e`)
 2. Trier chaque échec : bug front → `BUGS_FRONT.md` ; bug back → `BUGS_BACK.md`
-3. `python qa/push-to-trello.py` — synchronise vers le board Trello (idempotent, à faire à chaque édition des .md)
-4. Front : fixer directement + rebasculer le statut à `fixed` dans le .md
-5. Back : la card apparaît côté équipe backend, ils fixent → change le statut à `fixed` chez eux → rerun du script déplace la card en `Fait`
+3. Créer le ticket correspondant dans Linear (projet Hygiène pré-prod, préfixe `[QA-xx]`)
+4. Front : fixer directement + rebasculer le statut à `fixed` dans le .md + Done dans Linear
+5. Back : le ticket Linear part côté équipe backend, ils fixent → statut `fixed` dans le .md + Done dans Linear
 6. Mettre à jour `AUDIT_COVERAGE.md` au fur et à mesure
 
-## Sync Trello
+## Sync Trello (héritage — ne plus utiliser pour du nouveau)
 
 **Board :** [Skilluv - QA & Bugs Admin](https://trello.com/b/DgCwxpV7/skilluv-qa-bugs-admin)
 
