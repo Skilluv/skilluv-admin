@@ -67,14 +67,17 @@ test('admin creates a curated OSS project then archives it via the UI', async ({
 	// ─── Archive ────────────────────────────────────────────────────
 	// Auto-confirm the browser confirm() dialog used by the archive button.
 	page.on('dialog', (d) => void d.accept());
+	// L'archivage est un DELETE sur la ressource, pas un POST sur un
+	// sous-chemin /archive : c'est ce que `archiveAdminProject` envoie et ce
+	// que le backend expose.
 	const archiveReq = page.waitForResponse(
-		(r) => r.url().includes(`/admin/projects/${slug}/archive`) && r.request().method() === 'POST'
+		(r) => r.url().includes(`/admin/projects/${slug}`) && r.request().method() === 'DELETE'
 	);
 	// Find the row for our project and click its archive button.
 	const row = page.locator(`text=${slug}`).first();
 	await expect(row).toBeVisible({ timeout: 10_000 });
 	await page.getByRole('button', { name: /archiver|archive/i }).first().click();
-	expect((await archiveReq).status(), 'archive POST').toBeLessThan(300);
+	expect((await archiveReq).status(), 'archive DELETE').toBeLessThan(300);
 
 	const archived = await readProject(slug);
 	expect(archived?.archived_at, 'archived_at set').not.toBeNull();

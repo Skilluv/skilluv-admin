@@ -10,7 +10,7 @@ Marquer : ⬜ à faire · 🟡 partiel · ✅ couvert · ⛔ bloqué (bug back)
 | `e2e/auth-pages.spec.ts` | ✅ Rendu login + setup/recovery 2FA (3 tests) |
 | `e2e/admin-back-e2e.spec.ts` | ✅ Probe intégration back (login, catalog, enterprises) |
 
-## Phase 1 — Smoke (nav + guards) — ✅ 18/18
+## Phase 1 — Smoke (nav + guards) — ✅ 22/22
 
 Couvert par `e2e/admin/nav-smoke.spec.ts` (data-driven sur toutes les routes).
 
@@ -34,6 +34,12 @@ Couvert par `e2e/admin/nav-smoke.spec.ts` (data-driven sur toutes les routes).
 | `/operations` | ✅ |
 | `/catalog` | ✅ |
 | `/projects` | ✅ |
+| `/projects/[slug]` | ✅ (p26-project-challenge-config) |
+| `/slices/[id]/config` | ✅ (p26-slice-config) |
+| `/validators/applications` | ✅ |
+| `/validators/invitations` | ✅ |
+| `/validators/active` | ✅ |
+| `/validation-analytics` | ✅ |
 | `/skills` | ✅ |
 | `/sponsored-challenges` | ✅ |
 | `/sso-sessions` | ✅ |
@@ -55,6 +61,31 @@ Couvert par `e2e/admin/nav-smoke.spec.ts` (data-driven sur toutes les routes).
 | 8 | SSO session : revoke | ⬜ | nécessite session SSO active |
 | 9 | Community : approve / reject | ⬜ | nécessite submission seedée |
 | 10 | Fraud : scan / mark valid / revoke | ⬜ | nécessite deliverable seedé |
+
+## P26 v2 — Workflow challenge (SKI-98 / SKI-99 / SKI-100)
+
+Spécifié et écrit, **jamais exécuté** : ces specs demandent un backend + une
+DB, qui n'étaient pas disponibles au moment de l'écriture. Statut 🟡 tant
+qu'une exécution réelle n'a pas eu lieu — le premier run fera bouger ces
+lignes dans les deux sens.
+
+| Parcours | Statut | Spec |
+|---|---|---|
+| Création projet avec les 5 champs P26 → vérif colonnes en base | 🟡 écrit | `e2e/admin/p26-project-challenge-config.spec.ts` |
+| Validation paire GitHub + avertissement mode auto sans label | 🟡 écrit | idem |
+| Fiche projet : config d'ingestion + stats + fenêtre | 🟡 écrit | idem |
+| Forçage d'ingestion (SKI-110) | 🟡 écrit | idem — `test.skip` tant que l'endpoint répond 404 |
+| Override sensibilité / rang sur une slice + effacement (`null` ≠ `[]`) | 🟡 écrit | `e2e/admin/p26-slice-config.spec.ts` |
+| Validation de forme des slugs d'orientation | 🟡 écrit | idem |
+| Approve candidature → capability réellement accordée | 🟡 écrit | `e2e/admin/p26-validators.spec.ts` |
+| Reject motivé → raison conservée, aucune capability | 🟡 écrit | idem |
+| Invitation → n'accorde PAS la capability avant acceptation | 🟡 écrit | idem |
+| Révocation → `revoked_at` posé, slug encodé dans l'URL | 🟡 écrit | idem |
+| Dashboard analytics : 5 sections, fenêtre, seuil, export CSV | 🟡 écrit | `e2e/admin/p26-validation-analytics.spec.ts` |
+
+Les specs qui dépendent d'un endpoint pas encore déployé se `skip` sur un
+404/405 plutôt que d'échouer : un endpoint absent est un état de déploiement
+connu, pas une régression.
 
 ## Phase 3 — Exhaustive (à ouvrir plus tard)
 
