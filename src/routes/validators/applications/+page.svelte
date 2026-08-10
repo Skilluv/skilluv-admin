@@ -205,6 +205,21 @@
 						<p class="mt-1 font-mono text-xs text-text-muted">
 							déposée le {new Date(row.created_at).toLocaleDateString('fr-FR')}
 						</p>
+						{#if row.reviewed_at}
+							<!-- Traçabilité de la décision : `reviewed_at` + `admin_actor_id`
+							     portés par la table validator_applications. La capability
+							     elle-même n'écrit pas dans audit_log, donc c'est ici la seule
+							     trace de qui a tranché. -->
+							<p class="mt-0.5 font-mono text-xs text-text-muted">
+								décidée le {new Date(row.reviewed_at).toLocaleString('fr-FR')}
+								{#if row.admin_actor_id}
+									par
+									<a href="/users/{row.admin_actor_id}" class="text-primary hover:underline">
+										admin
+									</a>
+								{/if}
+							</p>
+						{/if}
 					</div>
 
 					{#if row.status === 'pending'}

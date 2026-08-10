@@ -214,6 +214,11 @@
 						>
 							Envoyée le
 						</th>
+						<th
+							class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+						>
+							Décidée le
+						</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
@@ -241,6 +246,23 @@
 							</td>
 							<td class="px-4 py-3 font-mono text-xs text-text-muted">
 								{new Date(row.created_at).toLocaleDateString('fr-FR')}
+							</td>
+							<!-- Trace de la décision : qui a tranché et quand. La capability
+							     n'écrit pas dans audit_log, cette colonne est la seule trace. -->
+							<td class="px-4 py-3 font-mono text-xs text-text-muted">
+								{#if row.reviewed_at}
+									{new Date(row.reviewed_at).toLocaleString('fr-FR')}
+									{#if row.admin_actor_id}
+										<a
+											href="/users/{row.admin_actor_id}"
+											class="ml-1 text-primary hover:underline"
+										>
+											admin
+										</a>
+									{/if}
+								{:else}
+									—
+								{/if}
 							</td>
 						</tr>
 					{/each}

@@ -10,7 +10,12 @@
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import PendingBackendNotice from '$components/admin/PendingBackendNotice.svelte';
 	import { VALIDATOR_DOMAINS } from '$types';
-	import type { Capability, ValidatorDomain, ValidatorStatsRow } from '$types';
+	import type {
+		Capability,
+		UserCapability,
+		ValidatorDomain,
+		ValidatorStatsRow
+	} from '$types';
 	import { ShieldOff } from '@lucide/svelte';
 
 	// SKI-99 page 3 — who currently holds a validator grant, and how much they
@@ -33,6 +38,14 @@
 	let revokeTarget = $state<{ row: ValidatorStatsRow; domain: ValidatorDomain } | null>(null);
 	let revoking = $state(false);
 
+	/** `challenge_validator:{domain}` → grant date, per user. The stats endpoint
+	 *  gives the roster and the activity but not when each grant was made, and
+	 *  that date is the traceability the ticket asks for — so it is fetched from
+	 *  the per-user capability endpoint. One request per validator: acceptable
+	 *  because the roster is a handful of people in Phase 1, and the column
+	 *  degrades to a dash rather than failing the page if a call errors. */
+	let grantDates = $state<Record<string, string>>({});
+
 	$effect(() => {
 		void windowDays;
 		void load();
@@ -44,12 +57,33 @@
 		try {
 			const res = await adminApi.listValidatorStats(windowDays);
 			validators = res.data.validators;
+			void loadGrantDates(res.data.validators);
 		} catch (e) {
 			loadError = e;
 			validators = [];
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function loadGrantDates(rows: ValidatorStatsRow[]) {
+		const entries = await Promise.all(
+			rows.map(async (v) => {
+				try {
+					const res = await adminApi.listUserCapabilities(v.user.id);
+					return res.data.capabilities
+						.filter((c: UserCapability) => c.capability.startsWith('challenge_validator:'))
+						.map((c: UserCapability) => [`${v.user.id}|${c.capability}`, c.granted_at] as const);
+				} catch {
+					return [];
+				}
+			})
+		);
+		grantDates = Object.fromEntries(entries.flat());
+	}
+
+	function grantedAt(v: ValidatorStatsRow, domain: ValidatorDomain): string | undefined {
+		return grantDates[`${v.user.id}|challenge_validator:${domain}`];
 	}
 
 	const visible = $derived(
@@ -189,9 +223,15 @@
 								{/if}
 							</td>
 							<td class="px-4 py-3">
-								<div class="flex flex-wrap gap-1.5">
+								<div class="flex flex-wrap gap-x-3 gap-y-1.5">
 									{#each v.active_domains as d (d)}
-										<Badge variant="primary">{d}</Badge>
+										{@const granted = grantedAt(v, d)}
+										<div class="flex flex-col gap-0.5">
+											<Badge variant="primary">{d}</Badge>
+											<span class="font-mono text-[10px] text-text-muted">
+												{granted ? `depuis le ${new Date(granted).toLocaleDateString('fr-FR')}` : '—'}
+											</span>
+										</div>
 									{/each}
 								</div>
 							</td>
