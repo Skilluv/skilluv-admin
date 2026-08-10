@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { adminApi } from '$api/admin';
-	import { SkilluError } from '$api/client';
+	import { errorMessage } from '$api/errors';
 	import Badge from '$components/ui/Badge.svelte';
 	import Button from '$components/ui/Button.svelte';
+	import FilterBar from '$components/ui/FilterBar.svelte';
+	import Pagination from '$components/ui/Pagination.svelte';
+	import Select from '$components/ui/Select.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import ProjectFormModal from '$components/admin/ProjectFormModal.svelte';
 	import { toast } from '$stores/toast.svelte';
@@ -15,7 +18,7 @@
 		ProjectListFilters,
 		PartnershipLevel
 	} from '$types';
-	import { Plus, Pencil, Archive } from '@lucide/svelte';
+	import { Plus, Pencil, Archive, ExternalLink } from '@lucide/svelte';
 
 	let projects = $state<ProjectListItem[]>([]);
 	let total = $state(0);
@@ -41,6 +44,8 @@
 	let editing = $state<ProjectDetail | null>(null);
 	let submitting = $state(false);
 
+	const totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
+
 	function applyFilters() {
 		filters.is_flagship = filterFlagship === 'all' ? undefined : filterFlagship === 'true';
 		filters.curated_by_admin = filterCurated === 'all' ? undefined : filterCurated === 'true';
@@ -60,7 +65,7 @@
 			projects = res.data;
 			total = res.pagination.total;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : 'Erreur de chargement des projets');
+			toast.error(errorMessage(e));
 		} finally {
 			loading = false;
 		}
@@ -77,7 +82,7 @@
 			editing = res.data;
 			showForm = true;
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : 'Erreur de chargement du projet');
+			toast.error(errorMessage(e));
 		}
 	}
 
@@ -88,7 +93,7 @@
 			toast.success('Projet archivé');
 			await loadProjects();
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : 'Erreur lors de l\'archivage');
+			toast.error(errorMessage(e));
 		}
 	}
 
@@ -106,7 +111,7 @@
 			editing = null;
 			await loadProjects();
 		} catch (e) {
-			toast.error(e instanceof SkilluError ? e.message : 'Erreur lors de la sauvegarde');
+			toast.error(errorMessage(e));
 		} finally {
 			submitting = false;
 		}
@@ -127,199 +132,205 @@
 	<title>Projets — Admin Skilluv</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl p-6">
-	<div class="mb-6 flex items-center justify-between">
+<div class="p-6 lg:p-8">
+	<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 		<div>
-			<h1 class="text-2xl font-semibold">Projets</h1>
-			<p class="text-sm text-neutral-500">
-				Gestion des partenaires OSS curés, des flagships Skilluv et des projets communautaires
-				modérés.
+			<h1 class="text-2xl font-bold text-text-primary">Projets</h1>
+			<p class="mt-1 text-sm text-text-muted">
+				Partenaires OSS curés, flagships Skilluv et projets communautaires modérés. Le repo
+				GitHub et les labels curés d'un projet pilotent l'ingestion des challenges.
 			</p>
 		</div>
 		<Button onclick={openCreate}>
-			<Plus class="h-4 w-4" />
+			<Plus size={16} strokeWidth={2} />
 			Nouveau projet
 		</Button>
 	</div>
 
-	<!-- Filters -->
-	<div class="mb-4 flex flex-wrap gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-		<div>
-			<label for="filter-flagship" class="block text-xs font-medium text-neutral-600">
-				Flagship
-			</label>
-			<select
-				id="filter-flagship"
+	<FilterBar variant="boxed" class="mb-4">
+		<div class="flex flex-col gap-1.5">
+			<span class="text-xs font-bold uppercase tracking-wider text-text-muted">Flagship</span>
+			<Select
+				items={[
+					{ value: 'all', label: 'Tous' },
+					{ value: 'true', label: 'Flagship uniquement' },
+					{ value: 'false', label: 'Non-flagship' }
+				]}
 				bind:value={filterFlagship}
-				class="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
-			>
-				<option value="all">Tous</option>
-				<option value="true">Flagship uniquement</option>
-				<option value="false">Non-flagship</option>
-			</select>
+				size="sm"
+			/>
 		</div>
-		<div>
-			<label for="filter-curated" class="block text-xs font-medium text-neutral-600">
-				Curated by admin
-			</label>
-			<select
-				id="filter-curated"
+		<div class="flex flex-col gap-1.5">
+			<span class="text-xs font-bold uppercase tracking-wider text-text-muted">Curation</span>
+			<Select
+				items={[
+					{ value: 'all', label: 'Tous' },
+					{ value: 'true', label: 'Curated' },
+					{ value: 'false', label: 'Non curated' }
+				]}
 				bind:value={filterCurated}
-				class="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
-			>
-				<option value="all">Tous</option>
-				<option value="true">Curated</option>
-				<option value="false">Non curated</option>
-			</select>
+				size="sm"
+			/>
 		</div>
-		<div>
-			<label for="filter-level" class="block text-xs font-medium text-neutral-600">
-				Niveau partenariat
-			</label>
-			<select
-				id="filter-level"
+		<div class="flex flex-col gap-1.5">
+			<span class="text-xs font-bold uppercase tracking-wider text-text-muted">Partenariat</span>
+			<Select
+				items={[
+					{ value: 'all', label: 'Tous' },
+					{ value: '1', label: 'Niveau 1' },
+					{ value: '2', label: 'Niveau 2' },
+					{ value: '3', label: 'Niveau 3' }
+				]}
 				bind:value={filterLevel}
-				class="mt-1 rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
-			>
-				<option value="all">Tous</option>
-				<option value="1">Niveau 1</option>
-				<option value="2">Niveau 2</option>
-				<option value="3">Niveau 3</option>
-			</select>
+				size="sm"
+			/>
 		</div>
-		<label class="flex items-center gap-2 self-end text-sm">
-			<input type="checkbox" bind:checked={filters.include_archived} />
+		<label class="flex items-center gap-2 self-end pb-1 text-sm text-text-primary">
+			<input type="checkbox" bind:checked={filters.include_archived} class="accent-primary" />
 			Inclure archivés
 		</label>
-	</div>
+	</FilterBar>
 
-	<!-- Table -->
 	{#if loading}
-		<Skeleton class="h-32 w-full" />
+		<Skeleton class="h-64 w-full rounded-2xl" />
 	{:else if projects.length === 0}
-		<div class="rounded-lg border border-neutral-200 bg-white p-12 text-center">
-			<p class="text-neutral-500">Aucun projet ne correspond aux filtres.</p>
+		<div class="rounded-2xl border border-border bg-surface-elevated p-12 text-center">
+			<p class="text-sm text-text-muted">Aucun projet ne correspond aux filtres.</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-			<table class="min-w-full divide-y divide-neutral-200">
-				<thead class="bg-neutral-50">
-					<tr>
-						<th class="px-4 py-2 text-left text-xs font-medium uppercase text-neutral-500">Nom</th>
-						<th class="px-4 py-2 text-left text-xs font-medium uppercase text-neutral-500">Type</th>
-						<th class="px-4 py-2 text-left text-xs font-medium uppercase text-neutral-500">Repo</th>
-						<th class="px-4 py-2 text-left text-xs font-medium uppercase text-neutral-500">Niveau</th>
-						<th class="px-4 py-2 text-left text-xs font-medium uppercase text-neutral-500">Créé le</th>
-						<th class="px-4 py-2 text-right text-xs font-medium uppercase text-neutral-500">
-							Actions
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-neutral-200">
-					{#each projects as p (p.id)}
-						<tr class:opacity-50={p.archived_at !== null}>
-							<td class="px-4 py-3">
-								<div class="font-medium">{p.name}</div>
-								<div class="font-mono text-xs text-neutral-500">{p.slug}</div>
-								{#if p.description}
-									<div class="mt-1 line-clamp-1 text-xs text-neutral-600">{p.description}</div>
-								{/if}
-							</td>
-							<td class="px-4 py-3">
-								<div class="flex flex-col gap-1">
-									{#if p.is_flagship}
-										<Badge variant="success">Flagship</Badge>
-									{/if}
-									{#if p.curated_by_admin}
-										<Badge variant="primary">Curated</Badge>
-									{/if}
-									{#if !p.is_flagship && !p.curated_by_admin}
-										<span class="text-xs text-neutral-500">User</span>
-									{/if}
-									{#if p.archived_at}
-										<Badge variant="warning">Archivé</Badge>
-									{/if}
-								</div>
-							</td>
-							<td class="max-w-xs truncate px-4 py-3 text-xs">
-								{#if p.repo_url}
+		<div class="overflow-hidden rounded-2xl border border-border bg-surface-elevated">
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-border bg-surface/40">
+							<th
+								class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Projet
+							</th>
+							<th
+								class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Type
+							</th>
+							<th
+								class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Repo
+							</th>
+							<th
+								class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Niveau
+							</th>
+							<th
+								class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Créé le
+							</th>
+							<th
+								class="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-widest text-text-muted"
+							>
+								Actions
+							</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-border">
+						{#each projects as p (p.id)}
+							<tr class="transition-colors hover:bg-surface-elevated-hover" class:opacity-50={p.archived_at !== null}>
+								<td class="px-4 py-3">
 									<a
-										href={p.repo_url}
-										target="_blank"
-										rel="noopener"
-										class="text-blue-600 hover:underline"
+										href="/projects/{p.slug}"
+										class="font-semibold text-text-primary transition-colors hover:text-accent"
 									>
-										{p.repo_url.replace('https://github.com/', '')}
+										{p.name}
 									</a>
-								{:else}
-									<span class="text-neutral-400">—</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3 text-sm">
-								{#if p.skilluv_partnership_level}
-									Niveau {p.skilluv_partnership_level}
-								{:else}
-									<span class="text-neutral-400">—</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3 text-xs text-neutral-500">
-								{new Date(p.created_at).toLocaleDateString('fr-FR')}
-							</td>
-							<td class="px-4 py-3 text-right">
-								<div class="flex justify-end gap-1">
-									<button
-										type="button"
-										onclick={() => openEdit(p)}
-										class="rounded p-1 hover:bg-neutral-100"
-										aria-label="Éditer"
-									>
-										<Pencil class="h-4 w-4" />
-									</button>
-									{#if !p.archived_at}
+									<div class="font-mono text-xs text-text-muted">{p.slug}</div>
+									{#if p.description}
+										<div class="mt-1 line-clamp-1 text-xs text-text-muted">{p.description}</div>
+									{/if}
+								</td>
+								<td class="px-4 py-3">
+									<div class="flex flex-wrap gap-1">
+										{#if p.is_flagship}
+											<Badge variant="success">Flagship</Badge>
+										{/if}
+										{#if p.curated_by_admin}
+											<Badge variant="primary">Curated</Badge>
+										{/if}
+										{#if !p.is_flagship && !p.curated_by_admin}
+											<Badge variant="default">User</Badge>
+										{/if}
+										{#if p.archived_at}
+											<Badge variant="warning">Archivé</Badge>
+										{/if}
+									</div>
+								</td>
+								<td class="max-w-xs truncate px-4 py-3">
+									{#if p.repo_url}
+										<a
+											href={p.repo_url}
+											target="_blank"
+											rel="noopener"
+											class="inline-flex items-center gap-1 font-mono text-xs text-primary hover:underline"
+										>
+											{p.repo_url.replace('https://github.com/', '')}
+											<ExternalLink size={11} strokeWidth={2} />
+										</a>
+									{:else}
+										<span class="text-text-muted">—</span>
+									{/if}
+								</td>
+								<td class="px-4 py-3 text-text-primary">
+									{#if p.skilluv_partnership_level}
+										Niveau {p.skilluv_partnership_level}
+									{:else}
+										<span class="text-text-muted">—</span>
+									{/if}
+								</td>
+								<td class="px-4 py-3 font-mono text-xs text-text-muted">
+									{new Date(p.created_at).toLocaleDateString('fr-FR')}
+								</td>
+								<td class="px-4 py-3 text-right">
+									<div class="flex justify-end gap-1">
 										<button
 											type="button"
-											onclick={() => archive(p.slug)}
-											class="rounded p-1 hover:bg-neutral-100"
-											aria-label="Archiver"
+											onclick={() => openEdit(p)}
+											class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-overlay hover:text-text-primary"
+											aria-label="Éditer {p.slug}"
 										>
-											<Archive class="h-4 w-4" />
+											<Pencil size={16} strokeWidth={2} />
 										</button>
-									{/if}
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="mt-4 flex items-center justify-between text-sm">
-			<span class="text-neutral-500">
-				{total} projet{total > 1 ? 's' : ''} au total
-			</span>
-			<div class="flex gap-2">
-				<Button
-					variant="secondary"
-					disabled={page === 1}
-					onclick={() => {
-						page--;
-						loadProjects();
-					}}
-				>
-					Précédent
-				</Button>
-				<Button
-					variant="secondary"
-					disabled={page * perPage >= total}
-					onclick={() => {
-						page++;
-						loadProjects();
-					}}
-				>
-					Suivant
-				</Button>
+										{#if !p.archived_at}
+											<button
+												type="button"
+												onclick={() => archive(p.slug)}
+												class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-overlay hover:text-error"
+												aria-label="Archiver {p.slug}"
+											>
+												<Archive size={16} strokeWidth={2} />
+											</button>
+										{/if}
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
 		</div>
+
+		<p class="mt-4 text-xs text-text-muted">
+			{total} projet{total > 1 ? 's' : ''} au total
+		</p>
+		<Pagination
+			current={page}
+			total={totalPages}
+			onchange={(p) => {
+				page = p;
+				loadProjects();
+			}}
+		/>
 	{/if}
 </div>
 

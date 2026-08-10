@@ -66,7 +66,11 @@ export type Capability =
 	| 'forum_moderator'
 	| 'plagiarism_reviewer'
 	| 'kyc_reviewer'
-	| 'community_curator';
+	| 'community_curator'
+	/** P26 v2 SKI-80 — one enum value per validator domain (migration 0120).
+	 *  Held by users allowed to pick up + approve/reject a slice validation
+	 *  whose `primary_domain` matches. */
+	| `challenge_validator:${ValidatorDomain}`;
 
 export interface UserCapability {
 	capability: Capability;
@@ -755,8 +759,28 @@ export interface ProjectListItem {
 	archived_at: string | null;
 }
 
-/** Full row returned by `GET /admin/projects/{slug}`. */
-export interface ProjectDetail extends ProjectListItem {
+/** P26 v2 SKI-110 — how the P11 ingestor treats issues found on the repo.
+ *  `auto` publishes slices straight to `open`, `curator_review` parks them in
+ *  `draft` for a steward, `manual_only` disables ingestion entirely. */
+export type SliceIngestionMode = 'auto' | 'curator_review' | 'manual_only';
+
+/** P26 v2 SKI-110 — the five challenge-workflow fields the admin form owns.
+ *  Shared by create + patch bodies and by the detail DTO. */
+export interface ProjectChallengeConfig {
+	github_repo_owner: string | null;
+	github_repo_name: string | null;
+	curated_labels: string[];
+	slice_ingestion_mode: SliceIngestionMode;
+	skill_domains: ValidatorDomain[];
+}
+
+/** Full row returned by `GET /admin/projects/{slug}`.
+ *
+ *  The five `ProjectChallengeConfig` fields are optional here on purpose:
+ *  the backend accepts them on POST/PATCH (SKI-110) but the GET handler does
+ *  not echo them back yet, so the edit form must tolerate their absence
+ *  rather than clobber stored values with `undefined`. Tracked as SKI-109. */
+export interface ProjectDetail extends ProjectListItem, Partial<ProjectChallengeConfig> {
 	demo_url: string | null;
 	tech_stack: string[];
 	is_oss: boolean;
@@ -784,6 +808,13 @@ export interface ProjectCreateBody {
 	flagship_steward_user_id?: string | null;
 	skilluv_partnership_level?: PartnershipLevel | null;
 	skilluv_editorial_notes?: string | null;
+
+	// P26 v2 SKI-110
+	github_repo_owner?: string | null;
+	github_repo_name?: string | null;
+	curated_labels?: string[];
+	slice_ingestion_mode?: SliceIngestionMode;
+	skill_domains?: ValidatorDomain[];
 }
 
 /** Payload for `PATCH /admin/projects/{slug}`. All fields optional. */
@@ -800,6 +831,13 @@ export interface ProjectPatchBody {
 	flagship_steward_user_id?: string | null;
 	skilluv_partnership_level?: PartnershipLevel | null;
 	skilluv_editorial_notes?: string | null;
+
+	// P26 v2 SKI-110
+	github_repo_owner?: string | null;
+	github_repo_name?: string | null;
+	curated_labels?: string[];
+	slice_ingestion_mode?: SliceIngestionMode;
+	skill_domains?: ValidatorDomain[];
 }
 
 export interface ProjectListFilters {
@@ -809,4 +847,262 @@ export interface ProjectListFilters {
 	include_archived?: boolean;
 	page?: number;
 	per_page?: number;
+}
+
+// ─── P26 v2 — workflow challenge complet ─────────────────────────────────────
+// Project "P26 v2 — Workflow challenge complet via Skilluv (Phase 1 dogfooding)".
+// Admin-side slice of the model: challenge config on projects + slices, the
+// validator corps (candidacies, invitations, active grants), and the analytics
+// that keep the dogfooding honest.
+
+/** The 7 validator/skill domains (backend `VALID_DOMAINS`, SKI-80).
+ *  Structurally identical to `OrientationDomain` but a distinct name: this one
+ *  is the validator-capability axis, the other is the learning-path axis. */
+export type ValidatorDomain =
+	| 'code'
+	| 'design'
+	| 'game'
+	| 'security'
+	| 'ops'
+	| 'ai'
+	| 'soft_skills';
+
+export const VALIDATOR_DOMAINS: ValidatorDomain[] = [
+	'code',
+	'design',
+	'game',
+	'security',
+	'ops',
+	'ai',
+	'soft_skills'
+];
+
+/** SKI-77 — the ten lifecycle states a slice moves through. Order matters:
+ *  it is the display order of the workflow funnel. */
+export type SliceStatus =
+	| 'draft'
+	| 'open'
+	| 'claimed'
+	| 'in_progress'
+	| 'submitted'
+	| 'ci_green'
+	| 'pending_validation'
+	| 'validated'
+	| 'merged'
+	| 'closed';
+
+export const SLICE_STATUSES: SliceStatus[] = [
+	'draft',
+	'open',
+	'claimed',
+	'in_progress',
+	'submitted',
+	'ci_green',
+	'pending_validation',
+	'validated',
+	'merged',
+	'closed'
+];
+
+/** Subset of `project_slices` the admin screens actually read, from the public
+ *  `GET /api/slices/{id}`. The backend row is wider; everything omitted here is
+ *  challenger-facing detail the admin never edits. */
+export interface AdminSlice {
+	id: string;
+	project_id: string;
+	slice_type: string;
+	external_ref: string | null;
+	title: string;
+	description: string;
+	primary_domain: ValidatorDomain;
+	difficulty: number;
+	status: SliceStatus;
+	claimed_by_user_id: string | null;
+	claimed_at: string | null;
+	validated_at: string | null;
+	validated_by_user_id: string | null;
+	/** SKI-79 — empty = no orientation restriction on claim. */
+	required_orientation_slugs: string[];
+	/** SKI-78 — null = no rank floor on claim. */
+	min_rank: Rank | null;
+	submitted_pr_url: string | null;
+	submitted_at: string | null;
+	picked_by_validator_id: string | null;
+	picked_at: string | null;
+	validation_reject_reason: string | null;
+	attestation_hash: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+/** Payload for `PATCH /api/admin/slices/{id}/config` (SKI-106).
+ *  Each field is independently optional; an explicit `null` clears the
+ *  override and restores the algorithmic default. */
+export interface SliceConfigBody {
+	required_orientation_slugs?: string[] | null;
+	min_rank?: Rank | null;
+	note?: string;
+}
+
+/** `GET /api/admin/projects/{slug}/stats` (SKI-124). */
+export interface ProjectChallengeStats {
+	window_days: number;
+	slices: Record<SliceStatus, number>;
+	/** Hours between claim and PR submission. `null` when no slice in the
+	 *  window reached `submitted`. */
+	avg_time_to_submit_hours: number | null;
+	avg_time_to_validate_hours: number | null;
+	avg_time_to_merge_hours: number | null;
+	/** merged / (validated + merged) — how often our validation is confirmed
+	 *  by the upstream maintainer. */
+	validated_to_merged_ratio: number;
+	/** SKI-101 enricher adoption: how many slices got their domain from a
+	 *  `domain:*` label vs. falling back to the project default. */
+	domain_source_distribution: {
+		label: number;
+		project_default: number;
+	};
+}
+
+// ─── Validator corps (SKI-81 / SKI-82) ───────────────────────────────────────
+
+export type ValidatorApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+/** `candidacy` = the user self-nominated (SKI-81). `invitation` = an admin
+ *  reached out first and the user still has to accept (SKI-82). */
+export type ValidatorApplicationOrigin = 'candidacy' | 'invitation';
+
+export interface ValidatorApplication {
+	id: string;
+	user_id: string;
+	domain: ValidatorDomain;
+	origin: ValidatorApplicationOrigin;
+	status: ValidatorApplicationStatus;
+	/** User-written on a candidacy; admin-written notes on an invitation. */
+	motivation: string | null;
+	admin_actor_id: string | null;
+	reviewed_at: string | null;
+	review_notes: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+/** Eligibility floor for a *candidacy* (SKI-81), echoed on every row so the
+ *  UI never hardcodes a threshold the backend could move. Invitations bypass
+ *  these entirely. */
+export interface ValidatorThresholds {
+	min_rank: Rank;
+	min_merged_prs: number;
+	min_repos_covered: number;
+	min_tenure_days: number;
+}
+
+/** Live eligibility signals the backend computes per applicant so the admin
+ *  screen does not have to fan out one request per row (SKI-107). */
+export interface ValidatorApplicantStats {
+	/** Defaults to `apprenti` backend-side when the user has no rank row. */
+	rank: Rank;
+	/** Slices claimed by the applicant on this domain that reached
+	 *  `validated` or `merged`. */
+	validated_prs_on_domain: number;
+	distinct_repos_covered: number;
+	tenure_days: number;
+	thresholds: ValidatorThresholds;
+}
+
+/** Row of `GET /api/admin/validator-applications` (SKI-107).
+ *
+ *  Deliberately not an extension of `ValidatorApplication`: the list projects
+ *  a narrower column set (no `review_notes`, no `updated_at`) and nests the
+ *  user snapshot, so the two shapes are siblings rather than parent/child. */
+export interface ValidatorApplicationRow {
+	id: string;
+	user_id: string;
+	domain: ValidatorDomain;
+	origin: ValidatorApplicationOrigin;
+	status: ValidatorApplicationStatus;
+	motivation: string | null;
+	admin_actor_id: string | null;
+	reviewed_at: string | null;
+	created_at: string;
+	user: {
+		username: string | null;
+		display_name: string | null;
+		avatar_url: string | null;
+	};
+	live_stats: ValidatorApplicantStats;
+}
+
+export interface ValidatorApplicationFilters {
+	status?: ValidatorApplicationStatus;
+	domain?: ValidatorDomain;
+	origin?: ValidatorApplicationOrigin;
+	page?: number;
+	per_page?: number;
+}
+
+export interface ValidatorInviteBody {
+	user_id: string;
+	domain: ValidatorDomain;
+	notes: string;
+}
+
+// ─── Validation analytics (SKI-108 / SKI-100) ────────────────────────────────
+
+/** Row of `GET /api/admin/validators/stats`. The population is every user
+ *  holding a non-revoked `challenge_validator:*` capability, so a validator
+ *  with no activity in the window still appears with zeroes. */
+export interface ValidatorStatsRow {
+	user: {
+		id: string;
+		username: string | null;
+		display_name: string | null;
+	};
+	validations_count: number;
+	approve_count: number;
+	/** Approximate by construction: a rejection is inferred from a slice that
+	 *  was picked up and carries a rejection reason, so a re-pickup can be
+	 *  counted twice. Good enough for Phase 1, not a billing figure. */
+	reject_count_approx: number;
+	/** approve / (approve + reject). `0` — not null — when nothing was decided
+	 *  in the window. */
+	approve_ratio: number;
+	avg_pickup_to_decision_hours: number | null;
+	/** Domains stripped of the `challenge_validator:` prefix. */
+	active_domains: ValidatorDomain[];
+}
+
+export interface ValidatorStatsResponse {
+	window_days: number;
+	validators: ValidatorStatsRow[];
+}
+
+/** One claimant a validator has repeatedly validated. */
+export interface CollusionTarget {
+	claimant_id: string;
+	claimant_username: string | null;
+	count: number;
+	/** count / total validations by this validator, in the window. */
+	ratio: number;
+	/** Backend verdict — ratio above `flag_ratio_threshold` and count above
+	 *  `min_count`. Advisory only: nothing is enforced automatically. */
+	flagged: boolean;
+}
+
+export interface CollusionMatrixRow {
+	validator: {
+		id: string;
+		username: string | null;
+	};
+	top_targets: CollusionTarget[];
+}
+
+export interface CollusionMatrixResponse {
+	window_days: number;
+	min_count: number;
+	/** Ratio above which a pair is flagged. Fixed backend-side; surfaced so
+	 *  the UI can state the rule instead of restating a hardcoded 50 %. */
+	flag_ratio_threshold: number;
+	/** Backend-authored caveat about the current phase. */
+	note: string;
+	matrix: CollusionMatrixRow[];
 }

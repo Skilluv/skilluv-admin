@@ -24,6 +24,8 @@
 		Briefcase,
 		Network,
 		FolderGit2,
+		BadgeCheck,
+		ChartNoAxesColumn,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -48,6 +50,8 @@
 		{ href: '/fraud', label: i18n.t('admin.nav.fraud'), icon: Fingerprint },
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
 		{ href: '/projects', label: 'Projets', icon: FolderGit2 },
+		{ href: '/validators', label: 'Validateurs', icon: BadgeCheck },
+		{ href: '/validation-analytics', label: 'Analytics validation', icon: ChartNoAxesColumn },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },

@@ -55,7 +55,17 @@ import type {
 	SkillNodeDomain,
 	CreateSkillNodeBody,
 	UpdateSkillNodeBody,
-	RecomputeCapabilitiesResult
+	RecomputeCapabilitiesResult,
+	AdminSlice,
+	SliceConfigBody,
+	ProjectChallengeStats,
+	ValidatorDomain,
+	ValidatorApplication,
+	ValidatorApplicationRow,
+	ValidatorApplicationFilters,
+	ValidatorInviteBody,
+	ValidatorStatsResponse,
+	CollusionMatrixResponse
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -179,10 +189,12 @@ export const adminApi = {
 	},
 
 	/** Backend generates the revoke reason server-side as
-	 *  `admin_revoke:by_{admin_id}`; DELETE accepts no body. */
+	 *  `admin_revoke:by_{admin_id}`; DELETE accepts no body.
+	 *  The slug is encoded because P26 v2 capabilities carry a colon
+	 *  (`challenge_validator:code`) — a no-op for every other value. */
 	revokeCapability(userId: string, capability: Capability) {
 		return api.delete<ApiResponse<{ revoked: boolean; user_id: string; capability: Capability }>>(
-			`/admin/users/${userId}/capabilities/${capability}`
+			`/admin/users/${userId}/capabilities/${encodeURIComponent(capability)}`
 		);
 	},
 
@@ -443,6 +455,96 @@ export const adminApi = {
 		return api.delete<ApiResponse<{ slug: string; archived: boolean }>>(
 			`/admin/projects/${slug}`
 		);
+	},
+
+	// --- P26 v2 — challenge workflow (SKI-98 / SKI-99 / SKI-100) ---
+
+	/** SKI-124 — per-repo workflow health. `window_days` is clamped 7..365
+	 *  backend-side; anything outside that range comes back adjusted. */
+	getProjectChallengeStats(slug: string, windowDays = 90) {
+		return api.get<ApiResponse<ProjectChallengeStats>>(`/admin/projects/${slug}/stats`, {
+			window_days: windowDays
+		});
+	},
+
+	/** Public list endpoint, admin-consumed: only `status='open'` slices come
+	 *  back. Enough to reach a slice's config page from its project. */
+	listOpenSlices(params?: {
+		project_id?: string;
+		domain?: ValidatorDomain;
+		difficulty?: number;
+		page?: number;
+		per_page?: number;
+	}) {
+		return api.get<ApiPaginatedResponse<AdminSlice>>(
+			'/slices',
+			params as Record<string, string | number>
+		);
+	},
+
+	/** Public detail endpoint — returns the slice whatever its status. */
+	getSlice(id: string) {
+		return api.get<ApiResponse<{ slice: AdminSlice }>>(`/slices/${id}`);
+	},
+
+	/** SKI-106 — override the claim gates (orientation sensitivity + rank floor)
+	 *  on a single slice. `null` on a field clears the override. */
+	patchSliceConfig(id: string, body: SliceConfigBody) {
+		return api.patch<ApiResponse<{ slice: AdminSlice }>>(`/admin/slices/${id}/config`, body);
+	},
+
+	// Validator corps
+
+	/** SKI-107 — candidacies + invitations with the applicant's live stats
+	 *  embedded, so the review screen needs a single request. */
+	listValidatorApplications(filters?: ValidatorApplicationFilters) {
+		return api.get<ApiPaginatedResponse<ValidatorApplicationRow>>('/admin/validator-applications', {
+			status: filters?.status,
+			domain: filters?.domain,
+			origin: filters?.origin,
+			page: filters?.page,
+			per_page: filters?.per_page
+		});
+	},
+
+	/** SKI-82 — grants `challenge_validator:{domain}` to the applicant. */
+	approveValidatorApplication(id: string) {
+		return api.post<ApiResponse<{ application: ValidatorApplication }>>(
+			`/admin/validator-applications/${id}/approve`
+		);
+	},
+
+	rejectValidatorApplication(id: string, reason: string) {
+		return api.post<ApiResponse<{ application: ValidatorApplication }>>(
+			`/admin/validator-applications/${id}/reject`,
+			{ reason }
+		);
+	},
+
+	/** SKI-82 — admin-initiated path. Bypasses the candidacy thresholds but
+	 *  still requires the invitee to accept before the capability is granted. */
+	inviteValidator(body: ValidatorInviteBody) {
+		return api.post<ApiResponse<{ application: ValidatorApplication }>>(
+			'/admin/validators/invite',
+			body
+		);
+	},
+
+	/** SKI-108 — per-validator activity over a rolling window. The window is
+	 *  clamped 1..730 backend-side. */
+	listValidatorStats(windowDays = 90) {
+		return api.get<ApiResponse<ValidatorStatsResponse>>('/admin/validators/stats', {
+			window_days: windowDays
+		});
+	},
+
+	/** SKI-108 — validator x claimant concentration. Advisory: the backend
+	 *  flags rows, it never blocks anyone. */
+	getValidatorCollusionMatrix(windowDays = 90, minCount = 5) {
+		return api.get<ApiResponse<CollusionMatrixResponse>>('/admin/validators/collusion-matrix', {
+			window_days: windowDays,
+			min_count: minCount
+		});
 	},
 
 	// --- Community ---

@@ -1144,6 +1144,7 @@ export const ar: Translations = {
 			expiresAtLabel: 'تنتهي',
 			grantedByLabel: 'السبب :',
 			historyDeferred: 'سيظهر سجل الصلاحيات الملغاة عندما يوفره الخلفية.',
+			validatorPrefix: 'مُدقِّق',
 			names: {
 				challenger: 'متحدٍّ',
 				mentor: 'مرشد',

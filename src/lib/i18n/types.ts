@@ -937,6 +937,7 @@ export interface Translations {
 			expiresAtLabel: string;
 			grantedByLabel: string;
 			historyDeferred: string;
+			validatorPrefix: string;
 			names: {
 				challenger: string;
 				mentor: string;

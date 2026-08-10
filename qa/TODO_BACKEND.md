@@ -37,6 +37,22 @@
 
 **Statut :** deferred (doublon avec BE-P1-CONTRACT — infrastructure utoipa + Swagger UI déjà wirée backend commit c3ec13c, l'annotation exhaustive des ~86 handlers est le sujet d'un autre PR long-tail)
 
+### [P26] Demandes backend du workflow challenge — suivies dans Linear
+**Type :** implementation
+**Contexte :** l'implémentation admin P26 v2 (SKI-98 / SKI-99 / SKI-100) a fait remonter cinq besoins backend. Trois ont été livrés pendant l'implémentation, deux sont ouverts. Le suivi se fait dans Linear, projet *P26 v2 — Workflow challenge complet via Skilluv* — pas ici : ce fichier ne duplique pas le tracker.
+
+| Besoin | Ticket | Statut |
+| -- | -- | -- |
+| `PATCH /admin/slices/{id}/config` — override sensibilité + rang | SKI-106 | livré (backend `41acc56`) |
+| `GET /admin/validator-applications` — liste filtrée + stats live | SKI-107 | livré (backend `af93edc`) |
+| Stats validateurs + matrice collusion | SKI-108 | livré (backend `d06b5b8`) |
+| `GET /admin/projects/{slug}` doit renvoyer les 5 champs P26 v2 | SKI-109 | ouvert |
+| `POST /admin/projects/{slug}/ingest` — forcer l'ingestion | SKI-110 | ouvert |
+
+**Note contrats :** les payloads livrés diffèrent de ceux décrits dans les tickets d'origine (`per_page` et non `limit` ; `live_stats` et non `stats` ; `claimant_*` et non `claimer_*` ; `reject_count_approx` ; `user` imbriqué). Le front est aligné sur l'implémentation réelle, pas sur la spec — voir `src/lib/types/index.ts` section « P26 v2 ».
+
+**Statut :** partiellement livré (2 ouverts, suivis SKI-109 + SKI-110)
+
 ---
 
 ## Corrigés

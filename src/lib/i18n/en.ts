@@ -1136,6 +1136,7 @@ export const en: Translations = {
 			expiresAtLabel: 'Expires',
 			grantedByLabel: 'Reason:',
 			historyDeferred: 'Revoked capabilities history will appear once the backend exposes it.',
+			validatorPrefix: 'Validator',
 			names: {
 				challenger: 'Challenger',
 				mentor: 'Mentor',
