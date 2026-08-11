@@ -92,13 +92,16 @@
 		}
 	}
 
-	/** Only `status='open'` slices come back from the public list endpoint —
-	 *  enough to reach the config page of a slice that is still claimable,
-	 *  which is when the sensitivity and rank overrides actually matter. */
+	/** SKI-112 — tous statuts, plus seulement `open`.
+	 *
+	 *  La liste publique force `status='open'`, ce qui masquait précisément les
+	 *  slices sur lesquelles on a besoin d'agir : celles déjà claimées ou
+	 *  bloquées en validation. On trie côté backend par `updated_at DESC`, donc
+	 *  ce qui bouge remonte en premier. */
 	async function loadSlices(projectId: string) {
 		slicesLoading = true;
 		try {
-			const res = await adminApi.listOpenSlices({ project_id: projectId, per_page: 50 });
+			const res = await adminApi.listAdminSlices({ project_id: projectId, per_page: 25 });
 			slices = res.data;
 			slicesTotal = res.pagination.total;
 		} catch (e) {
@@ -170,9 +173,10 @@
 			: null
 	);
 
-	/** The backend accepts the five challenge fields on write but does not
-	 *  echo them on read yet, so an absent value here means "unknown", not
-	 *  "unset". Say which one it is rather than showing a misleading dash. */
+	/** Depuis SKI-109 le GET renvoie les cinq champs, donc ce garde est vrai en
+	 *  temps normal. Il reste pour un backend en retard (déploiement décalé,
+	 *  environnement local) : dans ce cas la page dit « non exposé par l'API »
+	 *  au lieu d'un tiret qui se lirait comme « non configuré ». */
 	const challengeConfigReadable = $derived(
 		project !== null &&
 			(project.curated_labels !== undefined ||
@@ -403,22 +407,27 @@
 				</h2>
 				<Select items={WINDOWS} bind:value={windowDays} size="sm" />
 			</div>
-			<ProjectChallengeStatsPanel {slug} {windowDays} />
+			<ProjectChallengeStatsPanel {slug} {windowDays} projectId={project.id} />
 		</section>
 
-		<!-- ── Slices ouvertes ──────────────────────────────────────────── -->
+		<!-- ── Slices ─────────────────────────────────────────────────────── -->
 		<section class="mb-8">
-			<h2 class="mb-3 text-[11px] font-bold uppercase tracking-widest text-text-muted">
-				Slices ouvertes
-			</h2>
+			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<h2 class="text-[11px] font-bold uppercase tracking-widest text-text-muted">
+					Slices récentes
+				</h2>
+				<a
+					href="/slices?project_id={project.id}"
+					class="text-xs text-text-muted transition-colors hover:text-text-primary"
+				>
+					Toutes les slices du projet →
+				</a>
+			</div>
 			{#if slicesLoading}
 				<Skeleton class="h-40 w-full rounded-2xl" />
 			{:else if slices.length === 0}
 				<div class="rounded-2xl border border-border bg-surface-elevated p-8 text-center">
-					<p class="text-sm text-text-muted">
-						Aucune slice ouverte. Les slices claimées ou déjà en validation ne sont pas listées
-						ici.
-					</p>
+					<p class="text-sm text-text-muted">Aucune slice ingérée sur ce projet.</p>
 				</div>
 			{:else}
 				<div class="overflow-hidden rounded-2xl border border-border bg-surface-elevated">

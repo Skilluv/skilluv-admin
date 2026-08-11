@@ -935,6 +935,24 @@ export interface AdminSlice {
 	updated_at: string;
 }
 
+/** Filtres de `GET /api/admin/slices` (SKI-112).
+ *
+ *  Distinct de la liste publique `GET /api/slices`, qui force `status='open'` :
+ *  celle-ci voit tous les statuts, ce qui est précisément l'intérêt côté admin
+ *  — une slice bloquée en `submitted` ou `pending_validation` n'est plus
+ *  introuvable. */
+export interface AdminSliceFilters {
+	project_id?: string;
+	/** Sérialisé en CSV côté client. Vide = tous les statuts. */
+	status?: SliceStatus[];
+	domain?: ValidatorDomain;
+	claimed_by_user_id?: string;
+	/** Recherche libre sur le titre ou la référence externe. */
+	q?: string;
+	page?: number;
+	per_page?: number;
+}
+
 /** Payload for `PATCH /api/admin/slices/{id}/config` (SKI-106).
  *  Each field is independently optional; an explicit `null` clears the
  *  override and restores the algorithmic default. */

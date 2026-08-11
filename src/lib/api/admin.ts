@@ -57,6 +57,7 @@ import type {
 	UpdateSkillNodeBody,
 	RecomputeCapabilitiesResult,
 	AdminSlice,
+	AdminSliceFilters,
 	SliceConfigBody,
 	ProjectChallengeStats,
 	ProjectIngestReport,
@@ -488,6 +489,21 @@ export const adminApi = {
 			'/slices',
 			params as Record<string, string | number>
 		);
+	},
+
+	/** SKI-112 — liste admin des slices, sans le filtre implicite `status='open'`
+	 *  de l'endpoint public. `status` accepte plusieurs valeurs séparées par des
+	 *  virgules ; un statut inconnu est refusé en 400. */
+	listAdminSlices(filters?: AdminSliceFilters) {
+		return api.get<ApiPaginatedResponse<AdminSlice>>('/admin/slices', {
+			project_id: filters?.project_id,
+			status: filters?.status?.length ? filters.status.join(',') : undefined,
+			domain: filters?.domain,
+			claimed_by_user_id: filters?.claimed_by_user_id,
+			q: filters?.q || undefined,
+			page: filters?.page,
+			per_page: filters?.per_page
+		});
 	},
 
 	/** Public detail endpoint — returns the slice whatever its status. */

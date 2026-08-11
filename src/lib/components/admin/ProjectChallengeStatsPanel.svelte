@@ -14,12 +14,17 @@
 	interface Props {
 		slug: string;
 		windowDays?: number;
+		/** Quand il est fourni, chaque compteur du funnel devient un lien vers
+		 *  `/slices` filtré sur ce projet et ce statut. Sans lui, le dashboard
+		 *  dit *combien* de slices sont dans un état sans permettre de voir
+		 *  *lesquelles* — c'est le trou que SKI-112 ferme. */
+		projectId?: string;
 		/** Notified on every successful load so a parent can offer CSV export
 		 *  of exactly what is on screen. */
 		onload?: (stats: ProjectChallengeStats) => void;
 	}
 
-	let { slug, windowDays = 90, onload }: Props = $props();
+	let { slug, windowDays = 90, projectId, onload }: Props = $props();
 
 	let stats = $state<ProjectChallengeStats | null>(null);
 	let loading = $state(true);
@@ -106,24 +111,31 @@
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
 				{#each SLICE_STATUSES as status (status)}
 					{@const count = stats.slices[status] ?? 0}
-					<div
-						class="rounded-xl border px-3 py-2.5 {SUCCESS_STATUSES.includes(status)
-							? 'border-success/40 bg-success-soft'
-							: 'border-border bg-surface/40'}"
-					>
+					{@const tone = SUCCESS_STATUSES.includes(status)
+						? 'border-success/40 bg-success-soft'
+						: 'border-border bg-surface/40'}
+					{@const value = SUCCESS_STATUSES.includes(status)
+						? 'text-success'
+						: count === 0
+							? 'text-text-muted'
+							: 'text-text-primary'}
+					{#snippet tile()}
 						<p class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
 							{STATUS_LABELS[status]}
 						</p>
-						<p
-							class="mt-0.5 text-xl font-black tabular-nums {SUCCESS_STATUSES.includes(status)
-								? 'text-success'
-								: count === 0
-									? 'text-text-muted'
-									: 'text-text-primary'}"
+						<p class="mt-0.5 text-xl font-black tabular-nums {value}">{count}</p>
+					{/snippet}
+					{#if projectId && count > 0}
+						<a
+							href="/slices?project_id={projectId}&status={status}"
+							class="rounded-xl border px-3 py-2.5 transition-colors hover:border-primary/50 {tone}"
+							aria-label="Voir les {count} slice(s) au statut {STATUS_LABELS[status]}"
 						>
-							{count}
-						</p>
-					</div>
+							{@render tile()}
+						</a>
+					{:else}
+						<div class="rounded-xl border px-3 py-2.5 {tone}">{@render tile()}</div>
+					{/if}
 				{/each}
 			</div>
 		</div>

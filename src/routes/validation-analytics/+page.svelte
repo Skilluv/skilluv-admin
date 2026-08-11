@@ -382,7 +382,7 @@
 				</h3>
 				<div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
 					{#each SLICE_STATUSES as status (status)}
-						<div class="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
+						{#snippet tile()}
 							<p class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
 								{STATUS_LABELS[status]}
 							</p>
@@ -393,7 +393,20 @@
 							>
 								{totals[status]}
 							</p>
-						</div>
+						{/snippet}
+						{#if totals[status] > 0}
+							<a
+								href="/slices?status={status}"
+								class="rounded-xl border border-border bg-surface/40 px-3 py-2.5 transition-colors hover:border-primary/50"
+								aria-label="Voir les {totals[status]} slice(s) au statut {STATUS_LABELS[status]}"
+							>
+								{@render tile()}
+							</a>
+						{:else}
+							<div class="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
+								{@render tile()}
+							</div>
+						{/if}
 					{/each}
 				</div>
 				<p class="mt-3 text-xs text-text-muted">
@@ -437,7 +450,11 @@
 				<p class="text-sm text-text-muted">Sélectionne un projet curé.</p>
 			</div>
 		{:else}
-			<ProjectChallengeStatsPanel slug={selectedSlug} {windowDays} />
+			<ProjectChallengeStatsPanel
+				slug={selectedSlug}
+				{windowDays}
+				projectId={projects.find((p) => p.slug === selectedSlug)?.id}
+			/>
 		{/if}
 	</section>
 

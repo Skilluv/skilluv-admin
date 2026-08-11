@@ -25,6 +25,7 @@
 		Briefcase,
 		Network,
 		FolderGit2,
+		Layers,
 		BadgeCheck,
 		ChartNoAxesColumn,
 		LogOut
@@ -51,6 +52,7 @@
 		{ href: '/fraud', label: i18n.t('admin.nav.fraud'), icon: Fingerprint },
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
 		{ href: '/projects', label: 'Projets', icon: FolderGit2 },
+		{ href: '/slices', label: 'Slices', icon: Layers },
 		{ href: '/validators', label: 'Validateurs', icon: BadgeCheck },
 		{ href: '/validation-analytics', label: 'Analytics validation', icon: ChartNoAxesColumn },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },

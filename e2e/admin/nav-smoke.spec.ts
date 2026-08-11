@@ -21,6 +21,7 @@ const ROUTES: Array<{ path: string; label: string }> = [
 	{ path: '/operations', label: 'ops jobs' },
 	{ path: '/catalog', label: 'catalog / orientations' },
 	{ path: '/projects', label: 'projects list' },
+	{ path: '/slices', label: 'slices list' },
 	{ path: '/validators/applications', label: 'validator candidacies' },
 	{ path: '/validators/invitations', label: 'validator invitations' },
 	{ path: '/validators/active', label: 'active validators' },
