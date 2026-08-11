@@ -30,7 +30,7 @@
 		loading = true;
 		try {
 			const res = await adminApi.listKycQueue();
-			queue = res.data.queue;
+			queue = res.data;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		} finally {

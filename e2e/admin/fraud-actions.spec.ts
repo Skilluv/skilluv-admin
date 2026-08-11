@@ -1,30 +1,41 @@
 import { test, expect } from '@playwright/test';
-import { withDb, seedUser } from '../setup/db';
+import { withDb, seedUser, seedProject, seedSlice } from '../setup/db';
 
 // Phase 2 — fraud queue: mark-valid + revoke a flagged deliverable via the UI.
 // Backend `list_flagged` returns deliverables with plagiarism_score >= 0.9.
 
 async function seedFlaggedDeliverable() {
 	const user = await seedUser({ prefix: 'fraud' });
+	// La contrainte `deliverables_at_least_one_parent` impose un rattachement à
+	// une slice ou à un challenge : un livrable orphelin n'existe pas en base.
+	// On ancre donc sur un projet + une slice jetables, nettoyés ensuite.
+	const project = await seedProject({ ownerId: user.id, slugPrefix: 'e2e-fraud' });
+	const slice = await seedSlice({ projectId: project.id, status: 'validated' });
 	return withDb(async (client) => {
 		const { rows } = await client.query(
 			`INSERT INTO deliverables
-			   (user_id, artifact_type, artifact_url, verifiable_by, plagiarism_score)
-			 VALUES ($1, 'code', 'https://e2e.test/artifact', 'ai', 0.95)
+			   (user_id, slice_id, artifact_type, artifact_url, verifiable_by, plagiarism_score)
+			 -- verifiable_by n'accepte plus 'ai' : les valeurs sont
+			 -- github_webhook / human_review / automated_diff / third_party_api / ci_status.
+			 VALUES ($1, $2, 'pr_merged', 'https://e2e.test/artifact', 'human_review', 0.95)
 			 RETURNING id`,
-			[user.id]
+			[user.id, slice.id]
 		);
-		return { deliverableId: rows[0].id as string };
+		return { deliverableId: rows[0].id as string, projectId: project.id, userId: user.id };
 	});
 }
 
 async function readDeliverable(id: string) {
 	return withDb(async (client) => {
 		const { rows } = await client.query(
-			'SELECT plagiarism_score, verification_status FROM deliverables WHERE id = $1',
+			// Le backend pose `revoked_at` + `revocation_reason` ; il ne touche pas
+			// `verification_status`. Le spec assérait donc un effet inexistant.
+			'SELECT plagiarism_score, verification_status, revoked_at FROM deliverables WHERE id = $1',
 			[id]
 		);
-		return rows[0] as { plagiarism_score: string | null; verification_status: string } | undefined;
+		return rows[0] as
+			| { plagiarism_score: string | null; verification_status: string; revoked_at: Date | null }
+			| undefined;
 	});
 }
 
@@ -66,5 +77,5 @@ test('admin can revoke a flagged deliverable via the danger dialog', async ({ pa
 	await page.getByTestId('confirm-dangerous-action').click();
 	expect((await req).status(), 'revoke POST').toBeLessThan(300);
 	const state = await readDeliverable(deliverableId);
-	expect(state?.verification_status, 'verification_status after revoke').toBe('revoked');
+	expect(state?.revoked_at, 'revoked_at posé après révocation').not.toBeNull();
 });

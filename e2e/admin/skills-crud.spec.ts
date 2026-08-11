@@ -44,8 +44,14 @@ test('admin creates then edits a skill node via the UI', async ({ page }) => {
 	await initialLoad;
 
 	// ─── Create ─────────────────────────────────────────────────────
-	await page.getByRole('button', { name: /nouveau|new|créer/i }).first().click();
+	// Le bouton est rendu en SSR, son `onclick` n'existe qu'après hydratation :
+	// un clic trop tôt ne fait rien. On réessaie jusqu'à ce que la modale
+	// s'ouvre plutôt que de poser une attente arbitraire.
 	const dialog = page.getByRole('dialog');
+	await expect(async () => {
+		await page.getByRole('button', { name: /créer un skill/i }).click();
+		await expect(dialog).toBeVisible({ timeout: 2_000 });
+	}).toPass({ timeout: 20_000 });
 	await expect(dialog).toBeVisible();
 
 	await dialog.getByRole('textbox', { name: /slug/i }).fill(slug);
@@ -63,14 +69,17 @@ test('admin creates then edits a skill node via the UI', async ({ page }) => {
 
 	// ─── Edit ────────────────────────────────────────────────────────
 	// Search for our just-created skill so it's the only row.
-	await page.getByPlaceholder(/recherche|search|filtrer/i).first().fill(slug);
+	await page.getByPlaceholder(/slug ou nom/i).first().fill(slug);
 	const editReq = page.waitForResponse(
 		(r) => r.url().includes(`/admin/skills/${created!.id}`) && r.request().method() === 'PUT'
 	);
-	// The row's edit button — anchor via the skill's slug text in the table.
-	await page.getByRole('button', { name: /modifier|edit|éditer/i }).first().click();
+	// Attendre que le filtre ait rechargé la liste : cliquer pendant le
+	// re-rendu ne fait rien, et l'échec se lit alors comme « pas de modale ».
 	const editDialog = page.getByRole('dialog');
-	await expect(editDialog).toBeVisible();
+	await expect(async () => {
+		await page.getByRole('button', { name: /modifier|edit|éditer/i }).first().click();
+		await expect(editDialog).toBeVisible({ timeout: 2_000 });
+	}).toPass({ timeout: 20_000 });
 
 	const newDisplayName = `${displayName} (edited)`;
 	const nameField = editDialog.getByRole('textbox', { name: /nom.*affiché|display name/i });

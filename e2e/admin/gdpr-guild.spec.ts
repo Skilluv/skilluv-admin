@@ -12,10 +12,17 @@ async function seedGuild(ownerId: string) {
 	const id = uniq();
 	return withDb(async (client) => {
 		const { rows } = await client.query(
-			`INSERT INTO guilds (name, slug, owner_id, description)
-			 VALUES ($1, $2, $3, 'E2E test guild')
+			// La colonne s'appelle `founder_id` : `owner_id` n'existe pas.
+			// `tag` est NOT NULL — c'est le trigramme affiché à côté du nom.
+			`INSERT INTO guilds (name, slug, tag, founder_id, description)
+			 VALUES ($1, $2, $3, $4, 'E2E test guild')
 			 RETURNING id`,
-			[`E2E Guild ${id}`, `e2e-guild-${id}`.slice(0, 60), ownerId]
+			[
+				`E2E Guild ${id}`,
+				`e2e-guild-${id}`.slice(0, 60),
+				id.slice(0, 5).toUpperCase(),
+				ownerId
+			]
 		);
 		return { id: rows[0].id as string };
 	});
@@ -58,7 +65,10 @@ test('admin dissolves a guild from /operations', async ({ page }) => {
 	// Guild dissolve is behind a form + ConfirmDangerousDialog. The UI expects
 	// the guild UUID pasted into an input, then the "Dissolve" button opens
 	// the confirm dialog.
-	const guildIdInput = page.getByLabel(/guild.*(id|uuid)|id.*guilde/i).first();
+	// Le champ n'a pas de <label for>, donc `getByLabel` ne le trouve pas :
+	// on cible son id.
+	const guildIdInput = page.locator('#op-gid');
+	await expect(guildIdInput).toBeVisible();
 	await guildIdInput.fill(guild.id);
 	await page.getByRole('button', { name: /dissoudre|dissolve/i }).first().click();
 
@@ -69,15 +79,15 @@ test('admin dissolves a guild from /operations', async ({ page }) => {
 	await page.getByTestId('confirm-dangerous-action').click();
 	expect((await req).status(), 'dissolve POST').toBeLessThan(300);
 
-	// Verify guild was flagged dissolved (schema-dependent — most likely a
-	// dissolved_at timestamp or status column).
+	// La dissolution est un soft-delete : `disbanded_at` est horodaté.
 	const dissolved = await withDb(async (client) => {
 		const { rows } = await client.query(
-			`SELECT dissolved_at, status FROM guilds WHERE id = $1`,
+			// La colonne s'appelle `disbanded_at` ; il n'y a pas de `status`.
+			`SELECT disbanded_at FROM guilds WHERE id = $1`,
 			[guild.id]
 		);
-		return rows[0] as { dissolved_at: Date | null; status?: string };
+		return rows[0] as { disbanded_at: Date | null };
 	});
 	// One of the two invariants should hold once dissolve fires.
-	expect(dissolved.dissolved_at !== null || dissolved.status === 'dissolved').toBe(true);
+	expect(dissolved.disbanded_at, 'guilde dissoute').not.toBeNull();
 });

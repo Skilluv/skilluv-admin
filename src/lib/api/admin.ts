@@ -576,8 +576,10 @@ export const adminApi = {
 
 	// --- Community ---
 
+	/** Même convention `{data: T[]}` : la page lisait `data.challenges` et
+	 *  n'affichait donc jamais la file de revue. */
 	communityReview() {
-		return api.get<ApiResponse<{ challenges: CommunityChallenge[]; total: number }>>('/admin/community/review');
+		return api.get<ApiPaginatedResponse<CommunityChallenge>>('/admin/community/review');
 	},
 
 	approveCommunity(id: string) {
@@ -606,8 +608,11 @@ export const adminApi = {
 
 	// --- Enterprise KYC ---
 
+	/** Même convention `{data: T[]}` que les autres listes admin : le type
+	 *  annonçait `{queue: […]}`, donc la page affichait une file vide alors
+	 *  que des dossiers attendaient. */
 	listKycQueue() {
-		return api.get<ApiResponse<{ queue: KycEntry[] }>>('/admin/enterprise-kyc');
+		return api.get<ApiPaginatedResponse<KycEntry>>('/admin/enterprise-kyc');
 	},
 
 	decideKyc(enterpriseId: string, body: KycDecisionBody) {
