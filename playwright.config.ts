@@ -21,6 +21,10 @@ export default defineConfig({
 	workers: process.env.CI ? 2 : undefined,
 	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
 	globalSetup: './e2e/global-setup.ts',
+	// Filet de sécurité : les specs nettoient en fin de test, mais un test qui
+	// échoue n'y arrive jamais. Sans ce teardown, les fixtures s'accumulent en
+	// base à chaque run raté.
+	globalTeardown: './e2e/global-teardown.ts',
 
 	use: {
 		baseURL: 'http://127.0.0.1:5174',
