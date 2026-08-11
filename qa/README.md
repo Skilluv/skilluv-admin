@@ -68,6 +68,18 @@ des tests fait des `DELETE`. Les deux environnements doivent rester
 distinguables par leur port. Si le tunnel est fermé, le préflight le dit explicitement au
 lieu de laisser chercher du côté des identifiants.
 
+**Pour fermer** : `Ctrl-C`, ou depuis un autre terminal
+
+```
+bash e2e/setup/db-tunnel.sh stop
+```
+
+Ne pas tuer le script via le gestionnaire de tâches : sous Git Bash, un `wait`
+sur un enfant Windows natif ne rend la main à aucun signal, donc la boucle
+survit et relance un `ssh` toutes les 3 secondes. C'est ainsi qu'un tunnel a
+pu reprendre 5433 tout seul après avoir été tué. Le `stop` tue les deux dans
+le bon ordre, et un démarrage nettoie de toute façon le tunnel précédent.
+
 ## Lancer les tests : rien d'autre en parallèle
 
 Les tests unitaires ont un timeout de 5 s. Sur une machine chargée, ils
