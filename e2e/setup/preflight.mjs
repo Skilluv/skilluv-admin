@@ -102,11 +102,33 @@ async function checkDb() {
 	try {
 		client = await connect();
 	} catch (e) {
-		check('joignable', false, e.message);
-		console.log(
-			'        → si l\'hôte ne résout pas, c\'est un nom de service interne au provider :\n' +
-				'          ouvrir un tunnel SSH et pointer DATABASE_URL sur localhost.'
-		);
+		// `pg` remonte un AggregateError dont le `message` est vide quand la
+		// connexion est refusée : l'information est dans `code`, ou dans celui
+		// des erreurs agrégées. Sans ça la ligne d'échec n'affichait rien.
+		const codes = [
+			...new Set(
+				[e.code, ...(Array.isArray(e.errors) ? e.errors.map((x) => x?.code) : [])].filter(
+					Boolean
+				)
+			)
+		];
+		const msg = String(e.message || codes.join(', ') || 'connexion impossible');
+		check('joignable', false, msg);
+
+		// Deux échecs très différents se ressemblent en sortie brute : le tunnel
+		// fermé (localhost qui refuse) et l'hôte interne au provider (qui ne
+		// résout pas). Dire lequel évite de chercher au mauvais endroit.
+		if (codes.includes('ECONNREFUSED') && PG_URL.includes('localhost')) {
+			console.log(
+				"        → DATABASE_URL pointe sur localhost mais rien n'écoute : le tunnel\n" +
+					'          SSH est fermé. Le rouvrir (voir qa/README.md) puis relancer.'
+			);
+		} else if (codes.includes('ENOTFOUND') || msg.includes('ENOTFOUND')) {
+			console.log(
+				"        → l'hôte ne résout pas : c'est un nom de service interne au provider.\n" +
+					'          Ouvrir un tunnel SSH et pointer DATABASE_URL sur localhost.'
+			);
+		}
 		return;
 	}
 	check('joignable', true);

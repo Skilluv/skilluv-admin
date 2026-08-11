@@ -37,6 +37,24 @@ Espace de suivi qualité pour le front admin + son intégration au backend Rust 
 Les fichiers `.md` de ce dossier restent la source de vérité **descriptive**
 (reproduction, cause, fix) ; Linear porte l'**état** et la priorisation.
 
+## Accès à la base de test
+
+Le Postgres du serveur de test n'expose aucun port sur l'hôte — c'est
+volontaire, rien n'est ouvert sur Internet. L'accès passe par un tunnel SSH,
+à garder ouvert le temps de la campagne :
+
+```
+ssh -N -o ServerAliveInterval=30 -L 5433:10.0.1.7:5432 root@159.195.218.131
+```
+
+`10.0.1.7` est l'IP docker du conteneur Postgres ; la retrouver au besoin avec
+`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <conteneur>`.
+
+`DATABASE_URL` dans `.env` doit alors pointer sur `@localhost:5433/skilluv`,
+avec le même mot de passe. Le tunnel peut tomber en cours de route
+(`Connection reset by peer`) : le préflight le dit explicitement plutôt que de
+laisser chercher.
+
 ## Avant de lancer les E2E
 
 ```
