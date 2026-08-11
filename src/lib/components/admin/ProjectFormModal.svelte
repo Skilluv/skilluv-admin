@@ -85,12 +85,14 @@
 
 	/** True when the loaded project actually carries the P26 fields.
 	 *
-	 *  `GET /admin/projects/{slug}` currently returns the pre-P26 column set,
-	 *  so in edit mode we usually have no stored value to prefill. Rather than
-	 *  showing blanks that would silently wipe the config on save, the form
-	 *  treats "empty" as "don't touch" and says so. Once the backend echoes the
-	 *  five fields (SKI-109) this flips to true on its own and the form behaves
-	 *  like any other prefilled edit. */
+	 *  Vrai depuis SKI-109 : `GET /admin/projects/{slug}` renvoie les cinq
+	 *  champs, donc l'édition se pré-remplit et un tableau vidé part bien en
+	 *  `[]` — ce que `COALESCE` accepte, contrairement à `null`.
+	 *
+	 *  Le garde reste en place plutôt que d'être supprimé : il couvre le cas
+	 *  d'un backend plus ancien (un déploiement en retard, un environnement
+	 *  local), où l'on retombe sur « champ vide = ne pas modifier » au lieu
+	 *  d'effacer à l'aveugle une config qu'on ne peut pas relire. */
 	const p26Echoed = $derived(
 		editing !== null &&
 			(editing.curated_labels !== undefined ||
@@ -175,6 +177,18 @@
 	 *  the operator deserves to see the same warning before saving. */
 	const ingestNoOpWarning = $derived(
 		form.slice_ingestion_mode === 'auto' && form.curated_labels.length === 0
+	);
+
+	/** SKI-269 — `PATCH` est en `COALESCE($n, colonne)` : envoyer `null` sur le
+	 *  couple GitHub est un no-op qui répond quand même 200. On ne peut donc pas
+	 *  débrancher un repo depuis l'UI. Le dire, plutôt que de laisser croire à
+	 *  une sauvegarde réussie. Les tableaux, eux, se vident bien : `[]` n'est pas
+	 *  `null`, `COALESCE` le prend. */
+	const cannotClearRepo = $derived(
+		editing !== null &&
+			!!editing.github_repo_owner &&
+			!form.github_repo_owner.trim() &&
+			!form.github_repo_name.trim()
 	);
 
 	const missingRepoForIngest = $derived(
@@ -550,6 +564,23 @@
 						<p class="text-xs text-text-primary">
 							Mode <strong>auto</strong> sans label curé : l'ingestor ne remontera aucune issue.
 							Le backend accepte cette configuration, mais elle est probablement une erreur.
+						</p>
+					</div>
+				{/if}
+
+				{#if cannotClearRepo}
+					<div
+						class="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-soft p-3"
+					>
+						<span class="mt-0.5 shrink-0 text-warning">
+							<AlertTriangle size={14} strokeWidth={2} />
+						</span>
+						<p class="text-xs text-text-primary">
+							Débrancher un repo n'est pas possible depuis cette page : l'API ignore
+							silencieusement l'effacement de ce couple. Le projet restera câblé sur
+							<strong>{editing?.github_repo_owner}/{editing?.github_repo_name}</strong>. Passer par
+							SQL, ou basculer le mode d'ingestion sur <strong>Manuel</strong> pour arrêter
+							l'ingestion.
 						</p>
 					</div>
 				{/if}

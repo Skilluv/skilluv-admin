@@ -175,13 +175,13 @@ test.describe('SKI-98 partie 1 — CRUD projet enrichi', () => {
 		await expect(page.getByRole('heading', { name: /santé du workflow/i })).toBeVisible();
 		await expect(page.getByRole('heading', { name: /cycle de vie des slices/i })).toBeVisible();
 
-		// SKI-109 : tant que le GET détail ne renvoie pas les cinq champs, la
-		// page dit « non exposé » plutôt que d'afficher un tiret trompeur.
-		// Quand SKI-109 sera livré, c'est le repo qui doit s'afficher. Les deux
-		// états sont acceptables ici, mais pas un troisième.
-		const repoShown = page.getByRole('link', { name: /skilluv\/skilluv-admin/ });
-		const notExposed = page.getByText(/non exposé par l'API/i).first();
-		await expect(repoShown.or(notExposed)).toBeVisible();
+		// SKI-109 est livré : le GET détail renvoie les cinq champs, donc la config
+		// d'ingestion doit s'afficher pour de vrai. L'assertion était auparavant
+		// permissive (« repo affiché OU non exposé ») le temps que l'endpoint
+		// arrive — plus besoin.
+		await expect(page.getByRole('link', { name: /skilluv\/skilluv-admin/ })).toBeVisible();
+		await expect(page.getByText('skilluv-challenge')).toBeVisible();
+		await expect(page.getByText(/non exposé par l'API/i)).toHaveCount(0);
 
 		await cleanupProject(project.id);
 		await cleanupUser(owner.id);
