@@ -41,15 +41,26 @@ export default async function globalTeardown() {
 		);
 		const projects = await client.query(`DELETE FROM projects WHERE slug LIKE 'e2e-%'`);
 
-		// Tous les FK vers `users` ne cascadent pas — `challenge_templates.created_by`
-		// bloque, par exemple. Un DELETE global échouerait donc en bloc à cause
-		// d'une poignée de lignes : on supprime utilisateur par utilisateur et on
-		// signale ce qui résiste, plutôt que de tout abandonner ou de masquer
-		// l'échec.
+		// Tous les FK vers `users` ne cascadent pas. Les lignes filles créées par
+		// les specs elles-mêmes (guildes, rapports, challenges, entreprises)
+		// retiennent leur auteur : sans ce passage préalable, une quarantaine
+		// d'utilisateurs restait en base à chaque campagne.
 		const { rows: candidates } = await client.query<{ id: string }>(
 			`SELECT id FROM users WHERE email LIKE '%@skilluv.test' AND email <> $1`,
 			[ADMIN_EMAIL]
 		);
+		const ids = candidates.map((c) => c.id);
+		if (ids.length > 0) {
+			for (const sql of [
+				'DELETE FROM guilds WHERE founder_id = ANY($1)',
+				'DELETE FROM reports WHERE reporter_id = ANY($1)',
+				'DELETE FROM challenge_templates WHERE created_by = ANY($1)',
+				'DELETE FROM enterprises WHERE owner_id = ANY($1)'
+			]) {
+				// Une table absente ou renommée ne doit pas interrompre le nettoyage.
+				await client.query(sql, [ids]).catch(() => undefined);
+			}
+		}
 		let deleted = 0;
 		const blocked: string[] = [];
 		for (const { id } of candidates) {

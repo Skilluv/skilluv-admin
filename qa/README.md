@@ -44,16 +44,23 @@ volontaire, rien n'est ouvert sur Internet. L'accès passe par un tunnel SSH,
 à garder ouvert le temps de la campagne :
 
 ```
-ssh -N -o ServerAliveInterval=30 -L 5433:10.0.1.7:5432 root@159.195.218.131
+bash e2e/setup/db-tunnel.sh
 ```
 
-`10.0.1.7` est l'IP docker du conteneur Postgres ; la retrouver au besoin avec
-`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <conteneur>`.
+Le serveur coupe la session SSH au bout de quelques dizaines de minutes
+(`Connection reset by peer`), ce qui suffit à faire tomber une campagne E2E en
+plein milieu — et les échecs ressemblent alors à des bugs applicatifs. Ce
+script reconnecte automatiquement et journalise chaque coupure ; un `ssh -L`
+simple ne survit pas de façon fiable à un run de 10 minutes.
 
-`DATABASE_URL` dans `.env` doit alors pointer sur `@localhost:5433/skilluv`,
-avec le même mot de passe. Le tunnel peut tomber en cours de route
-(`Connection reset by peer`) : le préflight le dit explicitement plutôt que de
-laisser chercher.
+`10.0.1.7` est l'IP docker du conteneur Postgres, qui n'expose aucun port sur
+l'hôte — c'est voulu, rien n'est ouvert sur Internet. La retrouver au besoin
+avec `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <conteneur>`,
+et la passer via `REMOTE_PG=…` si elle change.
+
+`DATABASE_URL` dans `.env` doit pointer sur `@localhost:5433/skilluv`, avec le
+même mot de passe. Si le tunnel est fermé, le préflight le dit explicitement au
+lieu de laisser chercher du côté des identifiants.
 
 ## Lancer les tests : rien d'autre en parallèle
 

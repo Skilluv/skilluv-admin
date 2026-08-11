@@ -47,9 +47,10 @@ Couvert par `e2e/admin/nav-smoke.spec.ts` (data-driven sur toutes les routes).
 | `/tournaments` | ✅ |
 | `/community` | ✅ |
 
-## Suite admin complète — ✅ 77/77
+## Suite admin complète — ✅ 84/84
 
-**Toutes vertes en série contre staging** (2026-08-11, `--workers=1`).
+**Les 84 specs vertes d'affilée** contre le serveur de test (2026-08-11,
+`--workers=1`, 6 min). Teardown propre : aucune fixture résiduelle en base.
 
 Avant ce jour, **aucune spec du projet `admin` ne pouvait démarrer** : le
 `globalSetup` échouait sur `ECONNREFUSED localhost:3001`, ni
