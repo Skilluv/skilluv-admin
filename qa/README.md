@@ -58,8 +58,14 @@ l'hôte — c'est voulu, rien n'est ouvert sur Internet. La retrouver au besoin
 avec `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <conteneur>`,
 et la passer via `REMOTE_PG=…` si elle change.
 
-`DATABASE_URL` dans `.env` doit pointer sur `@localhost:5433/skilluv`, avec le
-même mot de passe. Si le tunnel est fermé, le préflight le dit explicitement au
+`DATABASE_URL` dans `.env` doit pointer sur `@localhost:5434/skilluv`, avec le
+même mot de passe.
+
+**Pourquoi 5434 et pas 5433** : `docker-compose.yml` réserve 5433 au Postgres
+de la stack locale. Si les deux écoutent sur le même port, une opération
+d'écriture part sur la mauvaise base sans prévenir — et le `globalTeardown`
+des tests fait des `DELETE`. Les deux environnements doivent rester
+distinguables par leur port. Si le tunnel est fermé, le préflight le dit explicitement au
 lieu de laisser chercher du côté des identifiants.
 
 ## Lancer les tests : rien d'autre en parallèle
