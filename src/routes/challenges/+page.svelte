@@ -31,8 +31,10 @@
 		loading = true;
 		try {
 			const res = await adminApi.listChallenges();
-			challenges = res.data.challenges;
-			total = res.data.total;
+			challenges = res.data;
+			// Le total vit dans le bloc `pagination`, pas dans `data` — c'est la
+			// convention des listes admin.
+			total = res.pagination.total;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		} finally {

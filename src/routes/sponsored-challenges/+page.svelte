@@ -54,7 +54,7 @@
 		loading = true;
 		try {
 			const res = await adminApi.listSponsoredRequests();
-			requests = res.data.requests;
+			requests = res.data;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		} finally {

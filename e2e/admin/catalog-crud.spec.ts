@@ -10,10 +10,12 @@ import { withDb, uniq } from '../setup/db';
 async function readOrientation(slug: string) {
 	return withDb(async (client) => {
 		const { rows } = await client.query(
-			'SELECT id, display_name, description FROM orientations WHERE slug = $1',
+			// La colonne s'appelle `name` : `display_name` n'existe pas sur
+			// `orientations` (elle existe sur `badge_rules`, d'où la confusion).
+			'SELECT id, name, description FROM orientations WHERE slug = $1',
 			[slug]
 		);
-		return rows[0] as { id: string; display_name: string; description: string | null } | undefined;
+		return rows[0] as { id: string; name: string; description: string | null } | undefined;
 	});
 }
 
@@ -28,26 +30,36 @@ test('admin creates an orientation from /catalog', async ({ page }) => {
 	const slug = `e2e-orient-${id}`;
 	const displayName = `E2E Orientation ${id}`;
 
+	// Attendre le chargement de l'onglet : cliquer avant l'hydratation ne
+	// déclenche rien et la modale ne s'ouvre jamais.
+	// L'onglet lit le catalogue public `/orientations` ; seules les mutations
+	// passent par `/admin/orientations`.
+	const listed = page.waitForResponse(
+		(r) => r.url().includes('/orientations') && r.request().method() === 'GET'
+	);
 	await page.goto('/catalog');
-	// Orientations tab — most catalog pages have a segmented control.
-	await page.getByRole('button', { name: /orientations?/i }).first().click().catch(() => {});
+	await listed;
 
-	// Open create form (a button labelled "Nouvelle orientation" per fr.ts).
-	await page.getByRole('button', { name: /nouvelle orientation|new orientation|créer/i }).first().click();
+	// Libellé réel : « Créer une orientation » (i18n `orientations.createBtn`).
+	await page.getByRole('button', { name: /créer une orientation/i }).first().click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-	await dialog.locator('input[placeholder*="slug"], input[name="slug"], #slug').first().fill(slug);
-	await dialog.getByRole('textbox', { name: /nom|display name/i }).first().fill(displayName);
+	// Les champs sont des <Input label=…>, donc adressables par leur libellé
+	// plutôt que par un id ou un placeholder qui n'existent pas.
+	await dialog.getByLabel(/slug/i).first().fill(slug);
+	await dialog.getByLabel(/nom affiché/i).first().fill(displayName);
 
+	// La modale n'est pas un <form> : `requestSubmit()` n'avait rien à appeler.
+	// Le bouton primaire des actions est le point de soumission.
 	const req = page.waitForResponse(
 		(r) => r.url().includes('/admin/orientations') && r.request().method() === 'POST'
 	);
-	await dialog.locator('form').evaluate((f: HTMLFormElement) => f.requestSubmit());
+	await dialog.getByRole('button', { name: /^créer$/i }).click();
 	expect((await req).status(), 'orientation POST').toBeLessThan(300);
 
 	const created = await readOrientation(slug);
-	expect(created?.display_name).toBe(displayName);
+	expect(created?.name).toBe(displayName);
 
 	await cleanupOrientation(slug);
 });
@@ -71,8 +83,8 @@ async function seedBadgeRule() {
 	const slug = `e2e-badge-${id}`;
 	return withDb(async (client) => {
 		const { rows } = await client.query(
-			`INSERT INTO badge_rules (slug, display_name, description, kind, rule_expr, reward_fragments)
-			 VALUES ($1, $2, 'E2E test rule', 'proof', '{}'::jsonb, 0)
+			`INSERT INTO badge_rules (slug, output_type, display_name, description, conditions)
+			 VALUES ($1, 'medal', $2, 'E2E test rule', '{}'::jsonb)
 			 RETURNING id`,
 			[slug, `E2E Badge ${id}`]
 		);
@@ -89,13 +101,23 @@ async function cleanupBadgeRule(slug: string) {
 test('admin deprecates a badge rule from /catalog', async ({ page }) => {
 	const rule = await seedBadgeRule();
 
+	// Attendre le premier chargement de l'onglet par défaut avant de basculer :
+	// un clic avant hydratation ne change pas d'onglet.
+	const orientationsLoaded = page.waitForResponse(
+		(r) => r.url().includes('/orientations') && r.request().method() === 'GET'
+	);
 	await page.goto('/catalog');
-	await page.getByRole('button', { name: /badge/i }).first().click().catch(() => {});
+	await orientationsLoaded;
 
-	// Locate our seeded rule's row + trigger the deprecate action.
-	const row = page.locator(`text=${rule.slug}`).first();
+	const rulesLoaded = page.waitForResponse((r) => r.url().includes('/badge-rules'));
+	await page.getByRole('button', { name: 'Badge rules' }).click();
+	await rulesLoaded;
+
+	// Cibler la ligne de la règle seedée : `.first()` cliquait la première
+	// règle de la liste, donc la requête attendue ne partait jamais.
+	const row = page.locator('tbody tr', { hasText: rule.slug });
 	await expect(row).toBeVisible({ timeout: 10_000 });
-	await page.getByRole('button', { name: /déprécier|deprecate/i }).first().click();
+	await row.getByRole('button', { name: /déprécier|deprecate/i }).click();
 
 	// Deprecate is destructive → reason required.
 	await page.getByTestId('confirm-dangerous-reason').fill('E2E — rule superseded by newer criteria');
@@ -141,10 +163,11 @@ test('admin creates a tenant from /tenants', async ({ page }) => {
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible();
 
-	await dialog.locator('input[placeholder*="slug"], input[name="slug"], #slug').first().fill(slug);
-	await dialog.getByRole('textbox', { name: /nom|company|name/i }).first().fill(name);
+	// Les ids de la modale tenant sont préfixés `t-` : `#slug` ne matchait rien.
+	await dialog.locator('#t-slug').fill(slug);
+	await dialog.locator('#t-name').fill(name);
 	// Contact email is required by the create endpoint.
-	await dialog.locator('input[type="email"]').first().fill(`${slug}@e2e.test`);
+	await dialog.locator('#t-email').fill(`${slug}@e2e.test`);
 
 	const req = page.waitForResponse(
 		(r) => r.url().includes('/admin/tenants') && r.request().method() === 'POST'

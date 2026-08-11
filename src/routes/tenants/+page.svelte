@@ -30,7 +30,7 @@
 		loading = true;
 		try {
 			const res = await tenantsApi.list();
-			tenants = res.data.tenants;
+			tenants = res.data;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : 'Erreur');
 		} finally {

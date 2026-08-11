@@ -387,8 +387,11 @@ export const adminApi = {
 		return api.post<ApiResponse<{ challenge: Challenge }>>('/admin/challenges', data);
 	},
 
+	/** Convention `{data: T[], pagination}` — le backend a aligné toutes les
+	 *  listes admin dessus (cf. BUGS_BACK P3). Le type disait encore
+	 *  `{challenges: […]}`, donc la page lisait `undefined`. */
 	listChallenges() {
-		return api.get<ApiResponse<{ challenges: Challenge[]; total: number }>>('/admin/challenges');
+		return api.get<ApiPaginatedResponse<Challenge>>('/admin/challenges');
 	},
 
 	updateChallenge(id: string, data: ChallengePatchBody) {
@@ -617,7 +620,7 @@ export const adminApi = {
 	// --- Sponsored challenges ---
 
 	listSponsoredRequests() {
-		return api.get<ApiResponse<{ requests: SponsoredRequest[] }>>('/admin/sponsored-challenges');
+		return api.get<ApiPaginatedResponse<SponsoredRequest>>('/admin/sponsored-challenges');
 	},
 
 	decideSponsored(id: string, body: SponsoredDecisionBody) {

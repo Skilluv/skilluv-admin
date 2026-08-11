@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // Phase 3 — ops jobs safe triggers.
 //
@@ -12,56 +12,72 @@ import { test, expect } from '@playwright/test';
 // avoid mutating real proofs.
 
 async function pageFireAndAssert(
-	page: import('@playwright/test').Page,
+	page: Page,
 	pathIncludes: string,
 	trigger: () => Promise<void>
 ) {
-	const req = page.waitForResponse(
-		(r) => r.url().includes(pathIncludes) && r.request().method() === 'POST'
+	// Le bouton est rendu en SSR mais son `onclick` n'existe qu'après
+	// hydratation : un clic trop tôt ne déclenche rien, et le test échoue sur
+	// « aucune réponse » sans dire pourquoi. On réessaie donc quelques fois
+	// plutôt que de poser une attente arbitraire qui serait soit trop courte,
+	// soit du temps perdu à chaque run.
+	const attempts = 5;
+	for (let i = 0; i < attempts; i++) {
+		const req = page
+			.waitForResponse(
+				(r) => r.url().includes(pathIncludes) && r.request().method() === 'POST',
+				{ timeout: 3_000 }
+			)
+			.catch(() => null);
+		await trigger();
+		const res = await req;
+		if (res) {
+			expect(res.status(), `POST to ${pathIncludes}`).toBeLessThan(300);
+			return;
+		}
+	}
+	throw new Error(
+		`Aucun POST vers ${pathIncludes} après ${attempts} clics — le handler n'est ` +
+			'probablement jamais attaché (hydratation) ou le bouton ne déclenche rien.'
 	);
-	await trigger();
-	const status = (await req).status();
-	expect(status, `POST to ${pathIncludes}`).toBeLessThan(300);
+}
+
+// Les quatre déclencheurs portent un `data-testid` : deux boutons de la page
+// s'appellent « Déclencher » à l'identique, et les libellés français avaient
+// déjà dérivé une fois. Une ancre stable vaut mieux qu'une regex sur du texte
+// d'interface.
+
+/** Charge /operations et attend que la page soit hydratée : cliquer avant ne
+ *  déclenche rien et le test échoue sur un symptôme trompeur. */
+async function openOperations(page: Page) {
+	await page.goto('/operations');
+	await expect(page.getByTestId('ops-rebuild-leaderboards')).toBeVisible();
 }
 
 test('rebuild-leaderboards trigger reaches the backend', async ({ page }) => {
-	const initialLoad = page.waitForResponse(
-		(r) => r.url().includes('/api/admin/') && r.request().method() === 'GET',
-		{ timeout: 15_000 }
-	).catch(() => null);
-	await page.goto('/operations');
-	await initialLoad;
+	await openOperations(page);
 	await pageFireAndAssert(page, '/admin/leaderboards/rebuild', async () => {
-		await page.getByRole('button', { name: /rebuild.*leaderboards|leaderboards.*rebuild|reconstruire.*classement/i }).first().click();
+		await page.getByTestId('ops-rebuild-leaderboards').click();
 	});
 });
 
 test('proof-hooks sweep with dry-run reaches the backend', async ({ page }) => {
-	await page.goto('/operations');
-	// Fires the dry-run sweep — the UI exposes an explicit dry-run toggle.
-	const req = page.waitForResponse(
-		(r) => r.url().includes('/admin/proof-hooks/sweep') && r.request().method() === 'POST'
-	);
-	// Best-effort: check dry-run checkbox if present, then click sweep button.
-	const dryRunToggle = page.getByLabel(/dry.?run|essai à sec|simulation/i).first();
-	if (await dryRunToggle.isVisible().catch(() => false)) {
-		await dryRunToggle.check();
-	}
-	await page.getByRole('button', { name: /sweep|balayage|proof.?hooks/i }).first().click();
-	const res = await req;
-	expect(res.status(), 'sweep POST').toBeLessThan(300);
+	await openOperations(page);
+	await pageFireAndAssert(page, '/admin/proof-hooks/sweep', async () => {
+		await page.getByTestId('ops-proof-sweep-dry-run').click();
+	});
 });
 
 test('AI hidden-gems job trigger reaches the backend', async ({ page }) => {
-	await page.goto('/operations');
+	await openOperations(page);
 	await pageFireAndAssert(page, '/admin/ai/hidden-gems', async () => {
-		await page.getByRole('button', { name: /hidden.gems|pépites/i }).first().click();
+		await page.getByTestId('ops-hidden-gems').click();
 	});
 });
 
 test('AI churn job trigger reaches the backend', async ({ page }) => {
-	await page.goto('/operations');
+	await openOperations(page);
 	await pageFireAndAssert(page, '/admin/ai/churn', async () => {
-		await page.getByRole('button', { name: /churn|attrition/i }).first().click();
+		await page.getByTestId('ops-churn').click();
 	});
 });
