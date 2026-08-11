@@ -126,17 +126,69 @@
 		void loadOverview(list, w);
 	});
 
+	/** Nombre de requêtes de stats en vol simultanément.
+	 *
+	 *  L'agrégat de la section 1 demande une requête par projet curé, faute
+	 *  d'endpoint global. En `Promise.all` brut, 50 projets déclenchaient 50
+	 *  appels d'un coup au chargement de la page. On plafonne : c'est un peu
+	 *  plus lent à 4 repos, franchement plus sain au-delà. */
+	const STATS_CONCURRENCY = 4;
+
+	/** Cache par `slug|fenêtre` : revenir sur une fenêtre déjà consultée ne
+	 *  redéclenche rien. Les stats bougent à l'échelle de l'heure, pas de la
+	 *  seconde — un aller-retour 90 j → 30 j → 90 j ne justifie pas de tout
+	 *  recharger. */
+	const statsCache = new Map<string, ProjectChallengeStats>();
+
+	/** Exécute `fn` sur chaque item, `limit` en parallèle au plus. */
+	async function mapLimit<T, R>(
+		items: T[],
+		limit: number,
+		fn: (item: T) => Promise<R>
+	): Promise<R[]> {
+		const out: R[] = new Array(items.length);
+		let next = 0;
+		const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+			while (next < items.length) {
+				const i = next++;
+				out[i] = await fn(items[i]);
+			}
+		});
+		await Promise.all(workers);
+		return out;
+	}
+
+	/** Projets dont les stats n'ont pas pu être chargées : la section reste
+	 *  utilisable, mais elle doit dire qu'elle est incomplète plutôt que de
+	 *  présenter une somme partielle comme un total. */
+	let overviewPartial = $state<string[]>([]);
+
 	async function loadOverview(list: ProjectListItem[], w: number) {
 		overviewLoading = true;
 		overviewError = null;
 		try {
-			const results = await Promise.all(
-				list.map(async (p) => {
+			const failed: string[] = [];
+			// `allSettled` par item plutôt qu'un `Promise.all` global : un seul
+			// projet en erreur ne doit pas vider tout l'agrégat.
+			const results = await mapLimit(list, STATS_CONCURRENCY, async (p) => {
+				const key = `${p.slug}|${w}`;
+				const cached = statsCache.get(key);
+				if (cached) return [p.slug, cached] as const;
+				try {
 					const res = await adminApi.getProjectChallengeStats(p.slug, w);
+					statsCache.set(key, res.data);
 					return [p.slug, res.data] as const;
-				})
-			);
-			overview = Object.fromEntries(results);
+				} catch {
+					failed.push(p.slug);
+					return null;
+				}
+			});
+			overview = Object.fromEntries(results.filter((r) => r !== null));
+			overviewPartial = failed;
+			// Tout a échoué : c'est un vrai problème, pas une somme partielle.
+			if (failed.length === list.length && list.length > 0) {
+				overviewError = new Error("Aucune statistique de projet n'a pu être chargée.");
+			}
 		} catch (e) {
 			overviewError = e;
 			overview = {};
@@ -412,6 +464,15 @@
 				<p class="mt-3 text-xs text-text-muted">
 					Somme des statistiques par projet — il n'existe pas d'endpoint d'agrégat global.
 				</p>
+				{#if overviewPartial.length > 0}
+					<p class="mt-1 text-xs text-warning">
+						Total incomplet : {overviewPartial.length} projet{overviewPartial.length > 1
+							? 's'
+							: ''} n'{overviewPartial.length > 1 ? 'ont' : 'a'} pas répondu ({overviewPartial.join(
+							', '
+						)}).
+					</p>
+				{/if}
 			</div>
 		{/if}
 	</section>

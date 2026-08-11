@@ -62,17 +62,24 @@ test('admin dissolves a guild from /operations', async ({ page }) => {
 	const guild = await seedGuild(owner.id);
 
 	await page.goto('/operations');
-	// Guild dissolve is behind a form + ConfirmDangerousDialog. The UI expects
-	// the guild UUID pasted into an input, then the "Dissolve" button opens
-	// the confirm dialog.
-	// Le champ n'a pas de <label for>, donc `getByLabel` ne le trouve pas :
-	// on cible son id.
+	// La dissolution passe par un champ UUID puis un ConfirmDangerousDialog.
+	// Le champ n'a pas de <label for> : on le cible par son id.
 	const guildIdInput = page.locator('#op-gid');
 	await expect(guildIdInput).toBeVisible();
-	await guildIdInput.fill(guild.id);
-	await page.getByRole('button', { name: /dissoudre|dissolve/i }).first().click();
 
-	await page.getByTestId('confirm-dangerous-reason').fill('E2E — dissolve inactive guild');
+	// `requestDissolve` sort immédiatement si le champ est vide. Or remplir un
+	// input avant l'hydratation écrit dans le DOM sans mettre à jour l'état
+	// Svelte : le handler voit une chaîne vide et n'ouvre jamais la modale.
+	// On re-remplit donc à chaque tentative — une fois hydraté, le binding
+	// prend la valeur et le clic suivant fonctionne.
+	const confirmReason = page.getByTestId('confirm-dangerous-reason');
+	await expect(async () => {
+		await guildIdInput.fill(guild.id);
+		await page.getByRole('button', { name: /dissoudre|dissolve/i }).first().click();
+		await expect(confirmReason).toBeVisible({ timeout: 2_000 });
+	}).toPass({ timeout: 20_000 });
+
+	await confirmReason.fill('E2E — dissolve inactive guild');
 	const req = page.waitForResponse(
 		(r) => r.url().includes(`/admin/guilds/${guild.id}/dissolve`) && r.request().method() === 'POST'
 	);

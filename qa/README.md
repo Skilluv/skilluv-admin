@@ -55,6 +55,23 @@ avec le même mot de passe. Le tunnel peut tomber en cours de route
 (`Connection reset by peer`) : le préflight le dit explicitement plutôt que de
 laisser chercher.
 
+## Lancer les tests : rien d'autre en parallèle
+
+Les tests unitaires ont un timeout de 5 s. Sur une machine chargée, ils
+tombent en masse — 24 échecs d'un coup, avec des messages qui ressemblent à de
+vrais bugs (`Cannot read properties of undefined (reading 'status')`) alors
+que rien n'est cassé. Le coupable le plus fréquent : **un `npm run dev` laissé
+tourner**. Vite surveille les fichiers en continu et suffit à faire déborder
+le budget de 5 s.
+
+Diagnostic rapide : si la ligne de résumé dit `tests 12ms` alors que la durée
+totale est de deux minutes, c'est de la contention, pas du code. Couper le
+serveur de dev et relancer — Playwright démarre le sien de toute façon.
+
+Même logique pour la suite E2E : en `--workers=8` contre un backend distant,
+avec la compilation SvelteKit à la demande, les échecs sont intermittents.
+**Utiliser `--workers=1`.**
+
 ## Avant de lancer les E2E
 
 ```
