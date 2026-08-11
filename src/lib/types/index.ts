@@ -974,6 +974,10 @@ export interface ProjectIngestReport {
 	slices_skipped_existing: number;
 	mode: SliceIngestionMode;
 	labels_matched: string[];
+	/** Issues que l'ingestor n'a pas su traiter. Renvoyé par le backend mais
+	 *  absent de la spec du ticket — sans lui, une passe qui échoue à moitié
+	 *  ressemble à une passe qui n'a rien trouvé. */
+	errors?: number;
 }
 
 /** `GET /api/admin/projects/{slug}/stats` (SKI-124). */

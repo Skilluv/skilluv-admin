@@ -380,6 +380,23 @@
 							— aucun label curé n'a matché.
 						{/if}
 					</p>
+					{#if (ingestReport.errors ?? 0) > 0}
+						<p class="mt-2 text-xs text-warning">
+							{ingestReport.errors} issue{(ingestReport.errors ?? 0) > 1 ? 's' : ''} n'
+							{(ingestReport.errors ?? 0) > 1 ? 'ont' : 'a'} pas pu être traitée{(ingestReport.errors ??
+								0) > 1
+								? 's'
+								: ''} — la passe est incomplète.
+						</p>
+					{/if}
+
+					{#if ingestReport.issues_seen === 0}
+						<p class="mt-2 text-xs text-text-muted">
+							Aucune issue ne porte l'un des labels curés sur ce repo. C'est le cas normal tant
+							que rien n'a été tagué : l'ingestion n'a rien à remonter.
+						</p>
+					{/if}
+
 					{#if ingestReport.issues_seen > 0 && ingestReport.slices_created === 0 && ingestReport.slices_skipped_existing === 0}
 						<p class="mt-2 text-xs text-warning">
 							Des issues ont été lues mais aucune n'a produit de slice : les labels curés ne
