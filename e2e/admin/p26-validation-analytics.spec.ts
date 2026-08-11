@@ -79,11 +79,21 @@ test.describe('SKI-100 — dashboard analytics validation', () => {
 	});
 
 	test('le seuil de signalement est répercuté dans la requête', async ({ page }) => {
+		const firstMatrix = page.waitForResponse((r) => r.url().includes('collusion-matrix'));
 		await page.goto('/validation-analytics');
+		await firstMatrix;
+
+		// Cliquer pendant que la section se re-rend referme le dropdown avant
+		// que l'option existe : on n'interagit qu'une fois la matrice chargée.
+		const section = page.locator('section').filter({ hasText: /4 — concentration/i });
+		const trigger = section.getByRole('button', { name: /5 validations/i });
+		await expect(trigger).toBeVisible();
 
 		const req = page.waitForResponse((r) => r.url().includes('min_count=10'));
-		await page.getByRole('button', { name: /> 5 validations/i }).click();
-		await page.getByRole('option', { name: /> 10 validations/i }).click();
+		await trigger.click();
+		const option = page.getByRole('option', { name: /10 validations/i });
+		await expect(option).toBeVisible();
+		await option.click();
 		await req;
 	});
 
@@ -113,11 +123,16 @@ test.describe('SKI-100 — dashboard analytics validation', () => {
 		await page.goto('/validation-analytics');
 		await page.waitForResponse((r) => r.url().includes(`/admin/projects/${project.slug}/stats`));
 
+		// Un export par section : viser celui de la section 1 explicitement.
+		// `.first()` tombait sur celui des validateurs quand l'agrégat n'était
+		// pas encore chargé et que le bouton de la section 1 n'existait pas.
+		const overviewExport = page
+			.locator('section')
+			.filter({ hasText: /1 — vue d'ensemble/i })
+			.getByRole('button', { name: /export csv/i });
+		await expect(overviewExport).toBeVisible();
 		const downloadPromise = page.waitForEvent('download');
-		await page
-			.getByRole('button', { name: /export csv/i })
-			.first()
-			.click();
+		await overviewExport.click();
 		const download = await downloadPromise;
 		expect(download.suggestedFilename()).toMatch(/^skilluv-projets-\d+j\.csv$/);
 

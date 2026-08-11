@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import { loadDotEnv } from './e2e/setup/env.mjs';
 import { STORAGE_STATE } from './e2e/global-setup';
+
+// Avant tout le reste : global-setup et e2e/setup/db.ts lisent BACKEND_URL /
+// DATABASE_URL au moment de l'import, donc .env doit être chargé ici.
+loadDotEnv();
 
 // E2E config. Two project buckets:
 //   - `public` : specs that don't need auth (auth-redirect, login page render, …)

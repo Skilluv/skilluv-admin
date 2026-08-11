@@ -1062,6 +1062,14 @@ export interface ValidatorInviteBody {
 
 // ─── Validation analytics (SKI-108 / SKI-100) ────────────────────────────────
 
+/** One validator grant: the domain plus when it was awarded. The date comes
+ *  from `user_capabilities.granted_at` and is served inline, so the roster
+ *  needs no per-user follow-up request. */
+export interface ValidatorActiveDomain {
+	domain: ValidatorDomain;
+	granted_at: string;
+}
+
 /** Row of `GET /api/admin/validators/stats`. The population is every user
  *  holding a non-revoked `challenge_validator:*` capability, so a validator
  *  with no activity in the window still appears with zeroes. */
@@ -1073,21 +1081,25 @@ export interface ValidatorStatsRow {
 	};
 	validations_count: number;
 	approve_count: number;
-	/** Approximate by construction: a rejection is inferred from a slice that
-	 *  was picked up and carries a rejection reason, so a re-pickup can be
-	 *  counted twice. Good enough for Phase 1, not a billing figure. */
-	reject_count_approx: number;
+	reject_count: number;
 	/** approve / (approve + reject). `0` — not null — when nothing was decided
 	 *  in the window. */
 	approve_ratio: number;
 	avg_pickup_to_decision_hours: number | null;
-	/** Domains stripped of the `challenge_validator:` prefix. */
-	active_domains: ValidatorDomain[];
+	/** Domains stripped of the `challenge_validator:` prefix, each with its
+	 *  grant date. */
+	active_domains: ValidatorActiveDomain[];
 }
 
 export interface ValidatorStatsResponse {
 	window_days: number;
 	validators: ValidatorStatsRow[];
+	pagination?: {
+		page: number;
+		per_page: number;
+		total: number;
+		total_pages: number;
+	};
 }
 
 /** One claimant a validator has repeatedly validated. */

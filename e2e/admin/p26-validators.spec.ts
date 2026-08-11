@@ -45,7 +45,9 @@ test.describe('SKI-99 — candidatures', () => {
 		await expect(card.getByText(/rang/i)).toBeVisible();
 		await expect(card.getByText(/prs validées/i)).toBeVisible();
 		await expect(card.getByText(/ancienneté/i)).toBeVisible();
-		await expect(card.getByText('artisan')).toBeVisible();
+		// `getByText('artisan')` matcherait aussi le seuil « min. artisan » affiché
+		// juste en dessous : on vise la valeur, pas la légende.
+		await expect(card.getByText('artisan', { exact: true })).toBeVisible();
 
 		const approveReq = page.waitForResponse(
 			(r) => r.url().includes(`/validator-applications/${app.id}/approve`)
@@ -123,7 +125,14 @@ test.describe('SKI-99 — invitations', () => {
 	test('inviter un utilisateur crée une candidature d’origine invitation', async ({ page }) => {
 		const invitee = await seedUser({ prefix: 'p26inv' });
 
+		// Attendre la réponse de la liste : elle prouve que le composant est
+		// hydraté. Cliquer sur le bouton rendu en SSR avant hydratation ne
+		// déclenche rien et la modale ne s'ouvre jamais.
+		const listReq = page.waitForResponse((r) =>
+			r.url().includes('/admin/validator-applications')
+		);
 		await page.goto('/validators/invitations');
+		await listReq;
 		await page.getByRole('button', { name: /nouvelle invitation/i }).click();
 
 		const dialog = page.getByRole('dialog');
@@ -208,8 +217,10 @@ test.describe('SKI-99 — validateurs actifs', () => {
 
 		const row = page.locator('tbody tr', { hasText: validator.username });
 		await expect(row).toBeVisible();
-		await expect(row.getByText('code')).toBeVisible();
-		// La date de grant vient d'un second appel par validateur.
+		// « code » apparaît deux fois par ligne : le badge du domaine et le bouton
+		// de révocation. On vise le badge.
+		await expect(row.getByText('code', { exact: true }).first()).toBeVisible();
+		// La date de grant est servie inline dans `active_domains` (SKI-115).
 		await expect(row.getByText(/depuis le \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
 
 		await cleanupUser(validator.id);

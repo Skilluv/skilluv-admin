@@ -5,6 +5,7 @@
 	import { i18n } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import BackendStatusBanner from '$components/ui/BackendStatusBanner.svelte';
+	import Toast from '$components/ui/Toast.svelte';
 	import { type Component } from 'svelte';
 	import {
 		LayoutDashboard,
@@ -89,6 +90,9 @@
 </svelte:head>
 
 <BackendStatusBanner />
+<!-- Sans ce montage, les ~194 appels `toast.*` de l'app ne rendent rien : les
+     succès comme les erreurs étaient avalés en silence. -->
+<Toast />
 
 {#if pathname.startsWith('/auth/')}
 	<!-- Auth pages render standalone, no chrome. -->

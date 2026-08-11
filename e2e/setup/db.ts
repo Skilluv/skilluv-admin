@@ -3,7 +3,10 @@
 // `new pg.Client()` boilerplate + connection-URL fallbacks across 10 files.
 import pg from 'pg';
 
-export const PG_URL =
+/** Lu à chaque appel, pas à l'import : `playwright.config` charge `.env` dans
+ *  son corps alors que les imports ES sont évalués avant lui. Une constante de
+ *  module figerait la valeur d'avant chargement. */
+export const pgUrl = () =>
 	process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
 
 /**
@@ -11,7 +14,7 @@ export const PG_URL =
  * throw. Cheap to open on staging Postgres (~ms), keeps helpers linear.
  */
 export async function withDb<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
-	const client = new pg.Client({ connectionString: PG_URL });
+	const client = new pg.Client({ connectionString: pgUrl() });
 	await client.connect();
 	try {
 		return await fn(client);

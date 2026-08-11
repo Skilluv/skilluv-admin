@@ -90,6 +90,12 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
+			// Écouté en capture (voir onMount) et propagation stoppée quand le
+			// dropdown est ouvert : sinon Escape traverse jusqu'à <Modal>, qui
+			// ferme le formulaire entier alors que l'utilisateur voulait juste
+			// refermer la liste — et tout ce qui était saisi est perdu.
+			if (!open) return;
+			e.stopPropagation();
 			open = false;
 			query = '';
 			buttonEl?.focus();
@@ -100,10 +106,10 @@
 		// `click` (pas `mousedown`) : garantit que l'onclick du trigger a
 		// déjà fait son travail au moment où le listener document tourne.
 		document.addEventListener('click', handleClickOutside);
-		document.addEventListener('keydown', handleKeydown);
+		document.addEventListener('keydown', handleKeydown, true);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
-			document.removeEventListener('keydown', handleKeydown);
+			document.removeEventListener('keydown', handleKeydown, true);
 		};
 	});
 </script>

@@ -8,7 +8,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CREDS_PATH = resolve(HERE, 'setup/admin-credentials.json');
 export const STORAGE_STATE = resolve(HERE, 'setup/admin-storage-state.json');
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
+// Lu à l'appel, pas à l'import : playwright.config charge .env dans son corps,
+// or les imports ES sont évalués avant. Une constante de module capturerait
+// la valeur d'avant chargement et retomberait sur localhost.
+const backendUrl = () => process.env.BACKEND_URL || 'http://localhost:3001';
 const ADMIN_ORIGIN = 'http://localhost:5174';
 
 export default async function globalSetup(_config: FullConfig) {
@@ -30,7 +33,7 @@ export default async function globalSetup(_config: FullConfig) {
 
 	// 1. API login — hits the backend directly with the admin Origin so cookies
 	//    are issued exactly as they would be from the real admin app.
-	const api = await pwRequest.newContext({ baseURL: BACKEND, extraHTTPHeaders: { Origin: ADMIN_ORIGIN } });
+	const api = await pwRequest.newContext({ baseURL: backendUrl(), extraHTTPHeaders: { Origin: ADMIN_ORIGIN } });
 	const loginRes = await api.post('/api/auth/login', {
 		data: {
 			identifier: creds.email,

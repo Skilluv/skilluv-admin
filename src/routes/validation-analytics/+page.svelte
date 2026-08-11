@@ -253,7 +253,7 @@
 				'username',
 				'validations',
 				'approbations',
-				'rejets_approx',
+				'rejets',
 				'taux_approbation',
 				'pickup_vers_decision_h',
 				'domaines'
@@ -264,10 +264,10 @@
 				v.user.username ?? v.user.id,
 				String(v.validations_count),
 				String(v.approve_count),
-				String(v.reject_count_approx),
+				String(v.reject_count),
 				String(v.approve_ratio),
 				String(v.avg_pickup_to_decision_hours ?? ''),
-				v.active_domains.join(' ')
+				v.active_domains.map((d) => d.domain).join(' ')
 			]);
 		}
 		download(`skilluv-validateurs-${windowDays}j.csv`, lines);
@@ -527,8 +527,8 @@
 									</td>
 									<td class="px-4 py-3">
 										<div class="flex flex-wrap gap-1.5">
-											{#each v.active_domains as d (d)}
-												<Badge variant="primary">{d}</Badge>
+											{#each v.active_domains as d (d.domain)}
+												<Badge variant="primary">{d.domain}</Badge>
 											{/each}
 										</div>
 									</td>
@@ -539,7 +539,7 @@
 										{v.approve_count}
 									</td>
 									<td class="px-4 py-3 text-right font-mono tabular-nums text-text-muted">
-										{v.reject_count_approx}
+										{v.reject_count}
 									</td>
 									<td class="px-4 py-3 text-right font-mono tabular-nums text-text-primary">
 										{ratio(v.approve_ratio)}

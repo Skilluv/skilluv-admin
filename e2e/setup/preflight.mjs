@@ -12,18 +12,11 @@
 // Lit BACKEND_URL et DATABASE_URL depuis .env (ou l'environnement).
 // Sort en 0 si tout est prêt, 1 sinon. N'écrit jamais en base.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import pg from 'pg';
 
-// ─── Chargement .env (dotenv n'est pas une dépendance du projet) ─────────
-const envPath = path.resolve(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
-	for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-		const m = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
-		if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
-	}
-}
+import { loadDotEnv } from './env.mjs';
+
+loadDotEnv();
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
 const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';

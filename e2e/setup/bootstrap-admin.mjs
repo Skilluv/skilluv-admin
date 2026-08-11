@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import pg from 'pg';
 import { currentCode } from './totp.mjs';
+import { loadDotEnv } from './env.mjs';
+
+loadDotEnv();
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CREDS_PATH = resolve(HERE, 'admin-credentials.json');
@@ -18,10 +21,15 @@ const CREDS_PATH = resolve(HERE, 'admin-credentials.json');
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
 const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
 
+// Compte dédié aux tests, distinct de l'admin humain : il est créé, élevé et
+// réutilisé par la suite, et on ne veut pas qu'un run E2E touche au compte
+// réel. Les valeurs sont surchargeables par l'environnement pour qu'aucun
+// identifiant ne soit figé dans le dépôt — le défaut ci-dessous ne vaut que
+// pour une base de test jetable.
 const ADMIN = {
-	email: 'e2e-admin@skilluv.test',
-	username: 'e2eadmin',
-	password: 'E2eTestAdmin!2026',
+	email: process.env.E2E_ADMIN_EMAIL || 'e2e-admin@skilluv.test',
+	username: process.env.E2E_ADMIN_USERNAME || 'e2eadmin',
+	password: process.env.E2E_ADMIN_PASSWORD || 'E2eTestAdmin!2026',
 	first_name: 'E2e',
 	last_name: 'Admin',
 	skill_domain: 'code',
