@@ -1136,6 +1136,7 @@ export const fr: Translations = {
 			expiresAtLabel: 'Expire',
 			grantedByLabel: 'Motif :',
 			historyDeferred: 'L\'historique des capabilities révoquées sera disponible quand le backend l\'exposera.',
+			validatorPrefix: 'Validateur',
 			names: {
 				challenger: 'Challenger',
 				mentor: 'Mentor',
@@ -1168,6 +1169,82 @@ export const fr: Translations = {
 				kyc_reviewer: 'Nomination staff pour valider les KYC entreprises.',
 				community_curator: '3+ challenges communautaires publiés (auto).'
 			}
+		},
+		deepScan: {
+			btn: 'Deep scan (IA)',
+			runningToast: 'Deep scan lancé…',
+			successToast: 'Deep scan terminé',
+			resultLabel: 'Résultat deep scan',
+			resultScore: 'Score',
+			resultVerdict: 'Verdict',
+			resultPool: 'Corpus comparé',
+			flaggedAt: 'Flaggé à'
+		},
+		variant: {
+			btn: 'Générer variante IA',
+			dialogTitle: 'Générer une variante',
+			typeLabel: 'Type',
+			typeHarder: 'Plus difficile',
+			typeEasier: 'Plus facile',
+			targetParamLabel: 'Indication (optionnel)',
+			targetParamHint: 'Guide texte pour l\'IA — p. ex. « augmente le facteur de branchement »',
+			submit: 'Générer',
+			successToast: 'Variante générée + créée en draft'
+		},
+		backendStatus: {
+			banner: 'Backend indisponible — nouvelle tentative dans {seconds}s',
+			bannerNow: 'Backend indisponible — tentative en cours…',
+			retryNow: 'Réessayer maintenant',
+			probing: 'Vérification…',
+			reconnected: 'Connexion au backend rétablie'
+		},
+		sso: {
+			title: 'Sessions SSO',
+			headingActive: 'Sessions SSO actives',
+			subtitle:
+				"Toutes les sessions authentifiées via un IdP externe (login_method='sso'). Utile pour l'audit et pour révoquer une session à distance en cas de compromission.",
+			filterEnterpriseLabel: 'Filtrer par entreprise (UUID)',
+			filterBtn: 'Filtrer',
+			resetFilterBtn: 'Réinitialiser',
+			emptyState: 'Aucune session SSO active.',
+			colUser: 'Utilisateur',
+			colEnterprise: 'Entreprise',
+			colCreated: 'Créée',
+			colLastUsed: 'Dernière activité',
+			colActions: 'Actions',
+			revokeBtn: 'Révoquer',
+			revokedToast: 'Session révoquée',
+			revokeDialogTitle: 'Révoquer la session SSO',
+			revokeHint: 'Compromission suspectée, session zombie, etc.'
+		},
+		loginPage: {
+			pageTitle: 'Admin — Connexion',
+			controlPanel: 'Panneau de contrôle',
+			emailOrUsername: 'Email ou pseudo',
+			password: 'Mot de passe',
+			totpCode: 'Code TOTP',
+			useBackupCode: 'Utiliser un code de secours',
+			signInBtn: 'Se connecter',
+			accessRestricted: 'Cet accès est réservé aux administrateurs Skilluv.',
+			notAdminError: "Ce compte n'a pas les droits admin.",
+			unexpectedError: 'Erreur inattendue.'
+		},
+		levelUp: {
+			newTitle: 'Nouveau titre',
+			keepGoing: 'Continue comme ça !',
+			continueBtn: 'Continuer'
+		},
+		multiSelect: {
+			remove: 'Retirer',
+			clearAll: 'Tout retirer'
+		},
+		replayPlayer: {
+			originalDuration: 'Durée originale'
+		},
+		shareButton: {
+			linkCopied: 'Lien copié !',
+			share: 'Partager',
+			copyLink: 'Copier le lien'
 		}
 	},
 	community: {

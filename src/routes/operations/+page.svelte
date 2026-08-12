@@ -247,11 +247,7 @@
 	const exportUrl = $derived(adminApi.accountingExportUrl(expYear, expMonth));
 	const exportFilename = $derived(`skilluv-accounting-${expYear}-${String(expMonth).padStart(2, '0')}.csv`);
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto('/auth/login?redirect=/operations');
-		}
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
 
 	const inputCls =
 		'w-full rounded-full border border-border bg-surface-overlay px-4 py-2 text-sm focus:border-primary focus:outline-none';
@@ -294,7 +290,7 @@
 				<p class="text-xs text-text-muted mb-4">
 					{i18n.t('admin.operations.jobLeaderboardsHint')}
 				</p>
-				<Button variant="secondary" size="sm" onclick={runRebuild} loading={rebuildingLb}>
+				<Button variant="secondary" size="sm" onclick={runRebuild} data-testid="ops-rebuild-leaderboards" loading={rebuildingLb}>
 					<RefreshCw size={14} strokeWidth={2} />
 					{i18n.t('admin.operations.rebuild')}
 				</Button>
@@ -322,7 +318,7 @@
 				<p class="text-xs text-text-muted mb-4">
 					{i18n.t('admin.operations.jobGemsHint')}
 				</p>
-				<Button variant="secondary" size="sm" onclick={runGems} loading={runningGems}>
+				<Button variant="secondary" size="sm" onclick={runGems} data-testid="ops-hidden-gems" loading={runningGems}>
 					<Sparkles size={14} strokeWidth={2} />
 					{i18n.t('admin.operations.trigger')}
 				</Button>
@@ -336,7 +332,7 @@
 				<p class="text-xs text-text-muted mb-4">
 					{i18n.t('admin.operations.jobChurnHint')}
 				</p>
-				<Button variant="secondary" size="sm" onclick={runChurn} loading={runningChurn}>
+				<Button variant="secondary" size="sm" onclick={runChurn} data-testid="ops-churn" loading={runningChurn}>
 					<TrendingDown size={14} strokeWidth={2} />
 					{i18n.t('admin.operations.trigger')}
 				</Button>
@@ -364,7 +360,7 @@
 					/>
 				</label>
 				<div class="flex flex-wrap gap-2">
-					<Button variant="ghost" size="sm" onclick={runSweepDryRun} loading={sweeping} disabled={sweeping}>
+					<Button variant="ghost" size="sm" onclick={runSweepDryRun} data-testid="ops-proof-sweep-dry-run" loading={sweeping} disabled={sweeping}>
 						{i18n.t('admin.operations.proofSweepDryRunBtn')}
 					</Button>
 					<Button variant="secondary" size="sm" onclick={runSweep} loading={sweeping} disabled={sweeping}>

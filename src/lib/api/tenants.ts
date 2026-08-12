@@ -1,4 +1,4 @@
-import type { ApiResponse } from '$lib/types';
+import type { ApiPaginatedResponse, ApiResponse } from '$lib/types';
 import { createApiClient } from './client';
 
 const api = createApiClient();
@@ -94,7 +94,8 @@ export const tenantsApi = {
 
 	// -- Admin --
 	list() {
-		return api.get<ApiResponse<{ tenants: TenantSummary[] }>>('/admin/tenants');
+		// Idem : `{data: T[]}` et non `{data: {tenants: […]}}`.
+		return api.get<ApiPaginatedResponse<TenantSummary>>('/admin/tenants');
 	},
 
 	create(body: CreateTenantBody) {

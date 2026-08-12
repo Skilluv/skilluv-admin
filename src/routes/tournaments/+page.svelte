@@ -218,11 +218,7 @@
 		}
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto('/auth/login?redirect=/tournaments');
-		}
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
 
 	const inputCls =
 		'w-full rounded-full border border-border bg-surface-overlay px-4 py-2 text-sm focus:border-primary focus:outline-none';

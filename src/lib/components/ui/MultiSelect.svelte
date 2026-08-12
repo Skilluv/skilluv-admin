@@ -110,6 +110,12 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
+			// Écouté en capture (voir onMount) et propagation stoppée quand le
+			// dropdown est ouvert : sinon Escape traverse jusqu'à <Modal>, qui
+			// ferme le formulaire entier alors que l'utilisateur voulait juste
+			// refermer la liste — et tout ce qui était saisi est perdu.
+			if (!open) return;
+			e.stopPropagation();
 			open = false;
 			query = '';
 			buttonEl?.focus();
@@ -120,10 +126,10 @@
 		// `click` (pas `mousedown`) — le toggle du trigger a le temps de
 		// s'exécuter avant l'outside-close.
 		document.addEventListener('click', handleClickOutside);
-		document.addEventListener('keydown', handleKeydown);
+		document.addEventListener('keydown', handleKeydown, true);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
-			document.removeEventListener('keydown', handleKeydown);
+			document.removeEventListener('keydown', handleKeydown, true);
 		};
 	});
 </script>
@@ -163,7 +169,7 @@
 						<button
 							type="button"
 							onclick={(e) => removeChip(e, v)}
-							aria-label={i18n.locale === 'fr' ? 'Retirer' : 'Remove'}
+							aria-label={i18n.t('admin.multiSelect.remove')}
 							class="rounded hover:bg-primary/20"
 						>
 							<X size={10} strokeWidth={2.5} />
@@ -182,7 +188,7 @@
 			<button
 				type="button"
 				onclick={clearAll}
-				aria-label={i18n.locale === 'fr' ? 'Tout retirer' : 'Clear all'}
+				aria-label={i18n.t('admin.multiSelect.clearAll')}
 				class="shrink-0 rounded-full p-0.5 text-text-muted hover:bg-surface-overlay hover:text-text-primary"
 			>
 				<X size={12} strokeWidth={2} />
