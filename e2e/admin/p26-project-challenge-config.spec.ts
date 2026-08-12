@@ -106,6 +106,60 @@ test.describe('SKI-98 partie 1 — CRUD projet enrichi', () => {
 		await cleanupUser(owner.id);
 	});
 
+	test('vider le couple GitHub débranche réellement le repo', async ({ page }) => {
+		// SKI-269. Tant que le `PATCH` était en `COALESCE($n, colonne)`, envoyer
+		// `null` répondait 200 sans rien changer : l'admin croyait avoir arrêté
+		// l'ingestion d'un projet qui continuait de l'alimenter. Le test porte
+		// donc sur la base, pas sur le toast de succès — c'est précisément ce
+		// que le faux 200 rendait indiscernable.
+		const owner = await seedUser({ prefix: 'p26unplug' });
+		const id = uniq();
+		const slug = `e2e-p26-unplug-${id}`;
+
+		const dialog = await openCreateDialog(page);
+		await dialog.locator('#slug').fill(slug);
+		await dialog.locator('#name').fill(`E2E unplug ${id}`);
+		await dialog.locator('#owner_id').fill(owner.id);
+		await dialog.locator('#gh_owner').fill('launchbadge');
+		await dialog.locator('#gh_name').fill('sqlx');
+		const createReq = page.waitForResponse(
+			(r) => r.url().includes('/admin/projects') && r.request().method() === 'POST'
+		);
+		await dialog.locator('form').evaluate((f: HTMLFormElement) => f.requestSubmit());
+		expect((await createReq).status(), 'create POST').toBeLessThan(300);
+		expect((await readProject(slug))?.github_repo_owner).toBe('launchbadge');
+
+		// Rouvrir en édition et vider les deux champs.
+		const listReload = page.waitForResponse(
+			(r) => r.url().includes('/api/admin/projects') && r.request().method() === 'GET'
+		);
+		await page.goto('/projects');
+		await listReload;
+		await page
+			.locator('tbody tr', { hasText: slug })
+			.getByRole('button', { name: /modifier|éditer/i })
+			.first()
+			.click();
+		const edit = page.getByRole('dialog');
+		await expect(edit).toBeVisible();
+		await expect(edit.locator('#gh_owner')).toHaveValue('launchbadge');
+		await edit.locator('#gh_owner').fill('');
+		await edit.locator('#gh_name').fill('');
+
+		const patchReq = page.waitForResponse(
+			(r) => r.url().includes('/admin/projects') && r.request().method() === 'PATCH'
+		);
+		await edit.locator('form').evaluate((f: HTMLFormElement) => f.requestSubmit());
+		expect((await patchReq).status(), 'patch PATCH').toBeLessThan(300);
+
+		const after = await readProject(slug);
+		expect(after?.github_repo_owner, 'owner débranché en base').toBeNull();
+		expect(after?.github_repo_name, 'repo débranché en base').toBeNull();
+
+		await cleanupBySlug(slug);
+		await cleanupUser(owner.id);
+	});
+
 	test('un owner GitHub sans repo bloque la soumission', async ({ page }) => {
 		const owner = await seedUser({ prefix: 'p26pair' });
 		const id = uniq();

@@ -179,18 +179,6 @@
 		form.slice_ingestion_mode === 'auto' && form.curated_labels.length === 0
 	);
 
-	/** SKI-269 — `PATCH` est en `COALESCE($n, colonne)` : envoyer `null` sur le
-	 *  couple GitHub est un no-op qui répond quand même 200. On ne peut donc pas
-	 *  débrancher un repo depuis l'UI. Le dire, plutôt que de laisser croire à
-	 *  une sauvegarde réussie. Les tableaux, eux, se vident bien : `[]` n'est pas
-	 *  `null`, `COALESCE` le prend. */
-	const cannotClearRepo = $derived(
-		editing !== null &&
-			!!editing.github_repo_owner &&
-			!form.github_repo_owner.trim() &&
-			!form.github_repo_name.trim()
-	);
-
 	const missingRepoForIngest = $derived(
 		form.slice_ingestion_mode !== '' &&
 			form.slice_ingestion_mode !== 'manual_only' &&
@@ -228,8 +216,12 @@
 		if (owner && name) {
 			out.github_repo_owner = owner;
 			out.github_repo_name = name;
-		} else if (alwaysSend && !owner && !name && !editing) {
-			// Create with no repo: send explicit nulls so the intent is recorded.
+		} else if (alwaysSend && !owner && !name) {
+			// Les deux champs vides : on envoie des `null` explicites. À la création
+			// c'est l'intention « pas de repo » ; en édition c'est ce qui débranche
+			// réellement le repo depuis que SKI-269 est corrigé. Conditionné à
+			// `alwaysSend` : sans avoir relu la valeur stockée, on effacerait un
+			// champ que l'opérateur n'a jamais vu.
 			out.github_repo_owner = null;
 			out.github_repo_name = null;
 		}
@@ -564,23 +556,6 @@
 						<p class="text-xs text-text-primary">
 							Mode <strong>auto</strong> sans label curé : l'ingestor ne remontera aucune issue.
 							Le backend accepte cette configuration, mais elle est probablement une erreur.
-						</p>
-					</div>
-				{/if}
-
-				{#if cannotClearRepo}
-					<div
-						class="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-soft p-3"
-					>
-						<span class="mt-0.5 shrink-0 text-warning">
-							<AlertTriangle size={14} strokeWidth={2} />
-						</span>
-						<p class="text-xs text-text-primary">
-							Débrancher un repo n'est pas possible depuis cette page : l'API ignore
-							silencieusement l'effacement de ce couple. Le projet restera câblé sur
-							<strong>{editing?.github_repo_owner}/{editing?.github_repo_name}</strong>. Passer par
-							SQL, ou basculer le mode d'ingestion sur <strong>Manuel</strong> pour arrêter
-							l'ingestion.
 						</p>
 					</div>
 				{/if}
