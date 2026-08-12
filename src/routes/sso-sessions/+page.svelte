@@ -7,7 +7,7 @@
 	import { adminApi, type SsoSession } from '$api/admin';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -51,7 +51,7 @@
 			await adminApi.revokeSsoSession(id, reason);
 			sessions = sessions.filter((s) => s.session_id !== id);
 			total = Math.max(0, total - 1);
-			toast.success(i18n.locale === 'fr' ? 'Session révoquée' : 'Session revoked');
+			toast.success(i18n.t('admin.sso.revokedToast'));
 			revokeTarget = null;
 		} catch (e) {
 			toast.error(errorMessage(e));
@@ -62,7 +62,7 @@
 
 	function fmtDate(iso: string): string {
 		try {
-			return new Date(iso).toLocaleString(i18n.locale === 'fr' ? 'fr-FR' : 'en-US');
+			return new Date(iso).toLocaleString(intlLocale());
 		} catch {
 			return iso;
 		}
@@ -70,17 +70,15 @@
 </script>
 
 <svelte:head>
-	<title>{i18n.locale === 'fr' ? 'Sessions SSO' : 'SSO sessions'} — Skilluv</title>
+	<title>{i18n.t('admin.sso.title')} — Skilluv</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-4 py-8">
 	<h1 class="mb-2 text-3xl font-black">
-		{i18n.locale === 'fr' ? 'Sessions SSO actives' : 'Active SSO sessions'}
+		{i18n.t('admin.sso.headingActive')}
 	</h1>
 	<p class="mb-6 text-sm text-text-muted">
-		{i18n.locale === 'fr'
-			? "Toutes les sessions authentifiées via un IdP externe (login_method='sso'). Utile pour l'audit et pour révoquer une session à distance en cas de compromission."
-			: "All sessions authenticated via an external IdP (login_method='sso'). Useful for auditing and remote-revoking a compromised session."}
+		{i18n.t('admin.sso.subtitle')}
 	</p>
 
 	<form
@@ -93,13 +91,13 @@
 	>
 		<div class="flex-1 min-w-[240px]">
 			<Input
-				label={i18n.locale === 'fr' ? "Filtrer par entreprise (UUID)" : 'Filter by enterprise (UUID)'}
+				label={i18n.t('admin.sso.filterEnterpriseLabel')}
 				placeholder="e.g. 3c72e18a-…"
 				bind:value={enterpriseFilter}
 			/>
 		</div>
 		<Button variant="accent" type="submit">
-			{i18n.locale === 'fr' ? 'Filtrer' : 'Filter'}
+			{i18n.t('admin.sso.filterBtn')}
 		</Button>
 		<Button
 			variant="ghost"
@@ -109,7 +107,7 @@
 				load();
 			}}
 		>
-			{i18n.locale === 'fr' ? 'Réinitialiser' : 'Reset'}
+			{i18n.t('admin.sso.resetFilterBtn')}
 		</Button>
 	</form>
 
@@ -123,29 +121,19 @@
 		<div class="h-64 animate-pulse rounded-2xl bg-surface-overlay"></div>
 	{:else if sessions.length === 0}
 		<div class="rounded-2xl border border-border bg-surface-elevated px-6 py-12 text-center text-text-muted">
-			{i18n.locale === 'fr' ? 'Aucune session SSO active.' : 'No active SSO sessions.'}
+			{i18n.t('admin.sso.emptyState')}
 		</div>
 	{:else}
 		<div class="overflow-x-auto rounded-2xl border border-border">
 			<table class="w-full min-w-[720px] text-sm">
 				<thead class="bg-surface-overlay text-left text-xs uppercase text-text-muted">
 					<tr>
-						<th class="px-4 py-3 font-medium">
-							{i18n.locale === 'fr' ? 'Utilisateur' : 'User'}
-						</th>
-						<th class="px-4 py-3 font-medium">
-							{i18n.locale === 'fr' ? 'Entreprise' : 'Enterprise'}
-						</th>
+						<th class="px-4 py-3 font-medium">{i18n.t('admin.sso.colUser')}</th>
+						<th class="px-4 py-3 font-medium">{i18n.t('admin.sso.colEnterprise')}</th>
 						<th class="px-4 py-3 font-medium">IP</th>
-						<th class="px-4 py-3 font-medium">
-							{i18n.locale === 'fr' ? 'Créée' : 'Created'}
-						</th>
-						<th class="px-4 py-3 font-medium">
-							{i18n.locale === 'fr' ? 'Dernière activité' : 'Last used'}
-						</th>
-						<th class="px-4 py-3 font-medium text-right">
-							{i18n.locale === 'fr' ? 'Actions' : 'Actions'}
-						</th>
+						<th class="px-4 py-3 font-medium">{i18n.t('admin.sso.colCreated')}</th>
+						<th class="px-4 py-3 font-medium">{i18n.t('admin.sso.colLastUsed')}</th>
+						<th class="px-4 py-3 font-medium text-right">{i18n.t('admin.sso.colActions')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -175,7 +163,7 @@
 									loading={revokingId === s.session_id}
 									onclick={() => requestRevoke(s)}
 								>
-									{i18n.locale === 'fr' ? 'Révoquer' : 'Revoke'}
+									{i18n.t('admin.sso.revokeBtn')}
 								</Button>
 							</td>
 						</tr>
@@ -199,14 +187,12 @@
 
 <ConfirmDangerousDialog
 	open={revokeTarget !== null}
-	title={i18n.locale === 'fr' ? 'Révoquer la session SSO' : 'Revoke SSO session'}
+	title={i18n.t('admin.sso.revokeDialogTitle')}
 	description={revokeTarget
 		? `${revokeTarget.user_username} — ${revokeTarget.user_email}`
 		: ''}
-	actionLabel={i18n.locale === 'fr' ? 'Révoquer' : 'Revoke'}
-	reasonHint={i18n.locale === 'fr'
-		? 'Compromission suspectée, session zombie, etc.'
-		: 'Suspected compromise, stale session, etc.'}
+	actionLabel={i18n.t('admin.sso.revokeBtn')}
+	reasonHint={i18n.t('admin.sso.revokeHint')}
 	loading={revokingId !== null}
 	onconfirm={confirmRevoke}
 	onclose={() => (revokeTarget = null)}

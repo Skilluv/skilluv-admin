@@ -2,7 +2,7 @@
 	import { adminApi } from '$api/admin';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import type { Rank, UserRankHistoryEntry } from '$lib/types';
 	import Badge from '$components/ui/Badge.svelte';
 	import Button from '$components/ui/Button.svelte';
@@ -112,10 +112,11 @@
 
 	function fmtDate(iso: string): string {
 		try {
-			return new Date(iso).toLocaleDateString(
-				i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US',
-				{ day: '2-digit', month: 'short', year: 'numeric' }
-			);
+			return new Date(iso).toLocaleDateString(intlLocale(), {
+				day: '2-digit',
+				month: 'short',
+				year: 'numeric'
+			});
 		} catch {
 			return iso;
 		}

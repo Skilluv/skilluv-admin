@@ -12,7 +12,7 @@
 	interface UserRow {
 		id: string; username: string; display_name: string; email: string;
 		role: string; skill_domain: string; title: string; total_fragments: number;
-		profile_active: boolean; banned: boolean; created_at: string;
+		profile_active: boolean; is_banned: boolean; created_at: string;
 	}
 
 	let users = $state<UserRow[]>([]);
@@ -55,20 +55,24 @@
 		banSubmitting = true;
 		try {
 			await adminApi.banUser(banTarget.id, reason);
-			banTarget.banned = true;
 			toast.success(i18n.t('admin.userDetail.bannedToast'));
 			banTarget = null;
+			// Refetch the list — mutating a single row's property inside the
+			// `#each` doesn't re-render the action-button `{#if}` block in
+			// Svelte 5 (only the badge `{#if}` reacts). A fresh list is both
+			// simpler and matches the DB state authoritatively.
+			await loadUsers();
 		} catch (err) {
 			toast.error(errorMessage(err));
+			banSubmitting = false;
 		}
-		banSubmitting = false;
 	}
 
 	async function unban(user: UserRow) {
 		try {
 			await adminApi.unbanUser(user.id);
-			user.banned = false;
 			toast.success(i18n.t('admin.userDetail.unbannedToast'));
+			await loadUsers();
 		} catch (err) {
 			toast.error(errorMessage(err));
 		}
@@ -92,12 +96,12 @@
 	{:else}
 		<div class="overflow-hidden rounded-2xl border border-border">
 			{#each users as user}
-				<div class="flex items-center gap-4 border-b border-border px-4 py-3 last:border-0 {user.banned ? 'opacity-50' : ''}">
+				<div class="flex items-center gap-4 border-b border-border px-4 py-3 last:border-0 {user.is_banned ? 'opacity-50' : ''}">
 					<div class="flex-1">
 						<div class="flex items-center gap-2">
 							<a href="/users/{user.id}" class="font-medium hover:text-accent">{user.display_name}</a>
 							<span class="text-xs text-text-muted">@{user.username}</span>
-							{#if user.banned}<Badge variant="error">{i18n.t('admin.users.banned')}</Badge>{/if}
+							{#if user.is_banned}<Badge variant="error">{i18n.t('admin.users.banned')}</Badge>{/if}
 						</div>
 						<div class="flex gap-2 text-xs text-text-muted">
 							<Badge variant={user.skill_domain as any}>{user.skill_domain}</Badge>
@@ -105,7 +109,7 @@
 							<span>{user.total_fragments} ◆</span>
 						</div>
 					</div>
-					{#if user.banned}
+					{#if user.is_banned}
 						<Button variant="primary" size="sm" onclick={() => unban(user)}>
 							{i18n.t('admin.users.unbanBtn')}
 						</Button>

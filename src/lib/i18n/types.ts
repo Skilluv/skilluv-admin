@@ -937,6 +937,7 @@ export interface Translations {
 			expiresAtLabel: string;
 			grantedByLabel: string;
 			historyDeferred: string;
+			validatorPrefix: string;
 			names: {
 				challenger: string;
 				mentor: string;
@@ -1358,6 +1359,81 @@ export interface Translations {
 				epic: string;
 				legendary: string;
 			};
+		};
+		deepScan: {
+			btn: string;
+			runningToast: string;
+			successToast: string;
+			resultLabel: string;
+			resultScore: string;
+			resultVerdict: string;
+			resultPool: string;
+			flaggedAt: string;
+		};
+		variant: {
+			btn: string;
+			dialogTitle: string;
+			typeLabel: string;
+			typeHarder: string;
+			typeEasier: string;
+			targetParamLabel: string;
+			targetParamHint: string;
+			submit: string;
+			successToast: string;
+		};
+		backendStatus: {
+			banner: string;
+			bannerNow: string;
+			retryNow: string;
+			probing: string;
+			reconnected: string;
+		};
+		sso: {
+			title: string;
+			headingActive: string;
+			subtitle: string;
+			filterEnterpriseLabel: string;
+			filterBtn: string;
+			resetFilterBtn: string;
+			emptyState: string;
+			colUser: string;
+			colEnterprise: string;
+			colCreated: string;
+			colLastUsed: string;
+			colActions: string;
+			revokeBtn: string;
+			revokedToast: string;
+			revokeDialogTitle: string;
+			revokeHint: string;
+		};
+		loginPage: {
+			pageTitle: string;
+			controlPanel: string;
+			emailOrUsername: string;
+			password: string;
+			totpCode: string;
+			useBackupCode: string;
+			signInBtn: string;
+			accessRestricted: string;
+			notAdminError: string;
+			unexpectedError: string;
+		};
+		levelUp: {
+			newTitle: string;
+			keepGoing: string;
+			continueBtn: string;
+		};
+		multiSelect: {
+			remove: string;
+			clearAll: string;
+		};
+		replayPlayer: {
+			originalDuration: string;
+		};
+		shareButton: {
+			linkCopied: string;
+			share: string;
+			copyLink: string;
 		};
 	};
 	community: {

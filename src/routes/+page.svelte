@@ -9,7 +9,7 @@
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import {
 		Users as UsersIcon,
 		Trophy,
@@ -67,10 +67,6 @@
 		if (results[4].status === 'fulfilled') modQueue = results[4].value.data;
 		if (results[5].status === 'fulfilled') health = results[5].value.data;
 		loading = false;
-	}
-
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
 	}
 
 	function fmtEur(cents: number, currency = 'EUR'): string {

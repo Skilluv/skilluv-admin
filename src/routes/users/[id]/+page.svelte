@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
@@ -11,7 +11,15 @@
 
 	// UserPrivate ne déclare pas `banned`/`ban_reason` alors que /admin/users/{id}
 	// les renvoie — on élargit localement pour rester type-safe côté UI.
-	type AdminUser = UserPrivate & { banned?: boolean; ban_reason?: string | null; created_at?: string };
+	// `webauthn_credentials_count` est admin-only (Trello RXEWNI6y) et pilote la
+	// détection de facteur fort pour activer le reset-2FA quand l'user a
+	// uniquement une passkey (pas de TOTP).
+	type AdminUser = UserPrivate & {
+		banned?: boolean;
+		ban_reason?: string | null;
+		created_at?: string;
+		webauthn_credentials_count?: number;
+	};
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
@@ -65,7 +73,13 @@
 	const canReset2fa = $derived(
 		user !== null && auth.user !== null && user.id !== auth.user.id
 	);
-	const targetHasStrongFactor = $derived(user?.totp_enabled === true);
+	// A strong factor is TOTP OR at least one WebAuthn credential. Backend
+	// admin_gate BE-B accepts either — the reset-2fa endpoint mirrors that
+	// so we must too, otherwise users with only a passkey would look
+	// "not-2FA'd" here and the button would stay grey.
+	const targetHasStrongFactor = $derived(
+		user?.totp_enabled === true || (user?.webauthn_credentials_count ?? 0) > 0
+	);
 
 	async function load() {
 		loading = true;
@@ -135,9 +149,6 @@
 		return r === 'admin' ? 'accent' : r === 'enterprise' ? 'primary' : r === 'recruiter' ? 'warning' : 'default';
 	}
 
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
-	}
 
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';
@@ -156,13 +167,11 @@
 		return u.created_at ?? null;
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto(`/auth/login?redirect=/users/${userId}`);
-			return;
-		}
-		void load();
-	});
+	// Auth is enforced by hooks.server.ts (SSR) — no client-side re-check.
+	// The old `if (!auth.isAuthenticated) goto('/auth/login')` was racy: it fires
+	// before the layout's `$effect` has migrated `data.user` into the store on
+	// direct-navigation, breaking every deep-link (P0 bug pre-launch).
+	onMount(() => void load());
 </script>
 
 <svelte:head>
@@ -230,8 +239,14 @@
 								{i18n.t('admin.userDetail.verifiedEmail')}
 							</Badge>
 						{/if}
-						{#if user.totp_enabled || user.email_2fa_enabled}
-							<Badge variant="primary" size="sm">2FA</Badge>
+						{#if user.totp_enabled}
+							<Badge variant="primary" size="sm">TOTP</Badge>
+						{/if}
+						{#if user.email_2fa_enabled}
+							<Badge variant="primary" size="sm">Email 2FA</Badge>
+						{/if}
+						{#if (user.webauthn_credentials_count ?? 0) > 0}
+							<Badge variant="primary" size="sm">Passkey ×{user.webauthn_credentials_count}</Badge>
 						{/if}
 					</div>
 					<p class="mt-1 font-mono text-xs text-text-muted truncate">

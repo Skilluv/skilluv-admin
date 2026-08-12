@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$components/ui/Button.svelte';
@@ -30,7 +30,7 @@
 		loading = true;
 		try {
 			const res = await tenantsApi.list();
-			tenants = res.data.tenants;
+			tenants = res.data;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : 'Erreur');
 		} finally {
@@ -70,9 +70,6 @@
 		return p === 'enterprise' ? 'accent' : p === 'pro' ? 'primary' : 'default';
 	}
 
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
-	}
 
 	function fmtDate(iso: string): string {
 		return new Intl.DateTimeFormat(intlLocale(), {
@@ -80,13 +77,8 @@
 		}).format(new Date(iso));
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			goto('/auth/login?redirect=/tenants');
-			return;
-		}
-		void load();
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
+	onMount(() => void load());
 </script>
 
 <svelte:head>

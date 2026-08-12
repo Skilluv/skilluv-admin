@@ -45,7 +45,7 @@
 				<div class="absolute inset-0 rounded-full bg-gradient-to-br {titleGlows[newTitle]} opacity-30 blur-xl animate-[pulse-glow_1.5s_ease-in-out_infinite]"></div>
 				<div class="relative rounded-2xl border-2 border-white/20 bg-surface-elevated px-8 py-4">
 					<p class="mb-1 text-sm text-text-muted uppercase tracking-widest">
-						{i18n.locale === 'fr' ? 'Nouveau titre' : 'New title'}
+						{i18n.t('admin.levelUp.newTitle')}
 					</p>
 					<p class="bg-gradient-to-r {titleGlows[newTitle]} bg-clip-text text-4xl font-bold text-transparent">
 						{i18n.t(`common.titles.${newTitle}`)}
@@ -60,7 +60,7 @@
 
 			<!-- Message -->
 			<p class="text-lg text-text-muted animate-[fade-in_800ms_ease-out]">
-				{i18n.locale === 'fr' ? 'Continue comme ça !' : 'Keep going!'}
+				{i18n.t('admin.levelUp.keepGoing')}
 			</p>
 
 			<!-- Dismiss -->
@@ -68,7 +68,7 @@
 				class="mt-6 text-sm text-text-muted hover:text-text-primary transition-colors"
 				onclick={onclose}
 			>
-				{i18n.locale === 'fr' ? 'Continuer' : 'Continue'}
+				{i18n.t('admin.levelUp.continueBtn')}
 			</button>
 		</div>
 	</div>

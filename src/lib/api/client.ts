@@ -1,5 +1,6 @@
 import type { ApiErrorBody } from '$lib/types';
 import { toast } from '$lib/stores/toast.svelte';
+import { backendStatus } from '$lib/stores/backendStatus.svelte';
 import { i18n } from '$lib/i18n';
 
 /**
@@ -121,14 +122,35 @@ export function createApiClient(
 		const url = `${baseUrl}${path}`;
 		const isAuthEndpoint = path.startsWith('/auth/refresh') || path.startsWith('/auth/login');
 
-		let res = await fire(url, options);
+		let res: Response;
+		try {
+			res = await fire(url, options);
+		} catch (netErr) {
+			// A thrown fetch = network failure (backend down, DNS, CORS
+			// preflight). HTTP 4xx/5xx come back as Response objects, not
+			// throws — this branch is only network-level. Flip the global
+			// banner so the user sees an outage indicator instead of a stream
+			// of opaque "erreur inattendue" toasts.
+			backendStatus.markDown();
+			throw netErr;
+		}
+
+		// Any successful response means the backend is up. Flip the banner
+		// off if it was on (the banner component fires the "reconnected"
+		// toast when it's the one that unstuck things via its own probe).
+		if (backendStatus.isDown) backendStatus.markUp();
 
 		// On 401, try to silently refresh once, then retry the original call.
 		// We skip retry on refresh/login themselves so we never loop.
 		if (res.status === 401 && !isAuthEndpoint) {
 			const refreshed = await tryRefresh(customFetch, baseUrl);
 			if (refreshed) {
-				res = await fire(url, options);
+				try {
+					res = await fire(url, options);
+				} catch (netErr) {
+					backendStatus.markDown();
+					throw netErr;
+				}
 			}
 		}
 

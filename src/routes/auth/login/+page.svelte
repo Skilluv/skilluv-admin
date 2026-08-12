@@ -25,10 +25,7 @@
 
 	onMount(() => {
 		if (preError === 'not_admin') {
-			error =
-				i18n.locale === 'fr'
-					? "Ce compte n'a pas les droits admin."
-					: 'This account does not have admin privileges.';
+			error = i18n.t('admin.loginPage.notAdminError');
 		}
 	});
 
@@ -44,10 +41,7 @@
 			});
 			if (res.data.user) {
 				if (res.data.user.role !== 'admin') {
-					error =
-						i18n.locale === 'fr'
-							? "Ce compte n'a pas les droits admin."
-							: 'This account does not have admin privileges.';
+					error = i18n.t('admin.loginPage.notAdminError');
 					return;
 				}
 				auth.setUser(res.data.user, res.data.login_method ?? 'password');
@@ -74,7 +68,7 @@
 					error = err.message;
 				}
 			} else {
-				error = i18n.locale === 'fr' ? 'Erreur inattendue.' : 'Unexpected error.';
+				error = i18n.t('admin.loginPage.unexpectedError');
 			}
 		} finally {
 			loading = false;
@@ -83,7 +77,7 @@
 </script>
 
 <svelte:head>
-	<title>{i18n.locale === 'fr' ? 'Admin — Connexion' : 'Admin sign in'}</title>
+	<title>{i18n.t('admin.loginPage.pageTitle')}</title>
 </svelte:head>
 
 <div class="flex min-h-screen items-center justify-center px-4 py-12">
@@ -94,7 +88,7 @@
 				Skilluv <span class="text-accent">Admin</span>
 			</h1>
 			<p class="text-xs uppercase tracking-widest text-text-muted">
-				{i18n.locale === 'fr' ? 'Panneau de contrôle' : 'Control panel'}
+				{i18n.t('admin.loginPage.controlPanel')}
 			</p>
 		</div>
 
@@ -106,21 +100,21 @@
 				</div>
 			{/if}
 			<Input
-				label={i18n.locale === 'fr' ? 'Email ou pseudo' : 'Email or username'}
+				label={i18n.t('admin.loginPage.emailOrUsername')}
 				bind:value={identifier}
 				required
 				autocomplete="username"
 			/>
 			<Input
 				type="password"
-				label={i18n.locale === 'fr' ? 'Mot de passe' : 'Password'}
+				label={i18n.t('admin.loginPage.password')}
 				bind:value={password}
 				required
 				autocomplete="current-password"
 			/>
 			{#if requiresTotp}
 				<Input
-					label={i18n.locale === 'fr' ? 'Code TOTP' : 'TOTP code'}
+					label={i18n.t('admin.loginPage.totpCode')}
 					bind:value={totpCode}
 					required
 					autocomplete="one-time-code"
@@ -130,20 +124,16 @@
 					href="/auth/recovery-2fa"
 					class="text-center text-xs text-text-muted underline-offset-2 hover:text-text-primary hover:underline"
 				>
-					{i18n.locale === 'fr'
-						? 'Utiliser un code de secours'
-						: 'Use a backup code'}
+					{i18n.t('admin.loginPage.useBackupCode')}
 				</a>
 			{/if}
 			<Button variant="accent" size="lg" type="submit" loading={loading}>
-				{i18n.locale === 'fr' ? 'Se connecter' : 'Sign in'}
+				{i18n.t('admin.loginPage.signInBtn')}
 			</Button>
 		</form>
 
 		<p class="mt-6 text-center text-xs text-text-muted">
-			{i18n.locale === 'fr'
-				? 'Cet accès est réservé aux administrateurs Skilluv.'
-				: 'This access is restricted to Skilluv administrators.'}
+			{i18n.t('admin.loginPage.accessRestricted')}
 		</p>
 	</div>
 </div>

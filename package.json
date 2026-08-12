@@ -1,46 +1,51 @@
 {
-	"name": "skilluv-admin",
-	"version": "0.1.0",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"preview": "vite preview",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
-		"test:e2e": "playwright test",
-		"test:e2e:ui": "playwright test --ui"
-	},
-	"devDependencies": {
-		"@fontsource/jetbrains-mono": "^5.3.0",
-		"@fontsource/space-grotesk": "^5.3.0",
-		"@playwright/test": "^1.61.1",
-		"@sveltejs/adapter-node": "^5.5.4",
-		"@sveltejs/kit": "^2.70.1",
-		"@sveltejs/vite-plugin-svelte": "^7.0.0",
-		"@tailwindcss/vite": "^4.3.3",
-		"@testing-library/jest-dom": "^7.0.0",
-		"@testing-library/svelte": "^5.4.2",
-		"@testing-library/user-event": "^14.6.1",
-		"@types/pg": "^8.20.0",
-		"@types/qrcode": "^1.5.6",
-		"@vitest/coverage-v8": "^4.1.10",
-		"argon2": "^0.45.0",
-		"jsdom": "^29.1.1",
-		"pg": "^8.22.0",
-		"svelte": "^5.56.7",
-		"svelte-check": "^4.7.3",
-		"tailwindcss": "4.3",
-		"typescript": "^6.0.3",
-		"vite": "^8.1.5",
-		"vitest": "^4.1.10"
-	},
-	"dependencies": {
-		"@lucide/svelte": "^1.25.0",
-		"qrcode": "^1.5.4"
-	}
+  "name": "skilluv-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:preflight": "node e2e/setup/preflight.mjs",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@playwright/test": "^1.61.1",
+    "@sveltejs/adapter-node": "^5.5.4",
+    "@sveltejs/kit": "^2.70.1",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/svelte": "^5.4.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/pg": "^8.20.0",
+    "@types/qrcode": "^1.5.6",
+    "@vitest/coverage-v8": "^4.1.10",
+    "argon2": "^0.45.0",
+    "jsdom": "^29.1.1",
+    "otpauth": "^9.5.1",
+    "pg": "^8.22.0",
+    "svelte": "^5.56.7",
+    "svelte-check": "^4.7.3",
+    "tailwindcss": "4.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.25.0",
+    "qrcode": "^1.5.4"
+  },
+  "overrides": {
+    "cookie": "^0.7.2"
+  }
 }

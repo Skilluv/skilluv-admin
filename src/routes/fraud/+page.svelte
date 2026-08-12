@@ -2,7 +2,7 @@
 	import { adminApi } from '$api/admin';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import type {
 		FraudFlaggedDeliverable,
 		FraudSuspectedUser,
@@ -53,8 +53,18 @@
 	let evalWindowDays = $state(30);
 	let scanning = $state(false);
 	let llmEvaluating = $state(false);
+	let deepScanning = $state(false);
 	let scanResult = $state<FraudScanOutcome | null>(null);
 	let llmResult = $state<FraudLlmEvaluation | null>(null);
+	let deepScanResult = $state<{
+		deliverable_id: string;
+		deep_plagiarism: {
+			similarity_score?: number;
+			verdict?: string;
+			flagged_at?: string;
+			comparison_pool_size?: number;
+		};
+	} | null>(null);
 
 	async function loadQueue() {
 		loading = true;
@@ -173,6 +183,25 @@
 		}
 	}
 
+	async function runDeepScan() {
+		const id = evalDeliverableId.trim();
+		if (!id || deepScanning) return;
+		deepScanning = true;
+		toast.info(i18n.t('admin.deepScan.runningToast'));
+		try {
+			const res = await adminApi.deepScanDeliverable(id, {
+				threshold: evalThreshold,
+				window_days: evalWindowDays
+			});
+			deepScanResult = res.data;
+			toast.success(i18n.t('admin.deepScan.successToast'));
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			deepScanning = false;
+		}
+	}
+
 	function scoreVariant(raw: string | number): 'error' | 'warning' | 'default' {
 		const n = typeof raw === 'string' ? Number(raw) : raw;
 		if (Number.isNaN(n)) return 'default';
@@ -190,9 +219,7 @@
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';
 		try {
-			return new Date(iso).toLocaleString(
-				i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US'
-			);
+			return new Date(iso).toLocaleString(intlLocale());
 		} catch {
 			return iso;
 		}
@@ -507,6 +534,48 @@
 							{#if llmResult.notes}
 								<p class="mt-2 text-text-muted whitespace-pre-wrap">{llmResult.notes}</p>
 							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="rounded-xl border border-border bg-surface-overlay p-4">
+					<p class="mb-3 text-xs uppercase tracking-wider text-text-muted">{i18n.t('admin.deepScan.btn')}</p>
+					<Button
+						variant="danger"
+						size="sm"
+						onclick={runDeepScan}
+						loading={deepScanning}
+						disabled={!evalDeliverableId.trim()}
+					>
+						<Fingerprint size={14} strokeWidth={2} />
+						{i18n.t('admin.deepScan.btn')}
+					</Button>
+
+					{#if deepScanResult}
+						<div class="mt-3 rounded-lg bg-surface-elevated p-3 text-xs">
+							<p class="mb-2 text-text-muted">{i18n.t('admin.deepScan.resultLabel')}</p>
+							<dl class="grid grid-cols-2 gap-1">
+								{#if deepScanResult.deep_plagiarism.similarity_score !== undefined}
+									<dt class="text-text-muted">{i18n.t('admin.deepScan.resultScore')}</dt>
+									<dd>
+										<Badge variant={scoreVariant(deepScanResult.deep_plagiarism.similarity_score)}>
+											{fmtScore(deepScanResult.deep_plagiarism.similarity_score)}
+										</Badge>
+									</dd>
+								{/if}
+								{#if deepScanResult.deep_plagiarism.verdict}
+									<dt class="text-text-muted">{i18n.t('admin.deepScan.resultVerdict')}</dt>
+									<dd class="font-medium">{deepScanResult.deep_plagiarism.verdict}</dd>
+								{/if}
+								{#if deepScanResult.deep_plagiarism.comparison_pool_size !== undefined}
+									<dt class="text-text-muted">{i18n.t('admin.deepScan.resultPool')}</dt>
+									<dd>{deepScanResult.deep_plagiarism.comparison_pool_size}</dd>
+								{/if}
+								{#if deepScanResult.deep_plagiarism.flagged_at}
+									<dt class="text-text-muted">{i18n.t('admin.deepScan.flaggedAt')}</dt>
+									<dd class="font-mono">{deepScanResult.deep_plagiarism.flagged_at}</dd>
+								{/if}
+							</dl>
 						</div>
 					{/if}
 				</div>

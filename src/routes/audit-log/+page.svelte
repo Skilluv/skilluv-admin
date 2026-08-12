@@ -7,7 +7,7 @@
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import Modal from '$components/ui/Modal.svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { SkilluError } from '$api/client';
 	import { toast } from '$stores/toast.svelte';
 	import { Filter, X } from '@lucide/svelte';
@@ -81,10 +81,6 @@
 		actorType = ''; actorId = ''; action = ''; targetType = ''; targetId = '';
 		currentPage = 1;
 		void load();
-	}
-
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
 	}
 
 	function fmtDate(iso: string): string {

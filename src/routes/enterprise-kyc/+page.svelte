@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { i18n } from '$lib/i18n';
+	import { i18n, intlLocale } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$stores/toast.svelte';
@@ -30,7 +30,7 @@
 		loading = true;
 		try {
 			const res = await adminApi.listKycQueue();
-			queue = res.data.queue;
+			queue = res.data;
 		} catch (e) {
 			toast.error(e instanceof SkilluError ? e.message : i18n.t('admin.common.errorGeneric'));
 		} finally {
@@ -98,9 +98,6 @@
 	}
 
 	// Intl formatters : la locale est un tag BCP-47, pas une chaîne UI.
-	function intlLocale(): string {
-		return i18n.locale === 'ar' ? 'ar' : i18n.locale === 'fr' ? 'fr-FR' : 'en-US';
-	}
 
 	function fmtEur(cents: number): string {
 		return new Intl.NumberFormat(intlLocale(), {
@@ -120,13 +117,8 @@
 		}).format(new Date(iso));
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated) {
-			void goto('/auth/login?redirect=/enterprise-kyc');
-			return;
-		}
-		void load();
-	});
+	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
+	onMount(() => void load());
 </script>
 
 <svelte:head>
