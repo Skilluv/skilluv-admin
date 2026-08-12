@@ -67,14 +67,20 @@ jobs:
 
   e2e-admin:
     # Runs the authenticated `admin` Playwright project against a real backend
-    # pulled from GHCR. Requires the backend team's publish workflow to be
-    # merged first (see skilluv-backend PR #33). This job will stay red on
-    # PRs until that image is published — that's intentional; we don't skip
-    # tests when a dependency isn't ready, we surface the gap.
+    # pulled from GHCR.
+    #
+    # L'image est publiée depuis, et démarre. Elle panique en revanche au boot
+    # tant que SKI-294 n'est pas livré : GeoNames est chargé depuis un chemin
+    # relatif avec un `.expect()`, et le dossier n'est pas dans l'image. Le
+    # job reste donc rouge jusqu'à ce correctif — délibérément : on ne masque
+    # pas une dépendance absente, on la donne à voir.
     name: Playwright admin flows (needs backend image)
     runs-on: ubuntu-latest
     needs: check
-    timeout-minutes: 20
+    # 20 min avaient été posées quand le job mourait au healthcheck : la valeur
+    # n'avait jamais mesuré une exécution réelle. Les 85 tests du projet admin
+    # contre un vrai backend n'y tiennent pas.
+    timeout-minutes: 35
 
     services:
       postgres:
@@ -136,30 +142,6 @@ jobs:
           docker logs minio
           exit 1
 
-      # Au démarrage, le backend charge GeoNames depuis `./data` — chemin
-      # relatif à son WORKDIR `/app` — et le fait avec un `.expect()` : sans
-      # ces deux fichiers il panique avant d'écouter, donc le healthcheck
-      # n'aboutit jamais. L'image ne les embarque pas (ils sont téléchargés
-      # au setup), on les fournit donc ici. Correctif de fond côté backend :
-      # SKI-294, après quoi ces deux étapes deviendront inutiles.
-      - name: Cache GeoNames dataset
-        id: geonames
-        uses: actions/cache@v4
-        with:
-          path: geodata
-          key: geonames-cities1000-countryinfo-v1
-
-      - name: Download GeoNames dataset
-        if: steps.geonames.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p geodata
-          curl -fsSL --retry 3 -o geodata/countryInfo.txt \
-            https://download.geonames.org/export/dump/countryInfo.txt
-          curl -fsSL --retry 3 -o /tmp/cities1000.zip \
-            https://download.geonames.org/export/dump/cities1000.zip
-          unzip -o /tmp/cities1000.zip -d geodata
-          ls -la geodata
-
       - name: Start backend from GHCR image
         env:
           # `:master` is republished on every green master merge — see
@@ -169,10 +151,14 @@ jobs:
           docker pull "$BACKEND_IMAGE"
           # Host network — backend reaches postgres/redis/mailpit/minio via
           # the ports GHA services (and MinIO above) already bound to the
-          # runner. Admin origin allowlist added so the API accepts
-          # requests from the test's Origin: http://localhost:5174.
+          # runner.
+          #
+          # `ADMIN_ORIGINS` porte les deux formes de la même adresse : le
+          # navigateur de Playwright charge `http://127.0.0.1:5174` (le
+          # `baseURL` de playwright.config.ts) et envoie donc cet `Origin`,
+          # alors que la liste ne contenait que `localhost`. Pour `admin_gate`
+          # ce sont deux origines distinctes — et toute écriture était refusée.
           docker run -d --name backend --network host \
-            -v "$PWD/geodata:/app/data:ro" \
             -e HOST=0.0.0.0 \
             -e PORT=3001 \
             -e ENVIRONMENT=dev \
@@ -188,7 +174,7 @@ jobs:
             -e SMTP_PORT=1025 \
             -e SMTP_TLS=none \
             -e EMAIL_FROM=noreply@skilluv.test \
-            -e ADMIN_ORIGINS=http://localhost:5174 \
+            -e ADMIN_ORIGINS=http://127.0.0.1:5174,http://localhost:5174 \
             -e RUST_LOG=skilluv_backend=info,tower_http=info \
             "$BACKEND_IMAGE"
 
@@ -229,8 +215,11 @@ jobs:
           DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
         run: npx playwright test --project=admin
 
-      - name: Dump backend logs on failure
-        if: failure()
+      # `always()` et non `failure()` : une annulation par timeout n'est pas un
+      # échec au sens de GitHub, et les steps `failure()` sont alors sautés. On
+      # s'est retrouvé sans logs ni rapport sur le seul run qui en avait besoin.
+      - name: Dump backend logs
+        if: always()
         run: docker logs backend
 
       - name: Upload Playwright report
