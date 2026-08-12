@@ -26,7 +26,7 @@
 		loading = true;
 		try {
 			const res = await adminApi.communityReview();
-			entries = res.data.challenges as CommunityEntry[];
+			entries = res.data as unknown as CommunityEntry[];
 		} catch (err) {
 			toast.error(errorMessage(err));
 		}

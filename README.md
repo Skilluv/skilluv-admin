@@ -11,9 +11,16 @@
 
 ## What is Skilluv?
 
-Skilluv is a community platform training the African OSS generation through real contributions to real open source projects. Every completed challenge produces a verifiable artifact — a merged pull request, a delivered Figma component, a submitted CVE report, a playable game build — exportable to recruiters.
+Skilluv is a platform where talents in code, design, security, game
+development, product, and other tech crafts grow their skills by
+contributing to **real open source projects**. Every completed challenge
+produces a verifiable artifact — a merged pull request, a delivered
+Figma component, a submitted CVE report, a playable game build —
+exportable to recruiters.
 
-Full product vision in the [backend repository](https://github.com/skilluv/skilluv-backend).
+**African-born, globally open.** Contributors and hiring companies come
+from anywhere. Full product vision in the
+[org profile](https://github.com/skilluv).
 
 ## What this repo contains
 
@@ -133,4 +140,4 @@ Distributed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.
 
 ## Origin
 
-Skilluv is built solo by [Jeremie Zitti](https://github.com/skilluv), a Beninese engineer. Public launch: **January 2027**.
+Skilluv is built solo by [Jeremie Zitti](https://github.com/skilluv), an engineer based in Benin. Public launch: **January 2027**.

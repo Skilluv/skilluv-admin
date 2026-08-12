@@ -4,6 +4,8 @@
 	import { onMount } from 'svelte';
 	import { i18n } from '$lib/i18n';
 	import { auth } from '$stores/auth.svelte';
+	import BackendStatusBanner from '$components/ui/BackendStatusBanner.svelte';
+	import Toast from '$components/ui/Toast.svelte';
 	import { type Component } from 'svelte';
 	import {
 		LayoutDashboard,
@@ -23,6 +25,9 @@
 		Briefcase,
 		Network,
 		FolderGit2,
+		Layers,
+		BadgeCheck,
+		ChartNoAxesColumn,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -47,6 +52,9 @@
 		{ href: '/fraud', label: i18n.t('admin.nav.fraud'), icon: Fingerprint },
 		{ href: '/challenges', label: i18n.t('admin.challenges.title'), icon: Code2 },
 		{ href: '/projects', label: 'Projets', icon: FolderGit2 },
+		{ href: '/slices', label: 'Slices', icon: Layers },
+		{ href: '/validators', label: 'Validateurs', icon: BadgeCheck },
+		{ href: '/validation-analytics', label: 'Analytics validation', icon: ChartNoAxesColumn },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
@@ -73,16 +81,20 @@
 		}
 	}
 
-	onMount(() => {
-		if (!auth.isAuthenticated && !pathname.startsWith('/auth/')) {
-			window.location.href = '/auth/login';
-		}
-	});
+	// Auth is enforced by hooks.server.ts (SSR 303 to /auth/login when user is
+	// null). The old client-side check here fired before the `$effect` above
+	// had migrated `data.user` into the store, so it kicked out authenticated
+	// users on direct navigation. Removed — SSR is the single source of truth.
 </script>
 
 <svelte:head>
 	<title>Skilluv Admin</title>
 </svelte:head>
+
+<BackendStatusBanner />
+<!-- Sans ce montage, les ~194 appels `toast.*` de l'app ne rendent rien : les
+     succès comme les erreurs étaient avalés en silence. -->
+<Toast />
 
 {#if pathname.startsWith('/auth/')}
 	<!-- Auth pages render standalone, no chrome. -->

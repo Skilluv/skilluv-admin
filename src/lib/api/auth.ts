@@ -174,25 +174,48 @@ export const authApi = {
 		return api.post<BackupCodesResponse>('/auth/totp/backup-codes/regenerate', { code });
 	},
 
-	totpDisable(code: string) {
-		return api.post<MessageResponse>('/auth/totp/disable', { code });
+	/**
+	 * BE-P0-02 (see skilluv-backend `.trello-push-front.md`). Payload was
+	 * `{ code }`; the backend now requires BOTH the password and the current
+	 * TOTP code to prevent a stolen session from silently dropping 2FA. Errors
+	 * come back as SkilluError with codes `InvalidCredentials` (password) or
+	 * `TotpInvalid` (code) — surface separately in the UI when this is used.
+	 */
+	totpDisable(password: string, code: string) {
+		return api.post<MessageResponse>('/auth/totp/disable', { password, code });
 	},
 
-	enableEmail2fa() {
-		return api.post<MessageResponse>('/auth/email-2fa/enable');
+	/**
+	 * BE-P0-03 : now requires `{ password }` in the body (before: empty). Rationale:
+	 * symmetry with disable + prevent a stolen session from enabling email 2FA
+	 * without confirming the password.
+	 */
+	enableEmail2fa(password: string) {
+		return api.post<MessageResponse>('/auth/email-2fa/enable', { password });
 	},
 
-	disableEmail2fa(currentPassword: string) {
-		// Backend reuses ChangePasswordRequest for the body — new_password is required for parsing
-		// but ignored by the handler. Send a filler that still satisfies the min-length check.
-		return api.post<MessageResponse>('/auth/email-2fa/disable', {
-			current_password: currentPassword,
-			new_password: currentPassword
+	/**
+	 * BE-P0-04 : dedicated `PasswordConfirmRequest { password }` struct — the
+	 * old `new_password` filler hack is no longer accepted.
+	 */
+	disableEmail2fa(password: string) {
+		return api.post<MessageResponse>('/auth/email-2fa/disable', { password });
+	},
+
+	/**
+	 * BE-P0-01 : contract fully fixed. `password` mandatory, `totp_code`
+	 * mandatory iff the user has TOTP enabled, `reason` optional (audit trail).
+	 * Response now includes `account_deleted: true`, `scheduled_for` (currently
+	 * the deletion timestamp — reserved for a future 30-day grace period).
+	 */
+	deleteAccount(password: string, totpCode: string | undefined, reason?: string) {
+		return api.delete<{
+			data: { account_deleted: boolean; scheduled_for: string; message?: string };
+		}>('/auth/account', {
+			password,
+			totp_code: totpCode,
+			reason
 		});
-	},
-
-	deleteAccount(password: string, totpCode?: string) {
-		return api.delete<MessageResponse>('/auth/account', { password, totp_code: totpCode });
 	},
 
 	// ─── Sessions / devices ─────────────────────────────────────────

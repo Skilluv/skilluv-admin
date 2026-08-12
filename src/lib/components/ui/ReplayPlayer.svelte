@@ -136,7 +136,7 @@
 				<span class="font-medium">{title}</span>
 			{/if}
 			{#if originalDuration}
-				<span>{i18n.locale === 'fr' ? 'Durée originale' : 'Original duration'}: {formatTime(originalDuration)}</span>
+				<span>{i18n.t('admin.replayPlayer.originalDuration')}: {formatTime(originalDuration)}</span>
 			{/if}
 		</div>
 	{/if}
