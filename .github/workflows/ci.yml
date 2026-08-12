@@ -136,6 +136,30 @@ jobs:
           docker logs minio
           exit 1
 
+      # Au démarrage, le backend charge GeoNames depuis `./data` — chemin
+      # relatif à son WORKDIR `/app` — et le fait avec un `.expect()` : sans
+      # ces deux fichiers il panique avant d'écouter, donc le healthcheck
+      # n'aboutit jamais. L'image ne les embarque pas (ils sont téléchargés
+      # au setup), on les fournit donc ici. Correctif de fond côté backend :
+      # SKI-294, après quoi ces deux étapes deviendront inutiles.
+      - name: Cache GeoNames dataset
+        id: geonames
+        uses: actions/cache@v4
+        with:
+          path: geodata
+          key: geonames-cities1000-countryinfo-v1
+
+      - name: Download GeoNames dataset
+        if: steps.geonames.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p geodata
+          curl -fsSL --retry 3 -o geodata/countryInfo.txt \
+            https://download.geonames.org/export/dump/countryInfo.txt
+          curl -fsSL --retry 3 -o /tmp/cities1000.zip \
+            https://download.geonames.org/export/dump/cities1000.zip
+          unzip -o /tmp/cities1000.zip -d geodata
+          ls -la geodata
+
       - name: Start backend from GHCR image
         env:
           # `:master` is republished on every green master merge — see
@@ -148,6 +172,7 @@ jobs:
           # runner. Admin origin allowlist added so the API accepts
           # requests from the test's Origin: http://localhost:5174.
           docker run -d --name backend --network host \
+            -v "$PWD/geodata:/app/data:ro" \
             -e HOST=0.0.0.0 \
             -e PORT=3001 \
             -e ENVIRONMENT=dev \
