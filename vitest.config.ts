@@ -9,6 +9,12 @@ export default defineConfig({
 		globals: true,
 		setupFiles: ['./src/tests/setup.ts'],
 		include: ['src/**/*.{test,spec}.{ts,js}'],
+		// The default 5s is spent transforming SvelteKit modules, not running
+		// assertions: the same tests pass alone and time out in a full run on
+		// a loaded machine. A suite that fails for that reason is one people
+		// learn to re-run instead of read.
+		testTimeout: 30_000,
+		hookTimeout: 30_000,
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'html'],

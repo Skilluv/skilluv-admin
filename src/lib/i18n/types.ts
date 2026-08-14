@@ -482,6 +482,9 @@ export interface Translations {
 			administration: string;
 			signOut: string;
 			kycEnterprises: string;
+			money: string;
+			disputes: string;
+			emails: string;
 			sponsorings: string;
 			tournamentsSeasons: string;
 			operations: string;
@@ -538,6 +541,81 @@ export interface Translations {
 			wsUsers: string;
 			wsRooms: string;
 			errors30m: string;
+		};
+		money: {
+			label: string;
+			title: string;
+			subtitle: string;
+			positions: string;
+			noPositions: string;
+			undelivered: string;
+			routesHint: string;
+			methodsHint: string;
+			inline: string;
+			open: string;
+			close: string;
+			emptyPayments: string;
+			emptyPayouts: string;
+			emptyRoutes: string;
+			emptyMethods: string;
+			direction: { in: string; out: string };
+			tabs: {
+				payments: string;
+				payouts: string;
+				routes: string;
+				methods: string;
+			};
+			stats: {
+				undelivered: string;
+				undeliveredHint: string;
+				drift: string;
+				driftHint: string;
+				paymentsPending: string;
+				payoutsPending: string;
+				payoutsFailed: string;
+				disputes: string;
+				notifications: string;
+			};
+			cols: {
+				subject: string;
+				amount: string;
+				route: string;
+				status: string;
+				refs: string;
+				when: string;
+				user: string;
+				checks: string;
+				corridor: string;
+				provider: string;
+				priority: string;
+				state: string;
+				operator: string;
+				where: string;
+				mode: string;
+			};
+		};
+		disputes: {
+			label: string;
+			title: string;
+			subtitle: string;
+			empty: string;
+			payerSays: string;
+			recipientSays: string;
+			refundPayer: string;
+			payRecipient: string;
+			decide: string;
+			decided: string;
+			notePlaceholder: string;
+			noteHint: string;
+		};
+		emails: {
+			label: string;
+			title: string;
+			subtitle: string;
+			search: string;
+			pick: string;
+			noKinds: string;
+			openTab: string;
 		};
 		reports: {
 			title: string;
