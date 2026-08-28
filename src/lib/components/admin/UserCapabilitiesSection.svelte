@@ -3,7 +3,15 @@
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
 	import { i18n, intlLocale } from '$lib/i18n';
-	import type { Capability, UserCapability } from '$lib/types';
+	import type {
+		AiReviewerGroup,
+		Capability,
+		CodeReviewerGroup,
+		DesignReviewerGroup,
+		PlainCapability,
+		UserCapability,
+		ValidatorDomain
+	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
 	import Input from '$components/ui/Input.svelte';
 	import Modal from '$components/ui/Modal.svelte';
@@ -19,7 +27,12 @@
 
 	let { userId }: Props = $props();
 
-	const ALL_CAPABILITIES: Capability[] = [
+	// Every grantable capability, in the order migration 0229's CHECK lists
+	// them. That constraint is the authority: a value missing here is a
+	// capability nobody can be granted from this panel, which is how design
+	// review rights stayed unassignable while the backend already accepted
+	// them.
+	const PLAIN_CAPABILITIES: PlainCapability[] = [
 		'challenger',
 		'mentor',
 		'project_steward',
@@ -33,8 +46,85 @@
 		'forum_moderator',
 		'plagiarism_reviewer',
 		'kyc_reviewer',
-		'community_curator'
+		'community_curator',
+		'verified_apprentice',
+		'apprentice_verifier'
 	];
+
+	const VALIDATOR_DOMAINS: ValidatorDomain[] = [
+		'code',
+		'design',
+		'game',
+		'security',
+		'ops',
+		'ai',
+		'soft_skills'
+	];
+
+	const CODE_REVIEWER_GROUPS: CodeReviewerGroup[] = [
+		'web',
+		'mobile',
+		'systems',
+		'blockchain',
+		'compilers',
+		'data',
+		'scientific',
+		'devtools-media',
+		'all'
+	];
+
+	const AI_REVIEWER_GROUPS: AiReviewerGroup[] = ['data', 'ml', 'llm-nlp', 'cv', 'safety', 'all'];
+
+	/** The thirteen design families plus the wildcard. `design_reviewer:all`
+	 *  is the one that unlocks the whole critique queue — worth knowing before
+	 *  granting it. */
+	const DESIGN_REVIEWER_GROUPS: DesignReviewerGroup[] = [
+		'product',
+		'web',
+		'mobile',
+		'motion',
+		'brand',
+		'illustration',
+		'dataviz',
+		'ux-writing',
+		'marketing',
+		'game',
+		'3d-viz',
+		'immersive',
+		'service',
+		'all'
+	];
+
+	const ALL_CAPABILITIES: Capability[] = [
+		...PLAIN_CAPABILITIES,
+		...VALIDATOR_DOMAINS.map((d) => `challenge_validator:${d}` as Capability),
+		...CODE_REVIEWER_GROUPS.map((g) => `code_reviewer:${g}` as Capability),
+		...AI_REVIEWER_GROUPS.map((g) => `ai_reviewer:${g}` as Capability),
+		...DESIGN_REVIEWER_GROUPS.map((g) => `design_reviewer:${g}` as Capability)
+	];
+
+	/** Label for the grant dropdown. Scoped capabilities render as
+	 *  "<family> — <scope>" with the scope verbatim: it is the same slug that
+	 *  sits on `orientations.reviewer_group`, and translating it would
+	 *  decouple the label from the value being granted. */
+	function capabilityLabel(c: Capability): string {
+		const colon = c.indexOf(':');
+		if (colon === -1) return i18n.t(`admin.capabilities.names.${c}`);
+		const family = c.slice(0, colon);
+		const scope = c.slice(colon + 1);
+		return `${i18n.t(`admin.capabilities.families.${family}`)} — ${scope}`;
+	}
+
+	/** One description per family for the scoped capabilities, rather than
+	 *  forty-five near-identical strings per locale. The scope is appended so
+	 *  the sentence still names what is actually being granted. */
+	function capabilityDescription(c: Capability): string {
+		const colon = c.indexOf(':');
+		if (colon === -1) return i18n.t(`admin.capabilities.descriptions.${c}`);
+		const family = c.slice(0, colon);
+		const scope = c.slice(colon + 1);
+		return i18n.t(`admin.capabilities.familyDescriptions.${family}`, { scope });
+	}
 
 	let active = $state<UserCapability[]>([]);
 	let loading = $state(true);
@@ -54,7 +144,7 @@
 	const grantOptions = $derived(
 		ALL_CAPABILITIES.map((c) => ({
 			value: c,
-			label: i18n.t(`admin.capabilities.names.${c}`),
+			label: capabilityLabel(c),
 			disabled: activeSet.has(c)
 		}))
 	);
@@ -227,7 +317,7 @@
 			/>
 			{#if grantCapability !== ''}
 				<p class="text-xs text-text-muted">
-					{i18n.t(`admin.capabilities.descriptions.${grantCapability}`)}
+					{capabilityDescription(grantCapability)}
 				</p>
 			{/if}
 		</div>

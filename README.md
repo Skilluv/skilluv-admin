@@ -11,11 +11,12 @@
 
 ## What is Skilluv?
 
-Skilluv is a platform where talents in code, design, security, game
-development, product, and other tech crafts grow their skills by
-contributing to **real open source projects**. Every completed challenge
-produces a verifiable artifact — a merged pull request, a delivered
-Figma component, a submitted CVE report, a playable game build —
+Skilluv is a platform where talents across eleven disciplines — code,
+design, security, games, AI, audio, communication, education, leadership,
+ops and quality — grow their skills by contributing to **real projects**.
+Every completed challenge produces a verifiable artifact — a fix proposed
+to a real project, a delivered Figma component, a submitted CVE report,
+a playable game build —
 exportable to recruiters.
 
 **African-born, globally open.** Contributors and hiring companies come
@@ -140,4 +141,4 @@ Distributed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.
 
 ## Origin
 
-Skilluv is built solo by [Jeremie Zitti](https://github.com/skilluv), an engineer based in Benin. Public launch: **January 2027**.
+Skilluv is built by a small volunteer team led by [Jeremie Zitti](https://github.com/skilluv), an engineer based in Benin — product and engineering, design, and communications. Beta opens **11 January 2027**, followed by a pre-season of first challenges; first full season **June 2027**.

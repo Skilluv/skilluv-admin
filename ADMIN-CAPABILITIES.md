@@ -2,13 +2,16 @@
 
 **Scope :** documentation exhaustive de tout ce qu'un compte `role='admin'` peut faire côté backend (`skilluv-backend`), exposé via l'app dédiée `skilluv-admin` sur `admin.skilluv.com` (dev : `localhost:5174`).
 
-**Version :** 2026-07-16.
-**Total endpoints :** 48, groupés en 14 domaines.
+**Version :** 2026-08-28.
+**Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21.
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
 - **ADM-M1** (commit front `9950799`, back P18.4) : `POST/DELETE /api/admin/users/{id}/capabilities` + `GET /api/users/{id}/capabilities` — 14 capabilities admin-manageable.
 - **ADM-M2** (commit front `3b29837`, back P14.5) : 7 endpoints fraud — plagiat queue + revoke + LLM re-eval + multi-account detection.
+- **Post-MVP T1/T2/T3** (back SKI-36 → SKI-47) : 6 routes admin ou modération consommées — timeline + backfill, file signaux externes, break vouching, prérequis skills, plus la supervision lecture seule des cohortes et des offres de talents. Détail en section 17.
+- **Skilluv Cyber + curation design** (projets Linear « Skilluv Cyber — Full workflow » et « Skilluv Design — 26 orientations ») : les 20 routes `/api/admin/security/*` (file de triage, transitions, sévérité, rounds, embargo, dedup, catalogue CTF/lab, programmes externes, claims), les 3 routes `/api/admin/missions*` (une seule surface pour les missions design ET cyber), la file de briefs design, la file de plagiat transverse, la mise en avant hebdomadaire, et les opérations de concours (jury, prix, pics de votes). Détail en sections 19, 20 et 21.
+- **Skilluv Design** (branche back `feat/design-orientations-workflow`) : boucle de critique, profil et craft score consommés ; réalignement de trois enums que l'app avait laissés dériver — capabilities (les `design_reviewer:*` étaient ingrantables), kinds de tournoi (`brief_contest` = contest design), statut `in_iteration`. Détail en section 18.
 
 ---
 
@@ -912,3 +915,390 @@ Re-évaluation d'un livrable via `skilluv-ia` (code_reviewer service).
 - Aucun endpoint fraud (P14.5) n'écrit dans `audit_log` — front affiche un warning permanent sur `/fraud`.
 - Aucun endpoint capabilities (P18.4) n'écrit dans `audit_log` — même transparence côté front.
 - Recompute-capabilities existe en interne (`capabilities_engine.rs:33`) mais **n'est pas exposé** en HTTP — bloque partiellement le futur ADM-M5.
+
+---
+
+## 17. Post-MVP Tier 1 / 2 / 3 (SKI-36 → SKI-47)
+
+Les 12 tickets des projets Linear *Post-MVP Tier 1 / 2 / 3* sont livrés côté backend. La majorité est **scopée sur l'appelant** : bookmarks (SKI-36), notes privées (SKI-37), objectifs (SKI-38), peer matching (SKI-41) et compagnon IA (SKI-44) n'exposent **aucune route admin ni modération** — le backend lit toujours `user_id` depuis le JWT, jamais depuis le path. Rien à consommer côté admin pour ces cinq-là.
+
+Les six routes ci-dessous sont la surface réellement atteignable par un opérateur, et sont toutes consommées par l'app.
+
+### Gate : `admin` vs capability
+
+Deux routes seulement passent par `admin_gate` (origine admin + 2FA + capability `admin`) :
+
+- `POST /api/admin/users/{id}/backfill-timeline`
+- `PUT /api/admin/skills/{id}/prerequisites`
+
+Les autres sont sous `/api/moderation/*` et sont gatées par **capability**, pas par `role='admin'` :
+
+| Route | Capabilities acceptées |
+|---|---|
+| `GET /api/moderation/external-signals` | `community_moderator`, `community_curator` |
+| `POST /api/moderation/external-signals/{id}/verify` | idem |
+| `DELETE /api/moderation/external-signals/{id}` | idem |
+| `POST /api/moderation/vouchings/{id}/break` | `community_moderator`, `plagiarism_reviewer` |
+
+Un admin sans la capability reçoit `403`. L'écran `/external-signals` détecte ce cas et nomme la capability manquante au lieu d'afficher une file vide — elle se corrige depuis la fiche utilisateur (section Capabilities, ADM-M1).
+
+### 17.1 Timeline profil (SKI-39)
+
+- `GET /api/users/{id}/timeline?event_type&limit&offset` — public, mais soumis à la visibilité du profil : un profil masqué ou banni répond `404`, y compris pour un admin.
+  - `data: { events[], total, limit, offset }`, `limit` clampé `[1, 100]` (défaut 50).
+  - `event_type` ∈ `signup | orientation_added | deliverable_verified | rank_promoted | capability_granted | attestation_received | event_participation | first_bounty_earned | first_mentor_session`.
+- `POST /api/admin/users/{id}/backfill-timeline` — rejoue la timeline depuis les tables sources. **Idempotent** : `rows_inserted: 0` est la réponse normale et le but de l'opération.
+  - `data: { user_id, rows_inserted, detail: { <event_type>: number } }`.
+
+**Consommé par** : `UserTimelineSection.svelte` sur `/users/{id}`.
+
+### 17.2 Signaux externes (SKI-42)
+
+- `GET /api/moderation/external-signals?limit` — file de revue, non vérifiés uniquement, plus anciens d'abord. `limit` clampé `[1, 200]` (défaut 50).
+- `POST /api/moderation/external-signals/{id}/verify` — pose `verified_at`, `verification_method='manual_review'`, `verified_by`. `404` si déjà vérifié.
+- `DELETE /api/moderation/external-signals/{id}` — `204`, définitif.
+- `GET /api/users/{id}/external-signals` — vue profil, réponse **toujours scindée** en `{ verified[], declared[], disclaimer }`.
+
+La séparation `verified` / `declared` est la feature : un signal externe est du contexte, jamais une preuve. Ni la vérification ni l'affichage ne touchent `weighted_proven_count`, le rang ou les badges (migration 0145). L'UI ne fusionne jamais les deux listes.
+
+**Consommé par** : page `/external-signals` (file) + `UserExternalSignalsSection.svelte` (par profil).
+
+### 17.3 Vouchings (SKI-46)
+
+- `GET /api/users/{id}/vouchings` — vouchings **vivants** uniquement (ni rompus, ni expirés), avec le parrain résolu : `{ id, voucher_id, voucher_display_name, statement, active_until, at_stake_kind }`.
+- `POST /api/moderation/vouchings/{id}/break` — body `{ reason }`, 8 caractères minimum.
+  - `data: { vouching, penalty_applied, voucher_rank_before, voucher_rank_effective, penalty_until }`.
+  - Coût : le parrain perd un rang pendant 90 jours quand `at_stake_kind = 'rank_temporary'`.
+
+Rompre un vouching est un endpoint explicite, jamais un effet de bord d'un flag fraude posé ailleurs.
+
+**Consommé par** : `UserVouchingsSection.svelte` sur `/users/{id}`.
+
+### 17.4 Skill tree & prérequis (SKI-47)
+
+- `GET /api/users/{id}/skill-tree?domain` — catalogue **complet** avec le statut de l'utilisateur par nœud, plus `counts` par statut. Non paginé : un fragment d'arbre n'est pas affichable. `domain` ∈ `code | design | game | security | soft_skills | ai | ops`.
+  - Chaque nœud porte `prerequisite_skill_ids`, `missing_prerequisites[]`, `status` ∈ `locked | unlocked | in_progress | mastered`, `proven_count`, `proficiency_level`, `children[]`.
+- `PUT /api/admin/skills/{id}/prerequisites` — body `{ prerequisite_skill_ids: [] }`, **liste complète en remplacement**. Tableau vide = effacement. Refusé si cycle, plafonné à 20 entrées.
+
+À noter : `GET /api/admin/skills` ne renvoie **pas** `prerequisite_skill_ids`. L'éditeur de prérequis lit donc le catalogue via le skill-tree de l'admin connecté et l'aplatit — c'est le seul endpoint qui expose le catalogue complet avec ses prérequis.
+
+**Consommé par** : `UserSkillTreeSection.svelte` sur `/users/{id}` + `SkillPrerequisitesModal.svelte` sur `/skills`.
+
+### 17.5 Cohortes (SKI-40) — lecture seule
+
+- `GET /api/cohorts?orientation&upcoming_only&limit&offset` — découverte : cohortes **publiques non archivées** uniquement.
+- `GET /api/cohorts/{id}`, `GET /api/cohorts/{id}/members`, `GET /api/cohorts/{id}/milestones`.
+
+Le backend n'expose **aucun override admin** : une cohorte est éditée par son organisateur, les cohortes privées restent invisibles même pour un admin, et il n'existe pas de route pour archiver une cohorte abusive depuis l'admin. C'est un gap connu, listé en 17.7.
+
+### 17.6 Offres de talents (SKI-45) — lecture seule
+
+- `GET /api/talent-offers?offer_type&skill&free_only&limit&offset` — browse public. Seules les offres actives d'auteurs Artisan+ non pénalisés et non masqués apparaissent.
+  - `offer_type` ∈ `pair_programming | code_review | whiteboard | mock_interview | career_advice`.
+  - `price_cents_per_hour: null` = offre gratuite.
+
+Là encore, pas de route de modération : une offre est éditée ou supprimée par son auteur.
+
+**17.5 et 17.6 consommés par** : page `/engagement` (deux onglets).
+
+### 17.7 Gaps backend identifiés
+
+Tous ticketés côté backend. L'app admin est prête à les consommer dès livraison — aucun de ces gaps ne demande de travail front en amont.
+
+| Gap | Ticket |
+|---|---|
+| **Cohortes** — aucun moyen d'archiver ou de dépublier une cohorte abusive depuis l'admin, et les cohortes privées restent invisibles. | [SKI-295](https://linear.app/skilluv/issue/SKI-295) |
+| **Offres de talents** — aucun moyen de désactiver une offre abusive depuis l'admin. | [SKI-296](https://linear.app/skilluv/issue/SKI-296) |
+| **Vouchings** — pas de file globale : un vouching n'est atteignable qu'en passant par la fiche du filleul, et les vouchings rompus ne sont lisibles nulle part. | [SKI-297](https://linear.app/skilluv/issue/SKI-297) |
+| **Compagnon IA (SKI-44)** — `ai_interactions` n'a pas de projection admin (volume, coût, quotas, ledger de disclosure par user), alors que la maîtrise des coûts LLM est un prérequis explicite du ticket. | [SKI-298](https://linear.app/skilluv/issue/SKI-298) |
+| **Audit log** — aucune des routes de la section 17 n'écrit dans `audit_log`, y compris les deux destructrices (`break vouching`, `DELETE external-signal`). Même gap que fraud et capabilities (cf. section 16). | [SKI-299](https://linear.app/skilluv/issue/SKI-299) |
+
+---
+
+## 18. Skilluv Design — 26 orientations (branche `feat/design-orientations-workflow`)
+
+Le projet Linear *Skilluv Design* a deux tickets explicitement ADMIN — [SKI-205](https://linear.app/skilluv/issue/SKI-205) (`/admin/design`, 7 pages) et [SKI-249](https://linear.app/skilluv/issue/SKI-249) (`/admin/design-missions`). **Aucun des endpoints qu'ils spécifient n'existe** : il n'y a pas une seule route `/api/admin/design*` dans la branche backend, et `missions.rs` n'a aucune route admin. Les deux tickets restent donc bloqués côté backend.
+
+Ce qui est livré et consommable est ailleurs : la boucle de critique, le profil, le score, et les enums que l'app admin avait laissés dériver.
+
+### 18.1 Le décalage d'enums, et pourquoi il bloquait
+
+Trois listes en dur de l'app admin ne suivaient plus le backend. La première était un blocage fonctionnel réel :
+
+| Enum | État avant | Conséquence |
+|---|---|---|
+| `Capability` | 14 valeurs + `challenge_validator:{domain}` | Les 14 `design_reviewer:*` étaient **ingrantables depuis l'admin** alors que la CHECK backend les accepte. Sans elles, aucun reviewer design ne peut être nommé, et la boucle de critique n'a personne pour la faire tourner. Idem pour les 9 `code_reviewer:*`, les 6 `ai_reviewer:*` et les 2 capabilities du sas débutant. |
+| `TournamentKind` | `individual \| guild_war \| hackathon` | Les contests design (`brief_contest`) étaient **incréables**, ainsi que `duel`, `code_golf`, `tdd_contest`, `marathon`, `defi_solitaire`, `benchmark_rush`. |
+| `SliceStatus` | 10 statuts | `in_iteration` absent : une slice design en cours d'itération était invisible et infiltrable dans `/slices` et dans les analytics. |
+
+L'autorité pour les capabilities est la **CHECK constraint courante** (migration 0229), pas les migrations antérieures : elle est remplacée en entier à chaque extension et restate tout ce que 0094, 0098, 0117, 0120, 0176 et 0210 avaient ajouté.
+
+Les capabilities scopées sont maintenant rendues par famille (`design_reviewer` → « Reviewer design — motion ») plutôt que par 45 chaînes traduites : le scope après le `:` est le slug backend, le même que celui posé sur `orientations.reviewer_group`, et le traduire découplerait le libellé de la valeur réellement accordée.
+
+### 18.2 Boucle de critique (SKI-194/198/199/200)
+
+Design ne réutilise pas le workflow de validation code, et pour une raison de fond : il n'y a pas de signal CI qui dise que le travail est prêt à être regardé, et le verdict n'est pas binaire — l'issue ordinaire d'une review design est « refais un tour ».
+
+```
+claimed / in_progress → pending_validation → ├── approve  → validated
+                                             ├── iterate  → in_iteration → (round suivant)
+                                             └── reject   → closed
+```
+
+- `GET /api/design/reviews/queue?limit` — slices design en attente de critique, plus anciennes d'abord. **Scopée par capability** : `admin` et `design_reviewer:all` sont les deux wildcards, sinon la file est réduite aux familles détenues. Un reviewer ne voit jamais la slice qu'il a claim lui-même. Renvoie une liste vide (pas un 403) quand l'appelant n'a aucune capability design — l'écran le dit au lieu de laisser croire qu'il n'y a rien à traiter.
+- `GET /api/design/slices/{id}/reviews` — tout l'historique, round le plus ancien d'abord. **Public** : la séquence des rounds est la chose la plus convaincante qu'un designer puisse montrer.
+- Plafond de 5 rounds (migration 0184, partagé par tous les domaines). Au-delà, le problème est le brief, pas le travail.
+- 10 motifs de blocage (migration 0232), 12 sous-types de livrable (0231), 13 familles de reviewer (0229).
+
+**Consommé par** : page `/design`, onglet « File de critique » + modale historique.
+
+### 18.3 Profil et craft score (SKI-251)
+
+- `GET /api/users/{username}/design-profile` — adressé par **username**, pas par id : c'est la route de profil public. Un profil masqué répond 404, même réponse qu'un compte inexistant.
+  - `craft_score` avec son `breakdown` terme par terme — l'app n'affiche jamais un score qu'elle ne peut pas expliquer.
+  - `artefacts[]` avec `rounds` et `grid_average` : converger au quatrième round est une meilleure histoire que passer au premier, et c'est ce que la trace d'itération existe pour montrer.
+  - `contests[]`, `trades[]`, `attestations[]`.
+- `GET /api/design/tiers` — paliers, pondérations et plafond. Publié parce qu'un classement dont les règles sont privées est un classement que personne ne peut contester.
+
+**Consommé par** : `UserDesignProfileSection.svelte` sur `/users/{id}` (chargé à la demande — le score est recalculé à chaque lecture) + onglet « Barème » de `/design`.
+
+### 18.4 Contests design — ce sont des tournois
+
+Il n'y a pas d'endpoint de contest design, et ce n'est pas un oubli : un contest est le même événement quel que soit le sujet. Un contest design est un **`brief_contest` avec `skill_domain = 'design'`** sur les routes tournoi existantes ; un duel design est un `duel` avec le même domaine.
+
+`POST /api/admin/tournaments` accepte donc `skill_domain` et `rules`, et `services::contest::validate_rules` **refuse la création** si les règles du kind manquent :
+
+| Kind | `rules` obligatoires |
+|---|---|
+| `brief_contest` | `brief` (≥ 200 caractères), `judging_criteria` |
+| `hackathon` | `theme` |
+| `code_golf` | `language`, `problem_url` |
+| `tdd_contest` | `problem_url`, `judging_criteria` |
+| `marathon` | `target_merged_prs` |
+| `duel` | `task`, `duration_hours` |
+
+Vérifié à la création plutôt qu'à la soumission : un contest dont les règles manquent n'est pas un contest avec un champ vide, c'est une annonce sur laquelle personne ne peut agir. Le formulaire `/tournaments` collecte ces champs selon le kind et refuse avant le round trip, y compris le minimum de 200 caractères du brief.
+
+### 18.5 Ce qui a bougé depuis
+
+Cette section listait SKI-205 et SKI-249 comme bloqués côté backend. Ils ne le sont plus : l'essentiel de ce qu'ils demandent existe, ailleurs et volontairement — un contest design est un tournoi, une mission design est une mission, un dossier de plagiat est transverse. Voir la **section 21**, qui dit route par route où chaque morceau a atterri, et la **section 20** pour les missions.
+
+Ce qui manque réellement est réduit à trois points, listés en 21.2.
+
+---
+
+> **Language note.** Sections 19 and 20 are written in English. This is a
+> public repository and English is its default language; the French sections
+> above predate that decision and are kept as they are rather than
+> half-translated.
+
+## 19. Skilluv Cyber — reported vulnerabilities
+
+**Linear** : projet « Skilluv Cyber — Full workflow », tickets SKI-120 (F-05),
+SKI-127 (T-04) and the W-01..W-05 workflow tickets.
+
+### 19.1 Three actors, not one admin
+
+`admin` in the path says which surface this is, not who may reach it. The
+backend recognises three unequal actors, and the inequality is the design:
+
+| Actor | May | May not |
+|---|---|---|
+| `security_triager` | read the queue, triage, mark not-applicable, open rounds | confirm anything, set a severity |
+| `security_reviewer:{family}` (or `challenge_validator:security`) | everything a triager may, plus confirm, rule a duplicate, mark fixed, override a severity | publish, withhold, grant an extension |
+| `admin` | all of it | — |
+
+`domain_curator:security`, `domain_curator:all` and `challenge_validator:security`
+also read the queue.
+
+Publication is the only act reserved to an administrator alone, and the
+reason is stated in the backend module: every other transition here can be
+corrected by making another one; publishing cannot, because the internet
+keeps a copy.
+
+The admin app **offers every action to everybody** and lets the server refuse.
+A hidden button teaches nobody which capability they are missing; a 403 with
+its message does.
+
+### 19.2 The state machine
+
+Mirrored in `src/lib/api/security.ts::nextStatuses`, which exists only to
+decide which buttons to draw — the server decides.
+
+```
+submitted ─┬─→ triaged ─┬─→ confirmed ─┬─→ fixed ──→ published
+           │            │              ├─→ duplicate
+           ├─→ not_applicable          └─→ published
+           ├─→ duplicate
+           └─→ withdrawn (reporter only, no admin surface offers it)
+```
+
+### 19.3 Endpoints consumed (20)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/admin/security/findings` | `status`, `severity`, `target_kind`, `suspected_duplicates`, `limit` (≤ 200). Ordered by severity then age — not by arrival, which buries a Friday critical under a week of informationals. |
+| GET | `/api/admin/security/findings/{id}` | The row, the audit trail, the rounds, the look-alikes. |
+| POST | `/api/admin/security/findings/{id}/transition` | `{to, reason?, fix_url?, writeup_url?, duplicate_of?, triage_notes_md?}`. 409 when the move is not legal for the caller's actor. |
+| POST | `.../severity` | `{cvss_vector? \| severity_tier?, reason}`. Reviewer or admin: a severity decides a payout tier. |
+| POST | `.../rounds` | `{kind, notes_md}`. Five rounds max, one open at a time. |
+| POST | `.../rounds/resolve` | `{resolution: satisfied\|insufficient, note?}` |
+| POST | `.../vendor-notified` | Starts the embargo clock. |
+| POST | `.../extension` | `{reason}` — the owner asks. |
+| POST | `.../extension/grant` | `{days}` — **admin only**. |
+| POST | `.../withhold` | `{reason}` — **admin only**. Never published, with the reason on the row. |
+| POST | `.../rescan` | Looks again for look-alikes. Returns a count; merging stays human. |
+| POST | `.../blue-lab` | Turns a confirmed finding into a defensive exercise. The artefact is supplied, not extracted. |
+| GET | `/api/admin/security/dedup-queue` | Everything a scanner suspected. Nothing merges automatically: a merge decides who is paid. |
+| POST | `/api/admin/security/embargo-sweep` | Walks the clocks. Publishes nothing — an expired embargo becomes a list item. |
+| POST | `/api/admin/security/challenges` | `ctf_flag` or `defensive_lab`. The one place a flag or an answer set enters the system; hashed server-side, created as a draft. |
+| GET/POST | `/api/admin/security/external-bounties` | Curated programmes. `curated_at` moves on every write, because the date is the whole claim. |
+| GET | `/api/admin/security/bounty-claims` | Work claimed from another platform. |
+| POST | `.../bounty-claims/{id}/verify` | `{severity}` — the reviewer's tier, not the other platform's. |
+| POST | `.../bounty-claims/{id}/refuse` | `{reason}` |
+| POST | `/api/admin/security/research-tokens/{id}/revoke` | **admin only**. |
+
+Two public reads are used by the same screens: `GET /api/security/hall-of-fame`
+(the only aggregate the backend computes — there is no
+`/admin/security/overview`, and the app invents no number to stand in for one)
+and `GET /api/security/proofs?key=` (one short-lived signed URL per proof key;
+a proof of an unfixed vulnerability is not public material, so it is opened in
+a new tab and never embedded).
+
+**Consumed by** : `/security` (queue, duplicates, external claims, programmes,
+catalogue, public record) and `/security/findings/{id}`.
+
+### 19.4 Where the queue filters live
+
+In the URL. A filtered queue is a thing you send to a colleague, and a filter
+that lives only in memory cannot be sent. `/security?status=submitted&severity=critical`
+is the shareable form, and `e2e/admin/security-findings-triage.spec.ts` asserts
+it survives a reload.
+
+---
+
+## 20. Paid missions — the admin's one decision
+
+**Linear** : SKI-162 (cyber M-10) and SKI-249 (design M-08).
+
+### 20.1 Why there is one page and not two
+
+Both tickets ask for their own admin page — `/admin/cyber-missions` and
+`/admin/design-missions`. The backend answered with one surface, and it is the
+right answer: migration 0192 built missions, applications and billing for every
+domain, keyed by `mission_types.skill_domain`. Design needed rows, not a
+mechanism, and got twelve of them.
+
+So a design mission is a mission with `skill_domain = 'design'`, a cyber
+mission is one with `skill_domain = 'security'`, and the two pages the tickets
+describe are `/missions?domain=design` and `/missions?domain=security`. A second
+implementation would be a second thing to keep in step with the first.
+
+### 20.2 What an admin is for here
+
+Not running missions. A mission belongs to the enterprise that posted it and
+the person who took it, and both already have every action they need. What
+neither has is a way out of the case where they disagree and neither will move:
+the mission sits `in_progress` for ever and the money sits in escrow.
+
+That is the whole write surface — **one decision, once**.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/admin/missions` | `skill_domain`, `mission_type`, `status`, `stuck_only`, `stuck_after_days` (default 21), `page`, `per_page`. Ordered by how long a hand-in has gone unanswered. |
+| GET | `/api/admin/missions/{slug}` | Rounds, invoices, IP terms, NDA flag, arbitration. 404 rather than 403 for a domain the caller may not read — which missions exist is not a curator's business. |
+| POST | `/api/admin/missions/{slug}/arbitrate` | `{outcome: accepted\|cancelled, reason_md}`. Eighty characters minimum. |
+
+Readers: `admin`, `domain_curator:{domain}`, `domain_curator:all`,
+`mission_arbiter`. An admin reads every domain; a curator reads their own and
+has to name it; an arbiter reads the stuck queue across every domain and
+nothing else — that queue *is* their job.
+
+Arbiters: `admin` and `mission_arbiter`, not scoped by domain. Whether a
+contract was honoured is the same question about a logotype and about a pull
+request, and scoping it would leave a stuck mission nobody may unstick because
+its domain has no arbiter yet.
+
+**Two outcomes, no third.** Both already exist in the mission's own vocabulary;
+what the endpoint adds is the record that the outcome was *decided* rather than
+agreed, and by whom. A mission accepted by arbitration and one accepted by a
+happy client look identical in `missions`, and they must not read the same to
+anybody who later asks what happened.
+
+The eighty-character floor is shared as `ARBITRATION_REASON_MIN` so the form
+refuses before the round trip and cannot drift from the server.
+
+**Consumed by** : `/missions` and `/missions/{slug}`.
+
+### 20.3 Money next to the work
+
+The detail screen shows `mission_invoices` — label, amount, currency, status,
+capture and release timestamps — beside the rounds rather than on the money
+page. An arbitration decides an amount that is already sitting somewhere, and
+sending the arbiter to another screen to find out where is how a decision gets
+taken without it.
+
+---
+
+## 21. Design curation (SKI-205, SKI-233, SKI-312)
+
+Section 18.5 previously recorded SKI-205 and SKI-249 as blocked. They are not
+blocked; most of what they ask for was built somewhere else, on purpose:
+
+| SKI-205 asks for | Where it actually lives |
+|---|---|
+| Contest CRUD, jury, finalisation | `/api/admin/tournaments*` — a design contest is a `brief_contest` with `skill_domain = 'design'`. Consumed by `/tournaments`, tab **Contest operations**. |
+| Design missions review | `/api/admin/missions?skill_domain=design` — see section 20. |
+| Validator statistics | `/api/admin/validators/stats`, cross-domain, already consumed by `/validators`. |
+| Moderation of a copied entry | `/api/admin/plagiarism` — cross-domain: an entry copied into a security contest is the same case. |
+| Featured designer queue | `/api/admin/featured` — the weekly featuring every domain has. |
+| The aggregated overview | **Nothing serves it.** There is no endpoint returning "active contributors, open challenges, running contests". The screens compose what they can from the queues themselves and say so; no number on `/design` is invented to look like one. |
+
+What is genuinely design-shaped got its own routes, and all of them are now
+consumed:
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/admin/design/briefs` | Proposals waiting, oldest first. Gated by `community_curator`, not by `admin` alone — reserving curation to administrators makes the queue's length a function of how many administrators there are. |
+| POST | `/api/admin/design/briefs/{id}/publish` | The brief becomes a slice anybody may claim. Curation, not moderation: nothing is removed, something is brought into existence. |
+| POST | `/api/admin/design/briefs/{id}/reject` | `{feedback}`, 20 characters minimum, read by the author. |
+| GET | `/api/admin/plagiarism` | Open cases, oldest first. `plagiarism_reviewer` or `admin`. An open case is not public: an allegation published before it is decided ruins somebody even when it is dismissed. |
+| POST | `/api/admin/plagiarism/{id}/decide` | `{upheld, decision_md}`, 80 characters **either way** — an accusation dropped without a word leaves the accusation standing in everybody's memory. |
+| GET | `/api/featured/{domain}` · `/recent` | Public. `null` rather than 404 when nobody is featured: a quiet week is a normal week. |
+| POST | `/api/admin/featured` | `{skill_domain, week_of, user_id, reason_md, deliverable_id?}`. One per domain per week; the date must be a Monday, refused rather than rounded; refused for anybody with nothing verified in the domain. |
+| GET | `/api/admin/featured/{domain}/{week}/card` | The post, composed and **returned, never published**. Who presses send is a person. |
+| GET | `/api/design/slices/{id}/auto-checks` | Contrast, motion budget, token linting. Advisory: none decides a verdict. Shown beside the critique trail, because reading the critiques without the checks hides the half of the story a machine wrote. |
+| GET | `/api/design/slices/{id}/versions/{round}` · `/compare` | One reviewed version, or two with the critiques between them. |
+
+**Consumed by** : `/design` — tabs **Critique queue**, **Brief queue**,
+**Plagiarism**, **Featured**, **Craft score ladder**.
+
+### 21.1 Contest operations (SKI-150, SKI-200, SKI-236, SKI-148)
+
+On `/tournaments`, tab **Contest operations**, because a contest is a
+tournament whatever its subject:
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/tournaments/{slug}/jury` | Public. A contest whose panel is secret cannot be trusted. |
+| POST | `/api/admin/tournaments/{id}/jury` | `{juror_user_id}`. Refused when the invitee has an entry, or cannot review the contest's domain. |
+| GET | `/api/admin/tournaments/{id}/vote-bursts` | `window_minutes`, `threshold`. A reason to look, never a verdict. |
+| GET | `/api/admin/tournaments/prizes/outstanding` | Ended contests still holding money. Each owes an award or a refund and nothing decides which automatically. |
+| POST | `/api/admin/tournaments/{id}/prize/fund` | `{funder_enterprise_id, amount, currency, provider_reference}`. Amount as a **string**: a float round-trip is how a prize becomes 1499.9999. |
+| POST | `/api/admin/tournaments/{id}/prize/refund` | `{reason}`, 10 characters minimum. |
+
+### 21.2 What is still missing backend-side
+
+Filed as Linear issues rather than left as a comment in a Svelte file:
+
+- **No aggregated overview** for either domain. `/security` composes its
+  counters from `GET /api/security/hall-of-fame`, which is public and
+  five-minute-cached; `/design` shows none at all, because nothing computes
+  them.
+- **No `design_curator` / `design_moderator` capabilities.** SKI-205 specifies
+  them; the grantable list (migration 0229) does not carry them, so the brief
+  queue is gated by `community_curator` and the plagiarism queue by
+  `plagiarism_reviewer`.
+- **No listing route for research tokens.** `POST /api/admin/security/research-tokens/{id}/revoke`
+  exists and nothing enumerates the tokens, so the revoke is reachable only
+  with an id from elsewhere.

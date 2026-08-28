@@ -82,3 +82,6 @@ Voir [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) pour les regles de la communaute.
 ## Securite
 
 Pour signaler une vulnerabilite, voir [SECURITY.md](SECURITY.md).
+
+
+  

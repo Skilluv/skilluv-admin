@@ -253,6 +253,78 @@ export async function readValidatorCapability(userId: string, domain: ValidatorD
 	});
 }
 
+/** Grant an arbitrary capability. The Post-MVP moderation routes
+ *  (external signals, vouchings) are capability-gated rather than
+ *  role-gated, so the e2e admin needs one granted before those screens do
+ *  anything but 403. Idempotent — a second run must not violate the
+ *  uniqueness of a live grant. */
+export async function grantCapability(userId: string, capability: string) {
+	await withDb(async (client) => {
+		await client.query(
+			`INSERT INTO user_capabilities (user_id, capability, granted_reason)
+			 VALUES ($1, $2, 'e2e:post-mvp-fixture')
+			 ON CONFLICT DO NOTHING`,
+			[userId, capability]
+		);
+	});
+}
+
+/** Resolve a user id from its email. Used to reach the bootstrapped e2e
+ *  admin, whose id is not written to `admin-credentials.json`. */
+export async function findUserIdByEmail(email: string): Promise<string | undefined> {
+	return withDb(async (client) => {
+		const { rows } = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+		return rows[0]?.id as string | undefined;
+	});
+}
+
+/** Insert a self-declared (unverified) external signal — the state the
+ *  moderation queue is built to review. */
+export async function seedExternalSignal(opts: {
+	userId: string;
+	provider?: string;
+	url?: string;
+	title?: string;
+}) {
+	const id = uniq();
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO external_signals (user_id, provider, url, title)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING id`,
+			[
+				opts.userId,
+				opts.provider ?? 'medium',
+				opts.url ?? `https://medium.com/@e2e/${id}`,
+				opts.title ?? `E2E declared post ${id}`
+			]
+		);
+		return { id: rows[0].id as string };
+	});
+}
+
+export async function readExternalSignal(id: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			'SELECT verified_at, verification_method FROM external_signals WHERE id = $1',
+			[id]
+		);
+		return rows[0] as
+			| { verified_at: Date | null; verification_method: string | null }
+			| undefined;
+	});
+}
+
+export async function countTimelineEvents(userId: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			'SELECT COUNT(*)::int AS n FROM user_timeline_events WHERE user_id = $1',
+			[userId]
+		);
+		return rows[0].n as number;
+	});
+}
+
 export async function setUserRank(userId: string, rank: Rank) {
 	await withDb(async (client) => {
 		await client.query(
@@ -275,5 +347,203 @@ export async function cleanupProject(projectId: string) {
 export async function cleanupUser(userId: string) {
 	await withDb(async (client) => {
 		await client.query('DELETE FROM users WHERE id = $1', [userId]);
+	});
+}
+
+// ─── Skilluv Cyber fixtures — reported vulnerabilities ───────────────────
+//
+// A finding points at exactly one target, and the CHECK enforces it: a
+// `platform` finding names a host and no mission, a `mission` finding names
+// a mission and no host. The seed only builds the `platform` shape, which is
+// the one the triage queue is about.
+
+export interface SeedFindingOptions {
+	reporterId: string;
+	title?: string;
+	severity?: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+	status?: string;
+	targetHost?: string;
+}
+
+export async function seedSecurityFinding(opts: SeedFindingOptions) {
+	const id = uniq();
+	const severity = opts.severity ?? 'high';
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO security_findings
+			   (reporter_user_id, target_kind, target_host, affected_endpoint,
+			    title, description_md, reproduction_steps_md,
+			    severity_reported_tier, severity_tier, status)
+			 VALUES ($1, 'platform', $2, 'POST /api/auth/login', $3, $4, $5, $6, $6, $7)
+			 RETURNING id`,
+			[
+				opts.reporterId,
+				opts.targetHost ?? 'staging.skill-uv.com',
+				opts.title ?? `E2E finding ${id}`,
+				// The CHECK asks for fifty characters of description and
+				// thirty of reproduction: a report saying "it is broken"
+				// satisfies `<> ''` and is exactly what the floor refuses.
+				`An end-to-end fixture describing a vulnerability in enough detail to clear the fifty-character floor. ${id}`,
+				`1. Send the request. 2. Observe the response. 3. Repeat with a second account. ${id}`,
+				severity,
+				opts.status ?? 'submitted'
+			]
+		);
+		return { id: rows[0].id as string, title: opts.title ?? `E2E finding ${id}` };
+	});
+}
+
+export async function readSecurityFinding(id: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`SELECT status, severity_tier, triaged_at, triage_notes_md, withheld_reason
+			   FROM security_findings WHERE id = $1`,
+			[id]
+		);
+		return rows[0] as
+			| {
+					status: string;
+					severity_tier: string;
+					triaged_at: Date | null;
+					triage_notes_md: string | null;
+					withheld_reason: string | null;
+			  }
+			| undefined;
+	});
+}
+
+export async function countFindingEvents(findingId: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			'SELECT COUNT(*)::int AS n FROM security_finding_events WHERE finding_id = $1',
+			[findingId]
+		);
+		return rows[0].n as number;
+	});
+}
+
+export async function cleanupSecurityFinding(id: string) {
+	await withDb(async (client) => {
+		await client.query('DELETE FROM security_finding_events WHERE finding_id = $1', [id]);
+		await client.query('DELETE FROM security_finding_rounds WHERE finding_id = $1', [id]);
+		await client.query('DELETE FROM security_findings WHERE id = $1', [id]);
+	});
+}
+
+// ─── Mission fixtures — the stuck queue an arbiter works ─────────────────
+//
+// A mission needs an enterprise, a mission type and — once it is
+// `in_progress` — an assignee, because the CHECK refuses a mission in
+// progress that nobody is doing. The delivery with no decision is what makes
+// it stuck, which is the state the admin surface exists for.
+
+export async function seedEnterprise(ownerId: string) {
+	const id = uniq();
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO enterprises (owner_id, company_name, slug, company_size)
+			 VALUES ($1, $2, $3, '11-50')
+			 RETURNING id`,
+			[ownerId, `E2E Co ${id}`, `e2e-co-${id}`]
+		);
+		return { id: rows[0].id as string, name: `E2E Co ${id}` };
+	});
+}
+
+/** Any active type in the domain. Types are seeded rows, not code, so the
+ *  fixture reads one rather than inventing a slug the FK would refuse. */
+export async function anyMissionType(skillDomain: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`SELECT id, slug FROM mission_types
+			  WHERE skill_domain = $1 AND is_active = TRUE
+			  ORDER BY sort_order LIMIT 1`,
+			[skillDomain]
+		);
+		return rows[0] as { id: string; slug: string } | undefined;
+	});
+}
+
+export interface SeedMissionOptions {
+	enterpriseId: string;
+	missionTypeId: string;
+	skillDomain: string;
+	assignedUserId: string;
+	title?: string;
+	status?: string;
+}
+
+export async function seedMission(opts: SeedMissionOptions) {
+	const id = uniq();
+	const title = opts.title ?? `E2E mission ${id}`;
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO missions
+			   (slug, enterprise_id, mission_type_id, skill_domain, title, description,
+			    acceptance_criteria, deliverable_format, payment_model, budget_eur,
+			    status, assigned_user_id, assigned_at, published_at)
+			 VALUES ($1, $2, $3, $4, $5,
+			         'An end-to-end fixture mission.',
+			         'The deliverable matches the brief.',
+			         'consulting_report', 'fixed_price', 1000,
+			         $6, $7, NOW(), NOW())
+			 RETURNING id, slug`,
+			[
+				`e2e-mission-${id}`,
+				opts.enterpriseId,
+				opts.missionTypeId,
+				opts.skillDomain,
+				title,
+				opts.status ?? 'in_progress',
+				opts.assignedUserId
+			]
+		);
+		return { id: rows[0].id as string, slug: rows[0].slug as string, title };
+	});
+}
+
+/** A hand-in nobody has answered. One of these, old enough, is the whole
+ *  definition of a stuck mission. */
+export async function seedMissionDelivery(opts: {
+	missionId: string;
+	deliveredBy: string;
+	round?: number;
+	daysAgo?: number;
+}) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			`INSERT INTO mission_deliveries
+			   (mission_id, round, delivered_by, artifact_url, notes_md, delivered_at)
+			 VALUES ($1, $2, $3, 'https://example.test/e2e-deliverable',
+			         'Round handed in by the e2e fixture.',
+			         NOW() - ($4::INTEGER * INTERVAL '1 day'))
+			 RETURNING id`,
+			[opts.missionId, opts.round ?? 1, opts.deliveredBy, opts.daysAgo ?? 40]
+		);
+		return { id: rows[0].id as string };
+	});
+}
+
+export async function readMissionArbitration(missionId: string) {
+	return withDb(async (client) => {
+		const { rows } = await client.query(
+			'SELECT outcome, reason_md FROM mission_arbitrations WHERE mission_id = $1',
+			[missionId]
+		);
+		return rows[0] as { outcome: string; reason_md: string } | undefined;
+	});
+}
+
+export async function cleanupMission(missionId: string) {
+	await withDb(async (client) => {
+		await client.query('DELETE FROM mission_arbitrations WHERE mission_id = $1', [missionId]);
+		await client.query('DELETE FROM mission_deliveries WHERE mission_id = $1', [missionId]);
+		await client.query('DELETE FROM missions WHERE id = $1', [missionId]);
+	});
+}
+
+export async function cleanupEnterprise(enterpriseId: string) {
+	await withDb(async (client) => {
+		await client.query('DELETE FROM enterprises WHERE id = $1', [enterpriseId]);
 	});
 }

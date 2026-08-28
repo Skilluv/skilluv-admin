@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { adminApi } from '$api/admin';
+	import { engagementApi } from '$api/engagement';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
+	import { auth } from '$stores/auth.svelte';
 	import { i18n } from '$lib/i18n';
 	import type {
 		SkillNodeAdmin,
 		SkillNodeDomain,
+		SkillCatalogEntry,
+		SkillTreeNode,
 		CreateSkillNodeBody,
 		UpdateSkillNodeBody
 	} from '$lib/types';
@@ -17,7 +21,8 @@
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import Pagination from '$components/ui/Pagination.svelte';
 	import SkillFormModal from '$components/admin/SkillFormModal.svelte';
-	import { Plus, Pencil, Copy } from '@lucide/svelte';
+	import SkillPrerequisitesModal from '$components/admin/SkillPrerequisitesModal.svelte';
+	import { Plus, Pencil, Copy, Network } from '@lucide/svelte';
 
 	const DOMAINS: SkillNodeDomain[] = [
 		'code',
@@ -116,6 +121,82 @@
 		}
 	}
 
+	// --- Prerequisites (SKI-47) ---
+	//
+	// `GET /admin/skills` does not return `prerequisite_skill_ids`, and no
+	// admin endpoint lists them either. The skill-tree endpoint does: it
+	// walks the whole catalog and carries the prerequisites per node. So the
+	// catalog is read once from the current admin's own tree and flattened —
+	// the per-user progress fields in that payload are simply ignored here.
+	let catalog = $state<SkillCatalogEntry[]>([]);
+	let prerequisitesBySkill = $state<Record<string, string[]>>({});
+	let catalogLoading = $state(false);
+	let catalogLoaded = $state(false);
+	let prereqTarget = $state<SkillNodeAdmin | null>(null);
+	let savingPrereqs = $state(false);
+
+	function flattenTree(
+		nodes: SkillTreeNode[],
+		entries: SkillCatalogEntry[],
+		prereqs: Record<string, string[]>
+	) {
+		for (const n of nodes) {
+			entries.push({ id: n.id, slug: n.slug, display_name: n.display_name });
+			prereqs[n.id] = n.prerequisite_skill_ids;
+			flattenTree(n.children, entries, prereqs);
+		}
+	}
+
+	async function ensureCatalog(): Promise<boolean> {
+		if (catalogLoaded) return true;
+		const adminId = auth.user?.id;
+		if (!adminId) {
+			toast.error(i18n.t('admin.engagement.prerequisites.catalogError'));
+			return false;
+		}
+		catalogLoading = true;
+		try {
+			const res = await engagementApi.getUserSkillTree(adminId);
+			const entries: SkillCatalogEntry[] = [];
+			const prereqs: Record<string, string[]> = {};
+			flattenTree(res.data.tree, entries, prereqs);
+			entries.sort((a, b) => a.display_name.localeCompare(b.display_name));
+			catalog = entries;
+			prerequisitesBySkill = prereqs;
+			catalogLoaded = true;
+			return true;
+		} catch (e) {
+			toast.error(errorMessage(e));
+			return false;
+		} finally {
+			catalogLoading = false;
+		}
+	}
+
+	async function openPrerequisites(s: SkillNodeAdmin) {
+		const ready = await ensureCatalog();
+		if (!ready) return;
+		prereqTarget = s;
+	}
+
+	async function submitPrerequisites(ids: string[]) {
+		if (!prereqTarget) return;
+		savingPrereqs = true;
+		try {
+			const res = await engagementApi.setSkillPrerequisites(prereqTarget.id, ids);
+			prerequisitesBySkill = {
+				...prerequisitesBySkill,
+				[prereqTarget.id]: res.data.prerequisite_skill_ids
+			};
+			toast.success(i18n.t('admin.engagement.prerequisites.savedToast'));
+			prereqTarget = null;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			savingPrereqs = false;
+		}
+	}
+
 	async function copyId(id: string) {
 		try {
 			await navigator.clipboard.writeText(id);
@@ -204,7 +285,7 @@
 				{
 					key: 'actions',
 					label: i18n.t('admin.skills.table.actions'),
-					width: '20%',
+					width: '32%',
 					align: 'right'
 				}
 			]}
@@ -235,6 +316,18 @@
 						<Button variant="ghost" size="sm" onclick={() => copyId(s.id)}>
 							<Copy size={13} strokeWidth={2} />
 							{i18n.t('admin.skills.copyIdBtn')}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => openPrerequisites(s)}
+							loading={catalogLoading && prereqTarget === null}
+						>
+							<Network size={13} strokeWidth={2} />
+							{i18n.t('admin.engagement.prerequisites.btn')}
+							{#if catalogLoaded && (prerequisitesBySkill[s.id]?.length ?? 0) > 0}
+								<span class="font-mono">({prerequisitesBySkill[s.id].length})</span>
+							{/if}
 						</Button>
 						<Button variant="ghost" size="sm" onclick={() => openEdit(s)}>
 							<Pencil size={13} strokeWidth={2} />
@@ -274,4 +367,14 @@
 	submitting={editing}
 	onclose={() => (editTarget = null)}
 	onsubmit={submitEdit}
+/>
+
+<SkillPrerequisitesModal
+	open={prereqTarget !== null}
+	skill={prereqTarget}
+	{catalog}
+	currentIds={prereqTarget ? (prerequisitesBySkill[prereqTarget.id] ?? []) : []}
+	submitting={savingPrereqs}
+	onclose={() => (prereqTarget = null)}
+	onsubmit={submitPrerequisites}
 />

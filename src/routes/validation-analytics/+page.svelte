@@ -40,6 +40,7 @@
 		submitted: 'PR soumise',
 		ci_green: 'CI verte',
 		pending_validation: 'À valider',
+		in_iteration: 'En itération',
 		validated: 'Validée',
 		merged: 'Mergée',
 		closed: 'Fermée'

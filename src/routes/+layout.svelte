@@ -9,6 +9,8 @@
 	import { type Component } from 'svelte';
 	import {
 		LayoutDashboard,
+		ShieldAlert,
+		Handshake,
 		Users,
 		Flag,
 		Code2,
@@ -27,6 +29,9 @@
 		BookMarked,
 		Briefcase,
 		Network,
+		Link2,
+		GraduationCap,
+		Palette,
 		FolderGit2,
 		Layers,
 		BadgeCheck,
@@ -61,6 +66,19 @@
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
+		{ href: '/design', label: i18n.t('admin.design.navLabel'), icon: Palette },
+		{ href: '/security', label: i18n.t('admin.nav.security'), icon: ShieldAlert },
+		{ href: '/missions', label: i18n.t('admin.nav.missions'), icon: Handshake },
+		{
+			href: '/external-signals',
+			label: i18n.t('admin.engagement.externalSignals.navLabel'),
+			icon: Link2
+		},
+		{
+			href: '/engagement',
+			label: i18n.t('admin.engagement.cohorts.navLabel'),
+			icon: GraduationCap
+		},
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
 		{ href: '/money', label: i18n.t('admin.nav.money'), icon: Wallet },
 		{ href: '/disputes', label: i18n.t('admin.nav.disputes'), icon: Scale },

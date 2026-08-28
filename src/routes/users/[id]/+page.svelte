@@ -30,6 +30,11 @@
 	import UserRecomputeSection from '$components/admin/UserRecomputeSection.svelte';
 	import UserRecomputeCapSection from '$components/admin/UserRecomputeCapSection.svelte';
 	import UserGdprSection from '$components/admin/UserGdprSection.svelte';
+	import UserTimelineSection from '$components/admin/UserTimelineSection.svelte';
+	import UserSkillTreeSection from '$components/admin/UserSkillTreeSection.svelte';
+	import UserVouchingsSection from '$components/admin/UserVouchingsSection.svelte';
+	import UserExternalSignalsSection from '$components/admin/UserExternalSignalsSection.svelte';
+	import UserDesignProfileSection from '$components/admin/UserDesignProfileSection.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
 	import {
 		ChevronRight,
@@ -337,6 +342,22 @@
 
 		<!-- ADM-M5+ — Admin-triggered GDPR export. -->
 		<UserGdprSection userId={user.id} />
+
+		<!-- SKI-39 — profile timeline + admin backfill. -->
+		<UserTimelineSection userId={user.id} />
+
+		<!-- SKI-47 — skill tree, loaded on demand (whole catalog per call). -->
+		<UserSkillTreeSection userId={user.id} />
+
+		<!-- SKI-46 — live vouchings backing this account, breakable. -->
+		<UserVouchingsSection userId={user.id} />
+
+		<!-- SKI-42 — declared reputation, kept apart from Skilluv proofs. -->
+		<UserExternalSignalsSection userId={user.id} />
+
+		<!-- Skilluv Design — craft score, validated artefacts, iteration trail.
+		     Addressed by username: it is the public profile route. -->
+		<UserDesignProfileSection username={user.username} />
 
 		<!-- Security card -->
 		<div class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">

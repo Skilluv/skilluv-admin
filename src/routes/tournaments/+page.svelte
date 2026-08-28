@@ -7,21 +7,166 @@
 	import { errorMessage } from '$api/errors';
 	import {
 		adminApi,
+		TOURNAMENT_KINDS,
+		TOURNAMENT_REQUIRED_RULES,
 		type Season,
 		type Tournament,
 		type TournamentKind,
 		type TournamentFormat,
 		type SeasonCloseReport
 	} from '$api/admin';
+	import type { JuryInvitation, OutstandingPrize, VoteBurst } from '$lib/types';
+	import Input from '$components/ui/Input.svelte';
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
 	import Select from '$components/ui/Select.svelte';
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
-	import { Swords, Calendar, Trophy, Sparkles, ChevronRight, Flag, DoorClosed } from '@lucide/svelte';
+	import { Swords, Calendar, Trophy, Sparkles, ChevronRight, Flag, DoorClosed, Gavel, Coins, Activity } from '@lucide/svelte';
 
-	type Tab = 'seasons' | 'tournaments';
+	type Tab = 'seasons' | 'tournaments' | 'contests';
 	let activeTab = $state<Tab>('seasons');
+
+	// --- Contest operations ---
+	//
+	// The three surfaces a contest needs beyond scoring, and the ones both
+	// the cyber competitions (SKI-148 / SKI-150) and the design contests
+	// (SKI-236 / SKI-200) run on. They live here rather than on a
+	// domain-specific page because a contest is a tournament: the subject
+	// differs, the mechanism does not.
+	let jurySlug = $state('');
+	let jury = $state<JuryInvitation[]>([]);
+	let juryLoading = $state(false);
+	let juryLoaded = $state(false);
+
+	let inviteTournamentId = $state('');
+	let inviteJurorId = $state('');
+	let inviting = $state(false);
+
+	let burstTournamentId = $state('');
+	let burstWindow = $state(5);
+	let burstThreshold = $state(10);
+	let bursts = $state<VoteBurst[]>([]);
+	let burstsLoading = $state(false);
+	let burstsLoaded = $state(false);
+
+	let prizes = $state<OutstandingPrize[]>([]);
+	let prizesLoading = $state(false);
+
+	let fundTournamentId = $state('');
+	let fundEnterpriseId = $state('');
+	let fundAmount = $state('');
+	let fundCurrency = $state('EUR');
+	let fundReference = $state('');
+	let funding = $state(false);
+
+	let refundTournamentId = $state('');
+	let showRefund = $state(false);
+	let refunding = $state(false);
+
+	async function loadJury() {
+		if (!jurySlug.trim()) return;
+		juryLoading = true;
+		try {
+			const res = await adminApi.listJury(jurySlug.trim());
+			jury = res.data.jury;
+			juryLoaded = true;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			juryLoading = false;
+		}
+	}
+
+	async function inviteJuror() {
+		if (!inviteTournamentId.trim() || !inviteJurorId.trim()) return;
+		inviting = true;
+		try {
+			await adminApi.inviteJuror(inviteTournamentId.trim(), inviteJurorId.trim());
+			toast.success(i18n.t('admin.tournaments.contestOps.invited_toast'));
+			inviteJurorId = '';
+			// The panel the operator is looking at is the one they just
+			// changed, more often than not. Refreshing it costs one request
+			// and saves the confusion of an invitation that appears to have
+			// done nothing.
+			if (juryLoaded && jurySlug.trim()) await loadJury();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			inviting = false;
+		}
+	}
+
+	async function loadBursts() {
+		if (!burstTournamentId.trim()) return;
+		burstsLoading = true;
+		try {
+			const res = await adminApi.voteBursts(burstTournamentId.trim(), {
+				window_minutes: Number(burstWindow),
+				threshold: Number(burstThreshold)
+			});
+			bursts = res.data.bursts;
+			burstsLoaded = true;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			burstsLoading = false;
+		}
+	}
+
+	async function loadPrizes() {
+		prizesLoading = true;
+		try {
+			const res = await adminApi.outstandingPrizes();
+			prizes = res.data.contests;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			prizesLoading = false;
+		}
+	}
+
+	async function fundPrize() {
+		if (!fundTournamentId.trim()) return;
+		funding = true;
+		try {
+			await adminApi.fundPrize(fundTournamentId.trim(), {
+				funder_enterprise_id: fundEnterpriseId.trim(),
+				amount: fundAmount.trim(),
+				currency: fundCurrency,
+				provider_reference: fundReference.trim()
+			});
+			toast.success(i18n.t('admin.tournaments.contestOps.funded'));
+			await loadPrizes();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			funding = false;
+		}
+	}
+
+	async function refundPrize(reason: string) {
+		if (!refundTournamentId.trim()) return;
+		refunding = true;
+		try {
+			await adminApi.refundPrize(refundTournamentId.trim(), reason);
+			toast.success(i18n.t('admin.tournaments.contestOps.refunded'));
+			showRefund = false;
+			await loadPrizes();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			refunding = false;
+		}
+	}
+
+	// The outstanding-prize list is the only one of the three that needs no
+	// identifier to be useful, so it loads itself when the tab opens.
+	$effect(() => {
+		if (activeTab === 'contests' && prizes.length === 0 && !prizesLoading) {
+			void loadPrizes();
+		}
+	});
 
 	// --- Season create form ---
 	let sSlug = $state('');
@@ -54,6 +199,65 @@
 	let tSponsorEntId = $state('');
 	let tSponsorLogo = $state('');
 	let tSponsorBlurb = $state('');
+	/** Empty means "not stated". The backend defaults nothing here — a
+	 *  contest with no domain is a contest nobody can find by subject. */
+	let tSkillDomain = $state('');
+	/** One free-text field per key the chosen kind requires. Kept as strings:
+	 *  every current requirement is either prose or a number typed into a
+	 *  form, and `buildRules` is the single place that converts. */
+	let tRules = $state<Record<string, string>>({});
+
+	/** What this kind must state before anybody can enter. Empty for kinds
+	 *  scored from activity elsewhere on the platform. */
+	const requiredRules = $derived(TOURNAMENT_REQUIRED_RULES[tKind] ?? []);
+
+	// Switching kind clears the previous kind's answers rather than carrying
+	// them over — `theme` typed for a hackathon is not a `brief`, and sending
+	// it would only produce a confusing backend refusal.
+	$effect(() => {
+		void tKind;
+		tRules = {};
+	});
+
+	/** Numeric requirements go over the wire as numbers; the backend checks
+	 *  `target_merged_prs` and `duration_hours` as values, not as prose. */
+	const NUMERIC_RULES = new Set(['target_merged_prs', 'duration_hours']);
+
+	/** Requirements that are prose and need room to be written. A brief typed
+	 *  into a single-line input is how a brief becomes a subject line. */
+	const LONG_RULES = new Set(['brief', 'judging_criteria', 'theme', 'task']);
+
+	const DOMAINS = ['code', 'design', 'game', 'security', 'soft_skills', 'ai', 'ops'];
+
+	/** The backend refuses a brief under 200 characters: below that the
+	 *  answers differ on things nobody stated. Surfaced live so the refusal
+	 *  is never a surprise at submit time. */
+	const BRIEF_MIN_LENGTH = 200;
+	const briefTooShort = $derived(
+		tKind === 'brief_contest' && (tRules.brief ?? '').trim().length < BRIEF_MIN_LENGTH
+	);
+
+	function buildRules(): Record<string, unknown> | undefined {
+		if (requiredRules.length === 0) return undefined;
+		const out: Record<string, unknown> = {};
+		for (const key of requiredRules) {
+			const raw = (tRules[key] ?? '').trim();
+			if (!raw) continue;
+			if (NUMERIC_RULES.has(key)) {
+				const n = Number(raw);
+				out[key] = Number.isFinite(n) ? n : raw;
+			} else {
+				out[key] = raw;
+			}
+		}
+		return Object.keys(out).length > 0 ? out : undefined;
+	}
+
+	/** Every required key answered. Checked here so the form refuses before
+	 *  the round trip, rather than surfacing a backend validation error. */
+	const rulesComplete = $derived(
+		requiredRules.every((k) => (tRules[k] ?? '').trim().length > 0)
+	);
 	let creatingTournament = $state(false);
 	let lastTournament = $state<Tournament | null>(null);
 
@@ -136,6 +340,7 @@
 		e.preventDefault();
 		if (creatingTournament) return;
 		if (!tSlug.trim() || !tName.trim() || !tStartsAt || !tEndsAt) return;
+		if (!rulesComplete || briefTooShort) return;
 		creatingTournament = true;
 		try {
 			const res = await adminApi.createTournament({
@@ -152,12 +357,15 @@
 				sponsor_blurb: tKind === 'hackathon' ? tSponsorBlurb.trim() || undefined : undefined,
 				registration_opens_at: toIsoOrUndef(tRegOpensAt),
 				starts_at: new Date(tStartsAt).toISOString(),
-				ends_at: new Date(tEndsAt).toISOString()
+				ends_at: new Date(tEndsAt).toISOString(),
+				skill_domain: tSkillDomain || undefined,
+				rules: buildRules()
 			});
 			lastTournament = res.data.tournament;
 			toast.success(i18n.t('admin.tournaments.tournamentCreated'));
 			tSlug = ''; tName = ''; tDesc = '';
 			tSponsorEntId = ''; tSponsorLogo = ''; tSponsorBlurb = '';
+			tRules = {};
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
@@ -252,7 +460,8 @@
 	<div class="mb-6 flex gap-1 border-b border-border">
 		{#each [
 			{ id: 'seasons' as Tab, label: i18n.t('admin.tournaments.tabSeasons'), icon: Calendar },
-			{ id: 'tournaments' as Tab, label: i18n.t('admin.tournaments.tabTournaments'), icon: Swords }
+			{ id: 'tournaments' as Tab, label: i18n.t('admin.tournaments.tabTournaments'), icon: Swords },
+			{ id: 'contests' as Tab, label: i18n.t('admin.tournaments.contestOps.title'), icon: Gavel }
 		] as tab (tab.id)}
 			<button
 				type="button"
@@ -414,12 +623,12 @@
 						<div>
 							<label for="t-kind" class={labelCls}>{i18n.t('admin.tournaments.kind')} *</label>
 							<Select
-								items={[
-									{ value: 'individual', label: 'Individual' },
-									{ value: 'guild_war', label: 'Guild war' },
-									{ value: 'hackathon', label: 'Hackathon' }
-								]}
+								items={TOURNAMENT_KINDS.map((k) => ({
+									value: k,
+									label: i18n.t(`admin.tournaments.kinds.${k}`)
+								}))}
 								bind:value={tKind}
+								searchable
 								class="w-full"
 							/>
 						</div>
@@ -436,6 +645,74 @@
 							/>
 						</div>
 					</div>
+
+					<div>
+						<label for="t-domain" class={labelCls}>
+							{i18n.t('admin.tournaments.skillDomainLabel')}
+						</label>
+						<Select
+							items={[
+								{ value: '', label: i18n.t('admin.tournaments.skillDomainNone') },
+								...DOMAINS.map((d) => ({
+									value: d,
+									label: i18n.t(`admin.catalog.domains.${d}`)
+								}))
+							]}
+							bind:value={tSkillDomain}
+							class="w-full"
+						/>
+						<p class="mt-1 text-xs text-text-muted">
+							{i18n.t('admin.tournaments.skillDomainHint')}
+						</p>
+					</div>
+
+					{#if requiredRules.length > 0}
+						<!-- Kind-specific requirements. The backend refuses creation
+						     without them, so the form asks for them up front rather
+						     than letting the round trip explain. -->
+						<fieldset class="rounded-xl border border-border bg-surface-overlay p-4">
+							<legend class="px-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+								{i18n.t('admin.tournaments.rulesTitle')}
+							</legend>
+							<p class="mb-3 text-xs text-text-muted">
+								{i18n.t('admin.tournaments.rulesHint')}
+							</p>
+							<div class="flex flex-col gap-3">
+								{#each requiredRules as key (key)}
+									<div>
+										<label for={`t-rule-${key}`} class={labelCls}>
+											{i18n.t(`admin.tournaments.ruleKeys.${key}`)} *
+										</label>
+										{#if LONG_RULES.has(key)}
+											<textarea
+												id={`t-rule-${key}`}
+												rows="4"
+												bind:value={tRules[key]}
+												placeholder={i18n.t(`admin.tournaments.rulePlaceholders.${key}`)}
+												class={textareaCls}
+											></textarea>
+										{:else}
+											<input
+												id={`t-rule-${key}`}
+												type={NUMERIC_RULES.has(key) ? 'number' : 'text'}
+												bind:value={tRules[key]}
+												placeholder={i18n.t(`admin.tournaments.rulePlaceholders.${key}`)}
+												class={inputCls}
+											/>
+										{/if}
+									</div>
+								{/each}
+							</div>
+							{#if tKind === 'brief_contest'}
+								<p class="mt-3 text-xs {briefTooShort ? 'text-error' : 'text-text-muted'}">
+									{i18n.t('admin.tournaments.briefLengthHint', {
+										min: BRIEF_MIN_LENGTH,
+										current: (tRules.brief ?? '').trim().length
+									})}
+								</p>
+							{/if}
+						</fieldset>
+					{/if}
 					<div class="grid grid-cols-2 gap-3">
 						<div>
 							<label for="t-frag" class={labelCls}>{i18n.t('admin.tournaments.prizeFragments')}</label>
@@ -482,7 +759,11 @@
 					{/if}
 
 					<div class="flex justify-end pt-2">
-						<Button variant="accent" loading={creatingTournament}>
+						<Button
+							variant="accent"
+							loading={creatingTournament}
+							disabled={!rulesComplete || briefTooShort}
+						>
 							{i18n.t('admin.tournaments.createTournament')}
 						</Button>
 					</div>
@@ -569,6 +850,236 @@
 				</div>
 			</section>
 		</div>
+	{:else if activeTab === 'contests'}
+		<p class="mb-6 max-w-3xl text-sm text-text-muted">
+			{i18n.t('admin.tournaments.contestOps.hint')}
+		</p>
+
+		<div class="grid gap-6 lg:grid-cols-2">
+			<!-- Jury -->
+			<section class="rounded-2xl border border-border bg-surface-elevated p-6">
+				<div class="mb-4 flex items-center gap-2">
+					<Gavel size={16} strokeWidth={2} class="text-accent" />
+					<h2 class="text-sm font-bold uppercase tracking-wider">
+						{i18n.t('admin.tournaments.contestOps.juryTitle')}
+					</h2>
+				</div>
+				<p class="mb-4 text-xs text-text-muted">
+					{i18n.t('admin.tournaments.contestOps.juryHint')}
+				</p>
+
+				<div class="flex flex-wrap items-end gap-3">
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.jurySlugLabel')}
+						bind:value={jurySlug}
+						class="flex-1 min-w-[12rem]"
+					/>
+					<Button variant="secondary" size="sm" onclick={loadJury} loading={juryLoading}>
+						{i18n.t('admin.tournaments.contestOps.loadJury')}
+					</Button>
+				</div>
+
+				{#if juryLoaded}
+					{#if jury.length === 0}
+						<p class="mt-4 text-sm text-text-muted">
+							{i18n.t('admin.tournaments.contestOps.juryEmpty')}
+						</p>
+					{:else}
+						<ul class="mt-4 space-y-1.5">
+							{#each jury as j (j.juror_user_id)}
+								<li class="flex flex-wrap items-center gap-2 rounded-xl bg-surface-overlay px-3 py-2">
+									<a
+										href={`/users/${j.juror_user_id}`}
+										class="font-mono text-xs text-primary hover:underline"
+									>
+										{j.juror_user_id.slice(0, 8)}…
+									</a>
+									{#if j.accepted_at}
+										<Badge variant="success">
+											{i18n.t('admin.tournaments.contestOps.accepted')}
+										</Badge>
+									{:else if j.declined_at}
+										<Badge variant="error">
+											{i18n.t('admin.tournaments.contestOps.declined')}
+										</Badge>
+									{:else}
+										<Badge variant="warning">
+											{i18n.t('admin.tournaments.contestOps.invited')}
+										</Badge>
+									{/if}
+									{#if j.decline_reason}
+										<span class="text-xs text-text-muted">{j.decline_reason}</span>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{/if}
+
+				<div class="mt-6 space-y-3 border-t border-border pt-4">
+					<p class="text-xs uppercase tracking-wider text-text-muted">
+						{i18n.t('admin.tournaments.contestOps.inviteTitle')}
+					</p>
+					<p class="text-xs text-text-muted">
+						{i18n.t('admin.tournaments.contestOps.inviteHint')}
+					</p>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.tournamentIdLabel')}
+						bind:value={inviteTournamentId}
+					/>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.jurorIdLabel')}
+						bind:value={inviteJurorId}
+					/>
+					<Button variant="primary" size="sm" onclick={inviteJuror} loading={inviting}>
+						{i18n.t('admin.tournaments.contestOps.invite')}
+					</Button>
+				</div>
+			</section>
+
+			<!-- Vote bursts -->
+			<section class="rounded-2xl border border-border bg-surface-elevated p-6">
+				<div class="mb-4 flex items-center gap-2">
+					<Activity size={16} strokeWidth={2} class="text-accent" />
+					<h2 class="text-sm font-bold uppercase tracking-wider">
+						{i18n.t('admin.tournaments.contestOps.burstsTitle')}
+					</h2>
+				</div>
+				<p class="mb-4 text-xs text-text-muted">
+					{i18n.t('admin.tournaments.contestOps.burstsHint')}
+				</p>
+
+				<div class="space-y-3">
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.tournamentIdLabel')}
+						bind:value={burstTournamentId}
+					/>
+					<div class="flex flex-wrap items-end gap-3">
+						<Input
+							label={i18n.t('admin.tournaments.contestOps.windowLabel')}
+							type="number"
+							min="1"
+							bind:value={burstWindow as unknown as string}
+							class="w-32"
+						/>
+						<Input
+							label={i18n.t('admin.tournaments.contestOps.thresholdLabel')}
+							type="number"
+							min="1"
+							bind:value={burstThreshold as unknown as string}
+							class="w-32"
+						/>
+						<Button variant="secondary" size="sm" onclick={loadBursts} loading={burstsLoading}>
+							{i18n.t('admin.tournaments.contestOps.scan')}
+						</Button>
+					</div>
+				</div>
+
+				{#if burstsLoaded}
+					{#if bursts.length === 0}
+						<p class="mt-4 text-sm text-text-muted">
+							{i18n.t('admin.tournaments.contestOps.burstsEmpty')}
+						</p>
+					{:else}
+						<ul class="mt-4 space-y-1.5">
+							{#each bursts as b (b.submission_id)}
+								<li class="flex flex-wrap items-center gap-2 rounded-xl bg-surface-overlay px-3 py-2">
+									<Badge variant="warning">
+										{b.votes}
+										{i18n.t('admin.tournaments.contestOps.votes')}
+									</Badge>
+									<code class="font-mono text-[10px] text-text-muted">{b.submission_id}</code>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{/if}
+			</section>
+
+			<!-- Prizes -->
+			<section class="rounded-2xl border border-border bg-surface-elevated p-6 lg:col-span-2">
+				<div class="mb-4 flex items-center gap-2">
+					<Coins size={16} strokeWidth={2} class="text-accent" />
+					<h2 class="text-sm font-bold uppercase tracking-wider">
+						{i18n.t('admin.tournaments.contestOps.prizesTitle')}
+					</h2>
+				</div>
+				<p class="mb-4 text-xs text-text-muted">
+					{i18n.t('admin.tournaments.contestOps.prizesHint')}
+				</p>
+
+				{#if prizesLoading}
+					<p class="text-sm text-text-muted">…</p>
+				{:else if prizes.length === 0}
+					<p class="text-sm text-text-muted">
+						{i18n.t('admin.tournaments.contestOps.prizesEmpty')}
+					</p>
+				{:else}
+					<ul class="space-y-1.5">
+						{#each prizes as p (p.tournament_id)}
+							<li class="flex flex-wrap items-center gap-2 rounded-xl bg-surface-overlay px-3 py-2">
+								<span class="text-sm text-text-primary">{p.name}</span>
+								<code class="font-mono text-[10px] text-text-muted">{p.tournament_id}</code>
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => {
+										refundTournamentId = p.tournament_id;
+										showRefund = true;
+									}}
+								>
+									{i18n.t('admin.tournaments.contestOps.refund')}
+								</Button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				<div class="mt-6 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+					<p class="text-xs uppercase tracking-wider text-text-muted sm:col-span-2">
+						{i18n.t('admin.tournaments.contestOps.fundTitle')}
+					</p>
+					<p class="text-xs text-text-muted sm:col-span-2">
+						{i18n.t('admin.tournaments.contestOps.fundHint')}
+					</p>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.tournamentIdLabel')}
+						bind:value={fundTournamentId}
+					/>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.funderLabel')}
+						bind:value={fundEnterpriseId}
+					/>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.amountLabel')}
+						bind:value={fundAmount}
+					/>
+					<label class="flex flex-col gap-1.5">
+						<span class="text-sm font-medium text-text-primary">
+							{i18n.t('admin.tournaments.contestOps.currencyLabel')}
+						</span>
+						<Select
+							items={[
+								{ value: 'EUR', label: 'EUR' },
+								{ value: 'XOF', label: 'XOF' }
+							]}
+							bind:value={fundCurrency}
+							shape="rounded"
+						/>
+					</label>
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.providerRefLabel')}
+						bind:value={fundReference}
+						class="sm:col-span-2"
+					/>
+					<div class="sm:col-span-2">
+						<Button variant="primary" size="sm" onclick={fundPrize} loading={funding}>
+							{i18n.t('admin.tournaments.contestOps.fund')}
+						</Button>
+					</div>
+				</div>
+			</section>
+		</div>
 	{/if}
 </div>
 
@@ -590,4 +1101,15 @@
 	loading={concludingTournament}
 	onconfirm={confirmConclude}
 	onclose={() => (showConcludeTournament = false)}
+/>
+
+<ConfirmDangerousDialog
+	open={showRefund}
+	title={i18n.t('admin.tournaments.contestOps.refundTitle')}
+	description={i18n.t('admin.tournaments.contestOps.refundHint')}
+	actionLabel={i18n.t('admin.tournaments.contestOps.refund')}
+	minReasonLength={10}
+	loading={refunding}
+	onconfirm={refundPrize}
+	onclose={() => (showRefund = false)}
 />

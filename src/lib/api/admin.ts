@@ -1,5 +1,8 @@
 import type {
 	UserPrivate,
+	JuryInvitation,
+	OutstandingPrize,
+	VoteBurst,
 	Challenge,
 	ChallengeDifficulty,
 	ChallengeMode,
@@ -680,6 +683,74 @@ export const adminApi = {
 		);
 	},
 
+	// --- Contest juries, prizes and vote integrity ---
+	//
+	// The three surfaces a contest needs beyond scoring, and the ones both
+	// the cyber competitions (SKI-148 / SKI-150) and the design contests
+	// (SKI-236 / SKI-200) run on. They are on tournaments because a contest
+	// is a tournament: the subject differs, the mechanism does not.
+
+	/** Who was asked to judge, and what they answered. Public on purpose — a
+	 *  contest whose panel is secret cannot be trusted, and naming the panel
+	 *  before the deadline is what lets entrants check it. */
+	listJury(slug: string) {
+		return api.get<ApiResponse<{ jury: JuryInvitation[] }>>(
+			`/tournaments/${encodeURIComponent(slug)}/jury`
+		);
+	},
+
+	/** Ask somebody to judge. Refused when the invitee has an entry in the
+	 *  contest, or cannot review the contest's domain — a panel that cannot
+	 *  judge the craft produces a result that means nothing. */
+	inviteJuror(tournamentId: string, jurorUserId: string) {
+		return api.post<ApiResponse<{ jury: JuryInvitation }>>(
+			`/admin/tournaments/${tournamentId}/jury`,
+			{ juror_user_id: jurorUserId }
+		);
+	},
+
+	/**
+	 * Entries whose vote count spiked inside a window.
+	 *
+	 * A reason to look, never a verdict: this reports, it does not
+	 * disqualify. Deciding a vote was bought is a human judgement with
+	 * consequences for a person, and it stays one.
+	 */
+	voteBursts(tournamentId: string, params?: { window_minutes?: number; threshold?: number }) {
+		return api.get<ApiResponse<{ bursts: VoteBurst[] }>>(
+			`/admin/tournaments/${tournamentId}/vote-bursts`,
+			params as Record<string, number>
+		);
+	},
+
+	/** Contests that have ended and are still holding their prize. Each one
+	 *  owes an award or a refund, and nothing decides which automatically:
+	 *  "nobody deserved it" and "nobody concluded it" look identical from
+	 *  outside and have opposite answers. */
+	outstandingPrizes() {
+		return api.get<ApiResponse<{ contests: OutstandingPrize[] }>>(
+			'/admin/tournaments/prizes/outstanding'
+		);
+	},
+
+	/** Record the escrow so the contest may open. The podium receives the
+	 *  whole amount; the platform takes no share. */
+	fundPrize(tournamentId: string, body: FundPrizeBody) {
+		return api.post<ApiResponse<Record<string, unknown>>>(
+			`/admin/tournaments/${tournamentId}/prize/fund`,
+			body
+		);
+	},
+
+	/** Return the money to the sponsor, with the reason somebody will ask
+	 *  about later. */
+	refundPrize(tournamentId: string, reason: string) {
+		return api.post<ApiResponse<{ refunded: boolean }>>(
+			`/admin/tournaments/${tournamentId}/prize/refund`,
+			{ reason }
+		);
+	},
+
 	// --- ADM-M3.1 — Orientations catalog (backend mig 0088, routes admin_orientations.rs) ---
 
 	/** Liste publique paginée du catalogue orientations. Le back n'expose pas
@@ -1078,7 +1149,52 @@ export interface SeasonCloseReport {
 	relegations: number;
 }
 
-export type TournamentKind = 'individual' | 'guild_war' | 'hackathon';
+/** Every kind `services::tournament::VALID_KINDS` accepts.
+ *
+ *  A contest is the same event whatever the subject: a design contest is a
+ *  `brief_contest` with `skill_domain = 'design'`, not a separate machinery,
+ *  and a design duel is a `duel` with the same domain. That is why there is
+ *  no design contest endpoint to call. */
+export type TournamentKind =
+	| 'individual'
+	| 'guild_war'
+	| 'hackathon'
+	| 'marathon'
+	| 'defi_solitaire'
+	| 'code_golf'
+	| 'tdd_contest'
+	| 'benchmark_rush'
+	/** Head to head on one task, decided by the room. */
+	| 'duel'
+	/** One written brief, N answers, a jury ranks them. The design contest. */
+	| 'brief_contest';
+
+export const TOURNAMENT_KINDS: TournamentKind[] = [
+	'individual',
+	'guild_war',
+	'hackathon',
+	'marathon',
+	'defi_solitaire',
+	'code_golf',
+	'tdd_contest',
+	'benchmark_rush',
+	'duel',
+	'brief_contest'
+];
+
+/** What a contest of this kind must state in `rules` before anybody can
+ *  enter it. Checked backend-side at creation, not at submission: a brief
+ *  contest with no brief is not a contest with a missing field, it is an
+ *  announcement nobody can act on. Mirrors `services::contest::validate_rules`. */
+export const TOURNAMENT_REQUIRED_RULES: Partial<Record<TournamentKind, string[]>> = {
+	hackathon: ['theme'],
+	code_golf: ['language', 'problem_url'],
+	tdd_contest: ['problem_url', 'judging_criteria'],
+	marathon: ['target_merged_prs'],
+	brief_contest: ['brief', 'judging_criteria'],
+	duel: ['task', 'duration_hours']
+};
+
 export type TournamentFormat = 'swiss' | 'bracket' | 'ladder';
 
 export interface Tournament {
@@ -1118,12 +1234,35 @@ export interface CreateTournamentBody {
 	registration_opens_at?: string;
 	starts_at: string;
 	ends_at: string;
+	/** What the contest is about. `design` is what makes a `brief_contest` a
+	 *  design contest rather than a code one — the kind alone does not say. */
+	skill_domain?: string;
+	/** Kind-specific requirements, validated at creation. See
+	 *  `TOURNAMENT_REQUIRED_RULES` for what each kind must state. */
+	rules?: Record<string, unknown>;
 }
 
 export interface TournamentScoreBody {
 	participant_type: 'user' | 'guild';
 	participant_id: string;
 	score: number;
+}
+
+/** Escrow for a contest prize.
+ *
+ *  The amount travels as a string, not a number: it is a decimal the ledger
+ *  holds exactly, and a float round-trip is how a prize becomes 999.9999. */
+export interface FundPrizeBody {
+	/** Whose money this is. Not always the sponsor whose name is on the
+	 *  contest. */
+	funder_enterprise_id: string;
+	/** What the podium receives, whole. The platform takes no share. */
+	amount: string;
+	/** `EUR` or `XOF` — the two the ledger can hold and pay out. */
+	currency: string;
+	/** The provider reference for the settled payment, so the ledger entry
+	 *  reconciles against the provider's statement. */
+	provider_reference: string;
 }
 
 export interface DashboardHealth {
