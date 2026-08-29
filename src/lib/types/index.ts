@@ -8,6 +8,11 @@
  *  every screen uses. */
 export * from './business';
 
+/** The game domain's reviewer surface — mods, jams, attestations,
+ *  featurings. Same reasoning as above: a subject of its own, one import
+ *  path for the screens. */
+export * from './game';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).

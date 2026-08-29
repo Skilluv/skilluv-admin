@@ -37,6 +37,7 @@
 		BadgeCheck,
 		ChartNoAxesColumn,
 		TrendingUp,
+		Gamepad2,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -68,6 +69,7 @@
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
 		{ href: '/design', label: i18n.t('admin.design.navLabel'), icon: Palette },
+		{ href: '/game', label: i18n.t('admin.gameDomain.navLabel'), icon: Gamepad2 },
 		{ href: '/security', label: i18n.t('admin.nav.security'), icon: ShieldAlert },
 		{ href: '/missions', label: i18n.t('admin.nav.missions'), icon: Handshake },
 		{
