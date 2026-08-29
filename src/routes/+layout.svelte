@@ -44,6 +44,7 @@
 		FileSignature,
 		UsersRound,
 		ClipboardCheck,
+		CalendarRange,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -104,6 +105,7 @@
 		{ href: '/studios', label: i18n.t('admin.studios.navLabel'), icon: UsersRound },
 		{ href: '/sponsored-challenges', label: i18n.t('admin.nav.sponsorings'), icon: Megaphone },
 		{ href: '/tournaments', label: i18n.t('admin.nav.tournamentsSeasons'), icon: Swords },
+		{ href: '/programs', label: i18n.t('admin.programs.navLabel'), icon: CalendarRange },
 		{ href: '/audit-log', label: i18n.t('admin.nav.auditLabel'), icon: Clock },
 		{ href: '/ops-practice', label: i18n.t('admin.opsPractice.navLabel'), icon: ServerCog },
 		{ href: '/operations', label: i18n.t('admin.nav.operations'), icon: Wrench },

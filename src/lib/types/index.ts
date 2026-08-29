@@ -25,6 +25,9 @@ export * from './platform';
 /** Reviewer queues served outside `/admin`, gated by capability. */
 export * from './review';
 
+/** Programmes and competitions: labs, betas, campaigns, events, audits. */
+export * from './programs';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).
