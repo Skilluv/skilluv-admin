@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { engagementApi, TALENT_OFFER_TYPES } from '$api/engagement';
+	import { oversightApi, MODERATION_REASON_MIN, isModerationHold } from '$api/oversight';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
 	import { i18n, intlLocale } from '$lib/i18n';
 	import type {
-		CohortListEntry,
+		AdminCohortEntry,
+		AdminTalentOffer,
 		CohortMember,
 		CohortMilestone,
-		TalentOfferListing,
 		TalentOfferType
 	} from '$lib/types';
 	import Badge from '$components/ui/Badge.svelte';
@@ -23,11 +24,17 @@
 
 	// SKI-40 (cohorts) + SKI-45 (reverse marketplace).
 	//
-	// Both surfaces are read-only here, and deliberately so: the backend
-	// exposes no admin override for either. A cohort is edited by its
-	// organizer, an offer by its author. What an operator gets is what a
-	// visitor gets — which is enough to answer "what is happening on the
-	// platform" without inventing powers the API does not grant.
+	// This file used to say both surfaces were read-only because "the backend
+	// exposes no admin override for either". That was wrong: `/admin/cohorts`,
+	// `/admin/talent-offers` and their three moderation actions exist and were
+	// simply never called. The listings now read the admin projections, which
+	// are the public ones plus what moderation needs — who runs a cohort and
+	// whether its chat is alive; why an offer is not publicly listed.
+	//
+	// What stays true is the narrower claim underneath: there is no admin
+	// override on the *content*. A cohort is still edited by its organizer and
+	// an offer by its author. The two actions here remove something from view
+	// and put it back; neither rewrites what somebody wrote.
 
 	type Tab = 'cohorts' | 'offers';
 	let tab = $state<Tab>('cohorts');
@@ -35,25 +42,40 @@
 	const PAGE_SIZE = 25;
 
 	// --- Cohorts ---
-	let cohorts = $state<CohortListEntry[]>([]);
+	let cohorts = $state<AdminCohortEntry[]>([]);
 	let cohortsLoading = $state(true);
 	let cohortOrientation = $state('');
 	let cohortWindow = $state<'all' | 'upcoming'>('all');
 	let cohortOffset = $state(0);
 
 	let detailId = $state<string | null>(null);
-	let detailEntry = $state<CohortListEntry | null>(null);
+	let detailEntry = $state<AdminCohortEntry | null>(null);
 	let detailMembers = $state<CohortMember[]>([]);
 	let detailMilestones = $state<CohortMilestone[]>([]);
 	let detailLoading = $state(false);
 
 	// --- Talent offers ---
-	let offers = $state<TalentOfferListing[]>([]);
+	let offers = $state<AdminTalentOffer[]>([]);
 	let offersLoading = $state(true);
 	let offerType = $state<TalentOfferType | ''>('');
 	let offerSkill = $state('');
 	let offerPrice = $state<'all' | 'free'>('all');
 	let offerOffset = $state(0);
+	let heldOnly = $state(false);
+	let offerTotal = $state(0);
+
+	// --- Moderation ---
+	let showArchived = $state(false);
+	let cohortTotal = $state(0);
+
+	/** The target of the open moderation dialog, and the reason being typed
+	 *  for it. Kept as one pair rather than two loose fields so a reason can
+	 *  never be submitted against a row the operator has since changed. */
+	let archiveTarget = $state<AdminCohortEntry | null>(null);
+	let holdTarget = $state<AdminTalentOffer | null>(null);
+	let moderationReason = $state('');
+	let moderating = $state(false);
+	let busyOffer = $state<string | null>(null);
 
 	// Only the tab switch triggers a fetch. Without `untrack`, every filter
 	// the loaders read would become a dependency and a text input would fire
@@ -70,13 +92,24 @@
 	async function loadCohorts() {
 		cohortsLoading = true;
 		try {
-			const res = await engagementApi.listCohorts({
+			// `upcoming_only` has no admin equivalent: the moderation listing
+			// trades it for `include_private` and `include_archived`, which are
+			// the two things a moderator cannot get from discovery. The window
+			// filter is applied here instead.
+			const res = await oversightApi.adminCohorts({
 				orientation: cohortOrientation.trim() || undefined,
-				upcoming_only: cohortWindow === 'upcoming' ? true : undefined,
+				include_private: true,
+				include_archived: showArchived,
 				limit: PAGE_SIZE,
 				offset: cohortOffset
 			});
-			cohorts = res.data.cohorts;
+			const all = res.data.cohorts;
+			const now = Date.now();
+			cohorts =
+				cohortWindow === 'upcoming'
+					? all.filter((c) => new Date(c.cohort.starts_at).getTime() >= now)
+					: all;
+			cohortTotal = res.data.total;
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
@@ -87,14 +120,21 @@
 	async function loadOffers() {
 		offersLoading = true;
 		try {
-			const res = await engagementApi.browseTalentOffers({
+			// `free_only` is a discovery filter with no admin equivalent, so it
+			// is applied here. What the admin route adds instead is the reason
+			// an offer is not publicly listed, which is the thing a moderator
+			// opened this page for.
+			const res = await oversightApi.adminTalentOffers({
 				offer_type: offerType === '' ? undefined : offerType,
 				skill: offerSkill.trim() || undefined,
-				free_only: offerPrice === 'free' ? true : undefined,
+				include_inactive: true,
+				held_only: heldOnly,
 				limit: PAGE_SIZE,
 				offset: offerOffset
 			});
-			offers = res.data.offers;
+			const all = res.data.offers;
+			offers = offerPrice === 'free' ? all.filter((o) => o.price_cents_per_hour === null) : all;
+			offerTotal = res.data.total;
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
@@ -102,7 +142,7 @@
 		}
 	}
 
-	async function openDetail(entry: CohortListEntry) {
+	async function openDetail(entry: AdminCohortEntry) {
 		detailId = entry.cohort.id;
 		detailEntry = entry;
 		detailMembers = [];
@@ -127,6 +167,63 @@
 	function closeDetail() {
 		detailId = null;
 		detailEntry = null;
+	}
+
+	const reasonOk = $derived(moderationReason.trim().length >= MODERATION_REASON_MIN);
+
+	async function confirmArchive() {
+		if (!archiveTarget || !reasonOk || moderating) return;
+		moderating = true;
+		try {
+			await oversightApi.archiveCohort(archiveTarget.cohort.id, moderationReason.trim());
+			toast.success(i18n.t('admin.engagement.cohorts.archived'));
+			archiveTarget = null;
+			moderationReason = '';
+			await loadCohorts();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			moderating = false;
+		}
+	}
+
+	async function confirmHold() {
+		if (!holdTarget || !reasonOk || moderating) return;
+		moderating = true;
+		try {
+			await oversightApi.deactivateTalentOffer(holdTarget.id, moderationReason.trim());
+			toast.success(i18n.t('admin.engagement.talentOffers.held'));
+			holdTarget = null;
+			moderationReason = '';
+			await loadOffers();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			moderating = false;
+		}
+	}
+
+	/**
+	 * Put an offer back.
+	 *
+	 * Only offered on an offer this side actually took down. Four of the five
+	 * `hidden_reason` values are not a moderator's doing — the author paused
+	 * it, the author is hidden, the author is banned, the author is below the
+	 * rank bar — and reinstating any of those would change nothing while
+	 * looking like it had.
+	 */
+	async function reinstate(offer: AdminTalentOffer) {
+		if (busyOffer) return;
+		busyOffer = offer.id;
+		try {
+			await oversightApi.reinstateTalentOffer(offer.id);
+			toast.success(i18n.t('admin.engagement.talentOffers.reinstated'));
+			await loadOffers();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			busyOffer = null;
+		}
 	}
 
 	function resetCohortPaging() {
@@ -170,7 +267,9 @@
 		{ key: 'orientation', label: i18n.t('admin.engagement.cohorts.table.orientation'), width: '160px' },
 		{ key: 'window', label: i18n.t('admin.engagement.cohorts.table.window'), width: '200px' },
 		{ key: 'members', label: i18n.t('admin.engagement.cohorts.table.members'), width: '150px' },
-		{ key: 'status', label: i18n.t('admin.engagement.cohorts.table.status'), width: '120px' }
+		{ key: 'status', label: i18n.t('admin.engagement.cohorts.table.status'), width: '120px' },
+		{ key: 'chat', label: i18n.t('admin.engagement.cohorts.table.chat'), width: '110px' },
+		{ key: 'actions', label: i18n.t('admin.common.actions'), width: '110px', align: 'right' as const }
 	];
 
 	const offerColumns = [
@@ -179,7 +278,9 @@
 		{ key: 'skill', label: i18n.t('admin.engagement.talentOffers.table.skill'), width: '150px' },
 		{ key: 'availability', label: i18n.t('admin.engagement.talentOffers.table.availability'), width: '120px' },
 		{ key: 'price', label: i18n.t('admin.engagement.talentOffers.table.price'), width: '140px' },
-		{ key: 'created', label: i18n.t('admin.engagement.talentOffers.table.created'), width: '140px' }
+		{ key: 'created', label: i18n.t('admin.engagement.talentOffers.table.created'), width: '140px' },
+		{ key: 'listing', label: i18n.t('admin.engagement.talentOffers.table.listing'), width: '150px' },
+		{ key: 'actions', label: i18n.t('admin.common.actions'), width: '120px', align: 'right' as const }
 	];
 
 	const cohortRows = $derived(cohorts as unknown as Record<string, unknown>[]);
@@ -260,7 +361,7 @@
 				emptyLabel={i18n.t('admin.engagement.cohorts.empty')}
 			>
 				{#snippet cell(row, col)}
-					{@const e = row as unknown as CohortListEntry}
+					{@const e = row as unknown as AdminCohortEntry}
 					{#if col.key === 'name'}
 						<button
 							type="button"
@@ -292,6 +393,36 @@
 							<Badge variant="default">{i18n.t('admin.engagement.cohorts.archivedBadge')}</Badge>
 						{:else}
 							<Badge variant="success">{i18n.t('admin.engagement.cohorts.activeBadge')}</Badge>
+						{/if}
+						{#if !e.cohort.is_public}
+							<Badge variant="warning">{i18n.t('admin.engagement.cohorts.privateBadge')}</Badge>
+						{/if}
+					{:else if col.key === 'chat'}
+						<!-- Forty members and no messages is a different problem
+						     from an empty cohort, and discovery cannot tell them
+						     apart. That is what this column is for. -->
+						<span
+							class="font-mono text-xs {e.message_count === 0 && e.member_count > 1
+								? 'text-warning'
+								: 'text-text-muted'}"
+						>
+							{e.message_count}
+						</span>
+						{#if e.organizer_username}
+							<p class="text-[10px] text-text-muted">{e.organizer_username}</p>
+						{/if}
+					{:else if col.key === 'actions'}
+						{#if !e.cohort.archived_at}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => {
+									archiveTarget = e;
+									moderationReason = '';
+								}}
+							>
+								{i18n.t('admin.engagement.cohorts.archiveBtn')}
+							</Button>
 						{/if}
 					{/if}
 				{/snippet}
@@ -381,7 +512,7 @@
 				emptyLabel={i18n.t('admin.engagement.talentOffers.empty')}
 			>
 				{#snippet cell(row, col)}
-					{@const o = row as unknown as TalentOfferListing}
+					{@const o = row as unknown as AdminTalentOffer}
 					{#if col.key === 'talent'}
 						<a href={`/users/${o.user_id}`} class="text-sm text-primary hover:underline">
 							{o.display_name}
@@ -405,6 +536,44 @@
 						</Badge>
 					{:else if col.key === 'created'}
 						<span class="text-xs text-text-muted">{fmtDate(o.created_at)}</span>
+					{:else if col.key === 'listing'}
+						{#if o.hidden_reason === null}
+							<Badge variant="success">{i18n.t('admin.engagement.talentOffers.listed')}</Badge>
+						{:else}
+							<Badge variant={isModerationHold(o.hidden_reason) ? 'error' : 'default'}>
+								{i18n.t(`admin.engagement.talentOffers.hidden.${o.hidden_reason}`)}
+							</Badge>
+							{#if o.moderation_reason}
+								<p class="mt-0.5 text-[10px] text-text-muted">{o.moderation_reason}</p>
+							{/if}
+						{/if}
+					{:else if col.key === 'actions'}
+						{#if isModerationHold(o.hidden_reason)}
+							<!-- Offered only on a hold this side placed. The other
+							     four reasons are the author's or the rank bar's, and
+							     a reinstate button on those would change nothing
+							     while looking like it had. -->
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => reinstate(o)}
+								loading={busyOffer === o.id}
+								disabled={busyOffer !== null}
+							>
+								{i18n.t('admin.engagement.talentOffers.reinstateBtn')}
+							</Button>
+						{:else if o.hidden_reason === null}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => {
+									holdTarget = o;
+									moderationReason = '';
+								}}
+							>
+								{i18n.t('admin.engagement.talentOffers.holdBtn')}
+							</Button>
+						{/if}
 					{/if}
 				{/snippet}
 			</Table>
@@ -540,6 +709,83 @@
 	{#snippet actions()}
 		<Button variant="ghost" size="sm" onclick={closeDetail}>
 			{i18n.t('admin.engagement.cohorts.closeDetail')}
+		</Button>
+	{/snippet}
+</Modal>
+
+<!--
+	One dialog shape for both moderation actions, because both ask the same
+	question: what should the record say. The reason is not shown to anybody
+	automatically — it is what an appeal, or a dispute, is instructed against.
+-->
+<Modal
+	open={archiveTarget !== null}
+	title={i18n.t('admin.engagement.cohorts.archiveTitle')}
+	onclose={() => (archiveTarget = null)}
+	size="md"
+>
+	<div class="flex flex-col gap-4">
+		{#if archiveTarget}
+			<p class="text-sm">{archiveTarget.cohort.name}</p>
+		{/if}
+		<p class="text-xs text-text-muted">{i18n.t('admin.engagement.cohorts.archiveHint')}</p>
+		<Input
+			label={i18n.t('admin.common.reason')}
+			hint={i18n.t('admin.engagement.common.reasonHint', { n: MODERATION_REASON_MIN })}
+			bind:value={moderationReason}
+			data-testid="archive-reason"
+		/>
+	</div>
+
+	{#snippet actions()}
+		<Button variant="ghost" size="sm" onclick={() => (archiveTarget = null)} disabled={moderating}>
+			{i18n.t('admin.common.cancel')}
+		</Button>
+		<Button
+			variant="primary"
+			size="sm"
+			onclick={confirmArchive}
+			disabled={!reasonOk || moderating}
+			loading={moderating}
+			data-testid="archive-submit"
+		>
+			{i18n.t('admin.engagement.cohorts.archiveBtn')}
+		</Button>
+	{/snippet}
+</Modal>
+
+<Modal
+	open={holdTarget !== null}
+	title={i18n.t('admin.engagement.talentOffers.holdTitle')}
+	onclose={() => (holdTarget = null)}
+	size="md"
+>
+	<div class="flex flex-col gap-4">
+		{#if holdTarget}
+			<p class="text-sm">{holdTarget.display_name} — {offerTypeLabel(holdTarget.offer_type)}</p>
+		{/if}
+		<p class="text-xs text-text-muted">{i18n.t('admin.engagement.talentOffers.holdHint')}</p>
+		<Input
+			label={i18n.t('admin.common.reason')}
+			hint={i18n.t('admin.engagement.common.reasonHint', { n: MODERATION_REASON_MIN })}
+			bind:value={moderationReason}
+			data-testid="hold-reason"
+		/>
+	</div>
+
+	{#snippet actions()}
+		<Button variant="ghost" size="sm" onclick={() => (holdTarget = null)} disabled={moderating}>
+			{i18n.t('admin.common.cancel')}
+		</Button>
+		<Button
+			variant="primary"
+			size="sm"
+			onclick={confirmHold}
+			disabled={!reasonOk || moderating}
+			loading={moderating}
+			data-testid="hold-submit"
+		>
+			{i18n.t('admin.engagement.talentOffers.holdBtn')}
 		</Button>
 	{/snippet}
 </Modal>

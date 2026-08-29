@@ -40,6 +40,7 @@
 		Gamepad2,
 		Database,
 		ServerCog,
+		Compass,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -71,6 +72,7 @@
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },
 		{ href: '/skills', label: i18n.t('admin.nav.skills'), icon: Network },
+		{ href: '/domains', label: i18n.t('admin.oversight.domainsNavLabel'), icon: Compass },
 		{ href: '/design', label: i18n.t('admin.design.navLabel'), icon: Palette },
 		{ href: '/game', label: i18n.t('admin.gameDomain.navLabel'), icon: Gamepad2 },
 		{ href: '/security', label: i18n.t('admin.nav.security'), icon: ShieldAlert },
