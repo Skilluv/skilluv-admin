@@ -335,12 +335,20 @@ export const adminApi = {
 		});
 	},
 
+	// The AI jobs are served under `/admin/assistant/*`, not `/admin/ai/*`:
+	// `assistant` is the surface, `ai_jobs.rs` is only the file that holds it,
+	// and the public side is `/api/assistant/**` for the same reason. Both
+	// calls answered 404 for months without anybody noticing — a queueing POST
+	// that 404s looks exactly like a job that found nothing (SKI-348).
 	aiHiddenGems(payload?: Record<string, unknown>) {
-		return api.post<ApiResponse<{ job_id: string }>>('/admin/ai/hidden-gems', payload ?? {});
+		return api.post<ApiResponse<{ job_id: string }>>(
+			'/admin/assistant/hidden-gems',
+			payload ?? {}
+		);
 	},
 
 	aiChurn(payload?: Record<string, unknown>) {
-		return api.post<ApiResponse<{ job_id: string }>>('/admin/ai/churn', payload ?? {});
+		return api.post<ApiResponse<{ job_id: string }>>('/admin/assistant/churn', payload ?? {});
 	},
 
 	runWeeklyDigest() {
@@ -949,12 +957,17 @@ export const adminApi = {
 		);
 	},
 
-	/** Extras Phase 5 — POST /admin/badge-events (Hacktoberfest, Skilluv Fest…). */
+	/** Extras Phase 5 — POST /admin/events (Hacktoberfest, Skilluv Fest…).
+	 *
+	 *  Served by `admin_ops.rs`, which has always called the collection
+	 *  `/admin/events` — the `badge-` prefix only ever existed in this client
+	 *  (SKI-348). The `/admin/events/{id}/*` routes in `events.rs` are a
+	 *  different resource and do not collide with the collection. */
 	createBadgeEvent(body: CreateBadgeEventBody) {
-		return api.post<ApiResponse<{ event: BadgeEvent }>>('/admin/badge-events', body);
+		return api.post<ApiResponse<{ event: BadgeEvent }>>('/admin/events', body);
 	},
 
-	/** Phase 6 gap-fix — GET /admin/badge-events (paginé, filtres is_active/is_partner). */
+	/** Phase 6 gap-fix — GET /admin/events (paginé, filtres is_active/is_partner). */
 	listBadgeEvents(params?: {
 		is_active?: boolean;
 		is_partner?: boolean;
@@ -962,7 +975,7 @@ export const adminApi = {
 		per_page?: number;
 	}) {
 		return api.get<ApiPaginatedResponse<BadgeEvent & { description: string; is_active: boolean; created_at: string }>>(
-			'/admin/badge-events',
+			'/admin/events',
 			params as Record<string, string | number | boolean>
 		);
 	},
