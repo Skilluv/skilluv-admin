@@ -36,6 +36,7 @@
 		Layers,
 		BadgeCheck,
 		ChartNoAxesColumn,
+		TrendingUp,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -80,6 +81,7 @@
 			icon: GraduationCap
 		},
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
+		{ href: '/sales', label: i18n.t('admin.sales.navLabel'), icon: TrendingUp },
 		{ href: '/money', label: i18n.t('admin.nav.money'), icon: Wallet },
 		{ href: '/disputes', label: i18n.t('admin.nav.disputes'), icon: Scale },
 		{ href: '/emails', label: i18n.t('admin.nav.emails'), icon: Mail },

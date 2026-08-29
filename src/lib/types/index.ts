@@ -2,6 +2,12 @@
 // Types Skilluv — basés sur API-ROUTES.md
 // ============================================
 
+/** The B2B lines — pipeline, contracts, renewals, revenue. A different
+ *  subject from the platform types below and a large one, so it lives in its
+ *  own file and is re-exported here: `$lib/types` stays the one import path
+ *  every screen uses. */
+export * from './business';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).
