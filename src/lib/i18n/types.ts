@@ -1096,6 +1096,11 @@ export interface Translations {
 			grantedByLabel: string;
 			historyDeferred: string;
 			validatorPrefix: string;
+			catalogueUnavailable: string;
+			heldByLabel: string;
+			engineManagedNote: string;
+			derivedNote: string;
+			revokeEngineManagedWarning: string;
 			names: {
 				challenger: string;
 				mentor: string;

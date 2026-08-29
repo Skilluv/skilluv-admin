@@ -1506,6 +1506,11 @@ export const ar: Translations = {
 			grantedByLabel: 'السبب :',
 			historyDeferred: 'سيظهر سجل الصلاحيات الملغاة عندما يوفره الخلفية.',
 			validatorPrefix: 'مُدقِّق',
+			catalogueUnavailable: 'تعذّر تحميل كتالوج الصلاحيات، لذا المنح غير متاح. يُقدّمه الخادم لأنّ جزءًا منه مُولَّد.',
+			heldByLabel: 'يحملها {n} شخصًا حاليًا.',
+			engineManagedNote: 'تُمنح تلقائيًا — إلغاؤها لا يدوم.',
+			derivedNote: 'مُشتقّة من كتالوج المهن.',
+			revokeEngineManagedWarning: 'تُمنح هذه الصلاحية تلقائيًا من المحرّك، الذي سيُعيدها عند إعادة الاحتساب التالية.',
 			names: {
 				challenger: 'متحدٍّ',
 				mentor: 'مرشد',

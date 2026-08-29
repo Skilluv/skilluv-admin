@@ -1500,6 +1500,11 @@ export const en: Translations = {
 			grantedByLabel: 'Reason:',
 			historyDeferred: 'Revoked capabilities history will appear once the backend exposes it.',
 			validatorPrefix: 'Validator',
+			catalogueUnavailable: 'The capability catalogue could not be loaded, so granting is unavailable. It is served by the backend rather than held here, because part of it is generated.',
+			heldByLabel: 'Held by {n} people right now.',
+			engineManagedNote: 'Re-granted automatically — revoking it does not stick.',
+			derivedNote: 'Derived from the trade catalogue.',
+			revokeEngineManagedWarning: 'This capability is granted automatically by the engine, which will restore it on the next recompute.',
 			names: {
 				challenger: 'Challenger',
 				mentor: 'Mentor',

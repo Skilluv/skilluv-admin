@@ -1500,6 +1500,11 @@ export const fr: Translations = {
 			grantedByLabel: 'Motif :',
 			historyDeferred: 'L\'historique des capabilities révoquées sera disponible quand le backend l\'exposera.',
 			validatorPrefix: 'Validateur',
+			catalogueUnavailable: 'Le catalogue des capabilities n\'a pas pu être chargé, l\'attribution est donc indisponible. Il est servi par le backend plutôt que tenu ici, parce qu\'une partie en est générée.',
+			heldByLabel: 'Détenue par {n} personnes actuellement.',
+			engineManagedNote: 'Réattribuée automatiquement — la révoquer ne tient pas.',
+			derivedNote: 'Dérivée du catalogue des métiers.',
+			revokeEngineManagedWarning: 'Cette capability est attribuée automatiquement par le moteur, qui la rétablira au prochain recalcul.',
 			names: {
 				challenger: 'Challenger',
 				mentor: 'Mentor',

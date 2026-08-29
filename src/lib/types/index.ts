@@ -48,142 +48,56 @@ export type ThemeBase = 'forge' | 'neon' | 'arena' | 'terminal' | 'sakura';
 export type ThemeMode = 'dark' | 'light';
 export type Theme = ThemeBase | `${ThemeBase}-light`;
 
-/** Backend P18.4 — capability slugs stored in `user_capabilities.capability`.
+/** Backend P18.4 — a capability slug, as stored in
+ *  `user_capabilities.capability` and enumerated by
+ *  `GET /api/admin/capabilities` (SKI-351).
  *
- *  The authority used to be a CHECK constraint restated wholesale on every
- *  extension. It is not any more: migration 0404 replaced it with the
- *  `capability_catalog` table, for the reason it states — five migrations
- *  restating the list meant the sixth would be the next domain.
+ *  Deliberately a `string` and not a union. The authority used to be a CHECK
+ *  constraint restated wholesale on every extension; migration 0404 replaced
+ *  it with the `capability_catalog` table and put a trigger on `orientations`
+ *  behind it, so adding a trade with a review family makes
+ *  `{domain}_reviewer:{family}` grantable in the same statement. The set is a
+ *  function of the trade catalogue, and no migration has to remember.
  *
- *  Two consequences for this file, and the second is why it cannot be right
- *  for long:
+ *  A union here would be a copy of that table: correct until somebody adds an
+ *  orientation, then wrong, and wrong silently. It already was. The grant
+ *  dropdown enumerated sixteen plain capabilities and four reviewer families,
+ *  which meant `mission_arbiter`, `security_triager` and
+ *  `domain_curator:design` could not be granted to anybody from this panel
+ *  while the backend accepted all three — and those three gate screens that
+ *  shipped the same week.
  *
- *    * the list below is a copy of a table, so it goes stale silently;
- *    * part of that table is **generated**. `security_reviewer:{family}` and
- *      its siblings are derived from `orientations.reviewer_group` by a
- *      trigger (migration 0542 says so explicitly), so they appear in no
- *      migration and change whenever an orientation moves family.
+ *  Nothing is lost by widening it. `user_capabilities.capability` is a
+ *  foreign key to the catalogue since 0404, so an invented string is refused
+ *  by the database rather than stored and silently never matched. */
+export type Capability = string;
+
+/** One row of `GET /api/admin/capabilities`.
  *
- *  SKI-351 asks for `GET /api/admin/capabilities` so this stops being a
- *  guess. Until it lands, what is enumerable is enumerated here — because
- *  without it an operator cannot grant `domain_curator:design`,
- *  `mission_arbiter` or `security_triager`, and the screens those gate are
- *  unreachable by anybody who is not a global admin. */
-
-/** Capabilities that are a single word. The non-scoped half of
- *  `capability_catalog` (migration 0404 and the domain migrations after it). */
-export type PlainCapability =
-	| 'challenger'
-	| 'mentor'
-	| 'project_steward'
-	| 'pr_reviewer'
-	| 'bounty_funder'
-	| 'issue_proposer'
-	| 'jury_tournament'
-	| 'admin'
-	| 'enterprise_recruiter'
-	| 'community_moderator'
-	| 'forum_moderator'
-	| 'plagiarism_reviewer'
-	| 'kyc_reviewer'
-	| 'community_curator'
-	/** P26 beginner sas (migration 0117). */
-	| 'verified_apprentice'
-	| 'apprentice_verifier'
-	/** Decides a paid mission neither party will end. Not scoped by domain:
-	 *  whether a contract was honoured is the same question about a logotype
-	 *  and about a pull request. */
-	| 'mission_arbiter'
-	/** Reads the incoming vulnerability queue and decides what is worth a
-	 *  reviewer's afternoon. May not confirm anything (migration 0557). */
-	| 'security_triager'
-	| 'sre'
-	| 'featured_ops_engineer';
-
-/** Families of code trade a reviewer can be competent in (migration 0176). */
-export type CodeReviewerGroup =
-	| 'web'
-	| 'mobile'
-	| 'systems'
-	| 'blockchain'
-	| 'compilers'
-	| 'data'
-	| 'scientific'
-	| 'devtools-media'
-	| 'all';
-
-/** Families of AI trade (migration 0210). */
-export type AiReviewerGroup = 'data' | 'ml' | 'llm-nlp' | 'cv' | 'safety' | 'all';
-
-/** The thirteen design families, plus the wildcard (migration 0229).
- *
- *  A design verdict rests entirely on the reviewer's own craft — there is no
- *  CI signal to fall back on — so review rights stop at the family boundary.
- *  The group lives on `orientations.reviewer_group`, which is why a trade can
- *  be moved between families without touching this list. */
-export type DesignReviewerGroup =
-	| 'product'
-	| 'web'
-	| 'mobile'
-	| 'motion'
-	| 'brand'
-	| 'illustration'
-	| 'dataviz'
-	| 'ux-writing'
-	| 'marketing'
-	| 'game'
-	| '3d-viz'
-	| 'immersive'
-	| 'service'
-	| 'all';
-
-/** Capabilities carrying a scope after a colon. The scope is a backend slug
- *  (a domain or a reviewer group) and is rendered verbatim: translating it
- *  would decouple the label from the value an admin has to reason about. */
-/** The five security trades, plus the wildcard. The group lives on
- *  `orientations.reviewer_group` (migration 0542) and the capability rows are
- *  derived from it by a trigger — see the note above `PlainCapability`. */
-export type SecurityReviewerGroup =
-	| 'red-team'
-	| 'blue-team'
-	| 'code-audit'
-	| 'governance'
-	| 'purple-team'
-	| 'all';
-
-/** Domains a curator can be given. `all` is the wildcard.
- *
- *  A domain curator runs a domain's challenges, contests and featurings — not
- *  its users and not its money. It is what SKI-205 called `design_curator`,
- *  and the backend declined to create a second name for a role that already
- *  had one. */
-export type DomainCuratorScope =
-	| 'ai'
-	| 'audio'
-	| 'code'
-	| 'communication'
-	| 'design'
-	| 'education'
-	| 'game'
-	| 'leadership'
-	| 'ops'
-	| 'quality'
-	| 'security'
-	| 'soft_skills'
-	| 'all';
-
-export type ScopedCapability =
-	/** P26 v2 SKI-80 — one value per validator domain (migration 0120).
-	 *  Held by users allowed to pick up + approve/reject a slice validation
-	 *  whose `primary_domain` matches. */
-	| `challenge_validator:${ValidatorDomain}`
-	| `code_reviewer:${CodeReviewerGroup}`
-	| `ai_reviewer:${AiReviewerGroup}`
-	| `design_reviewer:${DesignReviewerGroup}`
-	| `security_reviewer:${SecurityReviewerGroup}`
-	| `domain_curator:${DomainCuratorScope}`;
-
-export type Capability = PlainCapability | ScopedCapability;
+ *  Read in full rather than sampled: the three flags below are the
+ *  difference between an operator granting the right thing and spending an
+ *  afternoon on a revoke that does not stick. */
+export interface CapabilityCatalogueEntry {
+	/** What goes in `POST /admin/users/{id}/capabilities`. */
+	capability: Capability;
+	/** The part before the colon. */
+	family: string;
+	/** The part after it, `null` when the capability carries no scope. */
+	scope: string | null;
+	/** What holding it lets somebody do. Served rather than translated here:
+	 *  an operator choosing between `domain_curator:design` and
+	 *  `community_curator` on the slugs alone picks the wider one. */
+	description: string;
+	/** Maintained by the orientations trigger of migration 0404. Rows like
+	 *  this appear in no migration and move when a trade changes family. */
+	is_derived: boolean;
+	/** Granted and re-granted by `services::capabilities_engine`. Still
+	 *  grantable by hand; it is the revoke that does not stick, because the
+	 *  engine puts it back on the next recompute. */
+	engine_managed: boolean;
+	/** How many people hold it right now — not revoked, not expired. */
+	held_by: number;
+}
 
 export interface UserCapability {
 	capability: Capability;

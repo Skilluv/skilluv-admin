@@ -1335,19 +1335,49 @@ created, and the argument holds:
 - `design_moderator` stays uncreated on the argument in D5: the plagiarism
   queue is cross-domain by construction.
 
-### 21.4 The one thing this app still guesses
+### 21.4 The list this app used to hold, and why it is gone
 
-The capability list in `src/lib/types/index.ts` is a copy of
-`capability_catalog`, and **part of that table is generated** —
-`security_reviewer:{family}` and its siblings are derived from
-`orientations.reviewer_group` by a trigger (migration 0542 says so), so they
-appear in no migration and change whenever an orientation moves family.
+`GET /api/admin/capabilities` landed (SKI-351), and the hand-kept copy in
+`src/lib/types/index.ts` went with it. `Capability` is now `string`, the grant
+dropdown is built from the served catalogue, and `CapabilityBadge` keys its
+colour table by `string` with a `default` fallback.
 
-Nothing serves the catalogue. Until **SKI-351** lands, what is enumerable is
-enumerated by hand, which unblocks the operators — without it nobody could
-grant `domain_curator:design`, `mission_arbiter` or `security_triager`, and
-the screens those gate were unreachable by anybody but a global admin. It is
-a stopgap and the file says so.
+**The copy was not merely at risk of going stale — it was already wrong, and
+the previous version of this section said the opposite.** It claimed the
+hand-written list "unblocks the operators". It did not. The list of union
+members in `types/index.ts` had been extended with `mission_arbiter`,
+`security_triager`, `sre`, `featured_ops_engineer`, `security_reviewer:*` and
+`domain_curator:*` — but the array the grant form actually reads,
+`ALL_CAPABILITIES` in `UserCapabilitiesSection.svelte`, had not. Widening a
+type does not add an option to a `<Select>`. So the three capabilities gating
+the screens shipped that same week could be granted to nobody, and the
+document asserted the opposite because nobody checked the second file.
+
+That is the argument for not holding the list at all, made better by an
+accident than by reasoning: a copy has to be updated in every place it was
+spread to, and nothing tells you when you missed one.
+
+Three fields of the catalogue are worth naming, because the screen leans on
+each:
+
+- **`is_derived`** — written by the orientations trigger of migration 0404.
+  These rows appear in no migration and move when a trade changes family,
+  which is the specific reason a client cannot enumerate the set.
+- **`engine_managed`** — `services::capabilities_engine` grants and re-grants
+  it. Still grantable by hand; it is the *revoke* that does not stick, so the
+  revoke dialog says so rather than letting somebody spend an afternoon on it.
+- **`held_by`** — how many people hold it right now. An operator about to
+  grant `security_reviewer:red-team` wants to know whether anybody already
+  reviews red-team work.
+
+Descriptions are served in French only. The screen prefers a local
+translation when the locale file has one and falls through to the served
+sentence otherwise: the known set stays translated, and the generated rows
+stay described, which matters more than staying in the reader's language.
+
+When the catalogue fails to load, granting is disabled and says why. An empty
+dropdown would read as "this user can hold nothing" — a different statement,
+a false one, and the kind an operator acts on.
 
 ### 21.5 What is genuinely absent, and deliberately
 
