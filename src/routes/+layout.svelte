@@ -41,6 +41,7 @@
 		Database,
 		ServerCog,
 		Compass,
+		FileSignature,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -96,6 +97,7 @@
 		{ href: '/emails', label: i18n.t('admin.nav.emails'), icon: Mail },
 		{ href: '/enterprise-kyc', label: i18n.t('admin.nav.kycEnterprises'), icon: ShieldCheck },
 		{ href: '/enterprises', label: i18n.t('admin.nav.enterprises'), icon: Briefcase },
+		{ href: '/contracts', label: i18n.t('admin.contracts.navLabel'), icon: FileSignature },
 		{ href: '/sponsored-challenges', label: i18n.t('admin.nav.sponsorings'), icon: Megaphone },
 		{ href: '/tournaments', label: i18n.t('admin.nav.tournamentsSeasons'), icon: Swords },
 		{ href: '/audit-log', label: i18n.t('admin.nav.auditLabel'), icon: Clock },

@@ -908,6 +908,58 @@ export interface Translations {
 			credentialVerified: string;
 			credentialRefused: string;
 		};
+		contracts: {
+			label: string;
+			title: string;
+			subtitle: string;
+			navLabel: string;
+			registerNote: string;
+			tabs: {
+				renewals: string;
+				company: string;
+			};
+			windowLabel: string;
+			days30: string;
+			days60: string;
+			days90: string;
+			days365: string;
+			overdueNote: string;
+			overdueBadge: string;
+			emptyRenewals: string;
+			cols: {
+				company: string;
+				product: string;
+				value: string;
+				renews: string;
+				status: string;
+				started: string;
+			};
+			enterpriseIdLabel: string;
+			loadBtn: string;
+			emptyProducts: string;
+			recordTitle: string;
+			productTypeLabel: string;
+			renewsAtLabel: string;
+			renewsAtHint: string;
+			valueLabel: string;
+			currencyLabel: string;
+			notesLabel: string;
+			recordBtn: string;
+			recorded: string;
+			statusTitle: string;
+			statusLabel: string;
+			reasonLabel: string;
+			reasonHint: string;
+			pushRenewalLabel: string;
+			statusBtn: string;
+			statusSet: string;
+			entitlementTitle: string;
+			entitlementHint: string;
+			kindLabel: string;
+			grantedLabel: string;
+			grantBtn: string;
+			granted: string;
+		};
 		nav: {
 			administration: string;
 			signOut: string;

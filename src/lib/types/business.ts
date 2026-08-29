@@ -379,3 +379,71 @@ export interface DepartureInput {
 	left_at: string;
 	reason: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Enterprise products — the register every product line writes into
+// ─────────────────────────────────────────────────────────────────────
+
+/** `enterprise_products.status`. */
+export type EnterpriseProductStatus =
+	| 'pending'
+	| 'active'
+	| 'completed'
+	| 'cancelled'
+	| 'lapsed';
+
+export interface EnterpriseProduct {
+	id: string;
+	enterprise_id: string;
+	product_type: string;
+	product_label: string;
+	status: string;
+	contract_value: string | null;
+	currency: string | null;
+	started_at: string;
+	renews_at: string | null;
+	ended_at: string | null;
+	ended_reason: string | null;
+	notes: string | null;
+}
+
+/** One line of the renewals list. Overdue renewals are included and sort
+ *  first: a date that has passed with the engagement still active is the
+ *  case somebody most needs to see. */
+export interface EnterpriseProductRenewal {
+	id: string;
+	company_name: string;
+	product_type: string;
+	product_label: string;
+	renews_at: string;
+	contract_value: string | null;
+	currency: string | null;
+}
+
+export interface RecordProductBody {
+	product_type: string;
+	/** Required for anything that renews. Without it the engagement never
+	 *  appears on a renewal list and lapses because nobody was told to ask —
+	 *  the backend says exactly that when it refuses. */
+	renews_at?: string;
+	contract_value?: string;
+	currency?: string;
+	source_table?: string;
+	source_id?: string;
+	notes?: string;
+}
+
+export interface ProductStatusBody {
+	status: EnterpriseProductStatus;
+	/** Required to cancel. */
+	reason?: string;
+	/** Push the next renewal out. Only meaningful while active. */
+	renews_at?: string;
+}
+
+/** What a subscription includes. A flag carries no amount; everything else
+ *  requires one, and the backend refuses either mistake. */
+export interface EntitlementGrant {
+	kind: string;
+	granted?: string;
+}
