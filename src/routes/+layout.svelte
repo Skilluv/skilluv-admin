@@ -43,6 +43,7 @@
 		Compass,
 		FileSignature,
 		UsersRound,
+		ClipboardCheck,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -70,6 +71,7 @@
 		{ href: '/projects', label: 'Projets', icon: FolderGit2 },
 		{ href: '/slices', label: 'Slices', icon: Layers },
 		{ href: '/validators', label: 'Validateurs', icon: BadgeCheck },
+		{ href: '/review', label: i18n.t('admin.review.navLabel'), icon: ClipboardCheck },
 		{ href: '/validation-analytics', label: 'Analytics validation', icon: ChartNoAxesColumn },
 		{ href: '/community', label: i18n.t('admin.community.title'), icon: Star },
 		{ href: '/catalog', label: i18n.t('admin.nav.catalog'), icon: BookMarked },

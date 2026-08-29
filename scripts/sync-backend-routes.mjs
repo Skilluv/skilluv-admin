@@ -105,9 +105,23 @@ export function routeBlock(text, from) {
  * quieter way of being wrong than reporting them as absent. This session did
  * exactly that for a full day.
  */
+/**
+ * Enumerated from `src/middleware/capabilities.rs` rather than guessed —
+ * guessing had already missed `require_reviewer_for_orientation`, which is
+ * what stands in front of a defect-report review, and with it the second
+ * half of the quality domain.
+ *
+ * `require_csrf` and `require_permission` are deliberately absent: the first
+ * is on every mutating route regardless, and the second is a method on a
+ * session type rather than a capability check.
+ */
 const GUARDS = [
 	'require_any_capability',
 	'require_capability',
+	'require_challenge_validator_for',
+	'require_reviewer_for_orientation',
+	// Module-local helpers used by whole files, kept because they are the
+	// name the handlers actually call.
 	'require_admin',
 	'require_reader',
 	'require_curator',

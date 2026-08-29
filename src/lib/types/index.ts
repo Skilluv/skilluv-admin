@@ -22,6 +22,9 @@ export * from './oversight';
 /** Platform levers: flags, tags, one-off runs, the assistant ledger. */
 export * from './platform';
 
+/** Reviewer queues served outside `/admin`, gated by capability. */
+export * from './review';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).

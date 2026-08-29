@@ -3549,7 +3549,7 @@
 			"methods": [
 				"POST"
 			],
-			"guarded": false
+			"guarded": true
 		},
 		{
 			"path": "/beta-programs/open",
@@ -6813,7 +6813,7 @@
 			"methods": [
 				"POST"
 			],
-			"guarded": false
+			"guarded": true
 		},
 		{
 			"path": "/quality/reference",
