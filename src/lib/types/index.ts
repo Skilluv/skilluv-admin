@@ -50,15 +50,28 @@ export type Theme = ThemeBase | `${ThemeBase}-light`;
 
 /** Backend P18.4 — capability slugs stored in `user_capabilities.capability`.
  *
- *  The authority is the CHECK constraint, and it is replaced wholesale on
- *  every extension rather than appended to: migration 0229 is the current
- *  one and restates every value 0094, 0098, 0117, 0120, 0176 and 0210 added.
- *  Read that constraint, not the older migrations, when adding a value here
- *  — and adding one still requires a matching backend migration. */
+ *  The authority used to be a CHECK constraint restated wholesale on every
+ *  extension. It is not any more: migration 0404 replaced it with the
+ *  `capability_catalog` table, for the reason it states — five migrations
+ *  restating the list meant the sixth would be the next domain.
+ *
+ *  Two consequences for this file, and the second is why it cannot be right
+ *  for long:
+ *
+ *    * the list below is a copy of a table, so it goes stale silently;
+ *    * part of that table is **generated**. `security_reviewer:{family}` and
+ *      its siblings are derived from `orientations.reviewer_group` by a
+ *      trigger (migration 0542 says so explicitly), so they appear in no
+ *      migration and change whenever an orientation moves family.
+ *
+ *  SKI-351 asks for `GET /api/admin/capabilities` so this stops being a
+ *  guess. Until it lands, what is enumerable is enumerated here — because
+ *  without it an operator cannot grant `domain_curator:design`,
+ *  `mission_arbiter` or `security_triager`, and the screens those gate are
+ *  unreachable by anybody who is not a global admin. */
 
-/** Capabilities that are a single word. Mirrors the non-scoped half of the
- *  CHECK on `user_capabilities.capability` (migration 0229, which restates
- *  everything 0098, 0117, 0120, 0176 and 0210 added). */
+/** Capabilities that are a single word. The non-scoped half of
+ *  `capability_catalog` (migration 0404 and the domain migrations after it). */
 export type PlainCapability =
 	| 'challenger'
 	| 'mentor'
@@ -76,7 +89,16 @@ export type PlainCapability =
 	| 'community_curator'
 	/** P26 beginner sas (migration 0117). */
 	| 'verified_apprentice'
-	| 'apprentice_verifier';
+	| 'apprentice_verifier'
+	/** Decides a paid mission neither party will end. Not scoped by domain:
+	 *  whether a contract was honoured is the same question about a logotype
+	 *  and about a pull request. */
+	| 'mission_arbiter'
+	/** Reads the incoming vulnerability queue and decides what is worth a
+	 *  reviewer's afternoon. May not confirm anything (migration 0557). */
+	| 'security_triager'
+	| 'sre'
+	| 'featured_ops_engineer';
 
 /** Families of code trade a reviewer can be competent in (migration 0176). */
 export type CodeReviewerGroup =
@@ -118,6 +140,38 @@ export type DesignReviewerGroup =
 /** Capabilities carrying a scope after a colon. The scope is a backend slug
  *  (a domain or a reviewer group) and is rendered verbatim: translating it
  *  would decouple the label from the value an admin has to reason about. */
+/** The five security trades, plus the wildcard. The group lives on
+ *  `orientations.reviewer_group` (migration 0542) and the capability rows are
+ *  derived from it by a trigger — see the note above `PlainCapability`. */
+export type SecurityReviewerGroup =
+	| 'red-team'
+	| 'blue-team'
+	| 'code-audit'
+	| 'governance'
+	| 'purple-team'
+	| 'all';
+
+/** Domains a curator can be given. `all` is the wildcard.
+ *
+ *  A domain curator runs a domain's challenges, contests and featurings — not
+ *  its users and not its money. It is what SKI-205 called `design_curator`,
+ *  and the backend declined to create a second name for a role that already
+ *  had one. */
+export type DomainCuratorScope =
+	| 'ai'
+	| 'audio'
+	| 'code'
+	| 'communication'
+	| 'design'
+	| 'education'
+	| 'game'
+	| 'leadership'
+	| 'ops'
+	| 'quality'
+	| 'security'
+	| 'soft_skills'
+	| 'all';
+
 export type ScopedCapability =
 	/** P26 v2 SKI-80 — one value per validator domain (migration 0120).
 	 *  Held by users allowed to pick up + approve/reject a slice validation
@@ -125,7 +179,9 @@ export type ScopedCapability =
 	| `challenge_validator:${ValidatorDomain}`
 	| `code_reviewer:${CodeReviewerGroup}`
 	| `ai_reviewer:${AiReviewerGroup}`
-	| `design_reviewer:${DesignReviewerGroup}`;
+	| `design_reviewer:${DesignReviewerGroup}`
+	| `security_reviewer:${SecurityReviewerGroup}`
+	| `domain_curator:${DomainCuratorScope}`;
 
 export type Capability = PlainCapability | ScopedCapability;
 
@@ -1957,6 +2013,8 @@ export interface SecurityFindingDetailResponse {
 	events: SecurityFindingEvent[];
 	rounds: SecurityFindingRound[];
 	similar: SecuritySimilarFinding[];
+	/** Internal notes. Only this route carries them. */
+	comments: SecurityFindingComment[];
 }
 
 /** One line of the deduplication queue: a finding and everything that
@@ -2240,4 +2298,82 @@ export interface VoteBurst {
 export interface OutstandingPrize {
 	tournament_id: string;
 	name: string;
+}
+
+// ============================================================
+// The six surfaces SKI-338 added, consumed here
+// ============================================================
+
+/**
+ * The state of the disclosure queue, on one snapshot.
+ *
+ * Computed in a single statement backend-side, which matters more than it
+ * sounds: a status tally and an SLA count read a second apart can disagree
+ * about the same finding, and nothing on screen would say that is what
+ * happened.
+ *
+ * Withdrawn and not-applicable findings are excluded — counting closed
+ * business makes the backlog look like work that is not there.
+ */
+export interface SecurityOverview {
+	/** Only the statuses that have at least one finding. */
+	by_status: Partial<Record<SecurityFindingStatus, number>>;
+	by_severity: Partial<Record<SecuritySeverityTier, number>>;
+	/** `null` when nothing is waiting. Not zero: zero hours reads as
+	 *  "something just arrived", which is the opposite. */
+	oldest_untriaged_hours: number | null;
+	/** Untriaged past the SLA. Findings whose triage was skipped by rank do
+	 *  not count — they were answered the moment they arrived. */
+	breaching_triage_sla: number;
+	/** The threshold the count above is measured against, sent rather than
+	 *  hard-coded here so the screen can name what it compares to. */
+	triage_sla_days: number;
+	open_rounds: number;
+	embargoes_expiring_7d: number;
+	/** Already past and still embargoed — a different sentence from the week
+	 *  ahead: one is a deadline, the other is a missed one. */
+	embargoes_overdue: number;
+	suspected_duplicates: number;
+}
+
+/**
+ * An internal note on a finding.
+ *
+ * Append-only: the backend exposes no edit and no delete, because a note that
+ * decided how a finding was handled is part of how it was handled. Never
+ * reaches the reporter — the table is joined by one reader, and that is what
+ * makes it a property rather than a promise.
+ */
+export interface SecurityFindingComment {
+	id: string;
+	body_md: string;
+	at: string;
+	author: string;
+	author_display_name: string | null;
+}
+
+/**
+ * A research token, as the revoke surface needs to see it.
+ *
+ * The token itself never comes back — only `token_prefix`, which is what
+ * matches a line in an access log.
+ */
+export interface SecurityResearchToken {
+	id: string;
+	username: string;
+	display_name: string | null;
+	token_prefix: string;
+	label: string | null;
+	issued_at: string;
+	expires_at: string;
+	expired: boolean;
+	revoked_at: string | null;
+	revoked_reason: string | null;
+	last_used_at: string | null;
+	requests_seen: number;
+	/** Findings filed under this token. Counted from a column the backend
+	 *  added for it rather than guessed from a date range on the holder — a
+	 *  guess would credit the token for reports filed without it. */
+	findings: number;
+	findings_confirmed: number;
 }

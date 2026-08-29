@@ -1113,6 +1113,10 @@ export interface Translations {
 				community_curator: string;
 				verified_apprentice: string;
 				apprentice_verifier: string;
+				mission_arbiter: string;
+				security_triager: string;
+				sre: string;
+				featured_ops_engineer: string;
 			};
 			/** One label per scoped-capability family. The scope after the
 			 *  colon is a backend slug and is never translated. */
@@ -1121,6 +1125,8 @@ export interface Translations {
 				code_reviewer: string;
 				ai_reviewer: string;
 				design_reviewer: string;
+				security_reviewer: string;
+				domain_curator: string;
 			};
 			/** One description per family, interpolating `{scope}`. */
 			familyDescriptions: {
@@ -1160,6 +1166,53 @@ export interface Translations {
 			tabProgrammes: string;
 			tabCatalogue: string;
 			tabRecord: string;
+			tabTokens: string;
+			overview: {
+				title: string;
+				hint: string;
+				slaBreach: string;
+				slaHint: string;
+				oldestUntriaged: string;
+				noneWaiting: string;
+				openRounds: string;
+				embargoes7d: string;
+				embargoesOverdue: string;
+				suspectedDuplicates: string;
+				byStatus: string;
+				bySeverity: string;
+				slaDaysLabel: string;
+			};
+			comments: {
+				title: string;
+				hint: string;
+				empty: string;
+				placeholder: string;
+				add: string;
+				added: string;
+				tooShort: string;
+			};
+			tokens: {
+				hint: string;
+				empty: string;
+				activeOnly: string;
+				search: string;
+				holder: string;
+				prefix: string;
+				prefixHint: string;
+				issued: string;
+				expires: string;
+				expired: string;
+				revoked: string;
+				active: string;
+				lastUsed: string;
+				requests: string;
+				findings: string;
+				findingsConfirmed: string;
+				revokeBtn: string;
+				revokeTitle: string;
+				revokeHint: string;
+				revokedToast: string;
+			};
 			filters: {
 				status: string;
 				severity: string;
@@ -1454,6 +1507,7 @@ export interface Translations {
 			};
 			empty: string;
 			unassigned: string;
+			resultCount: string;
 			stuck: string;
 			awaiting: string;
 			arbitrated: string;
@@ -1485,6 +1539,14 @@ export interface Translations {
 				noArbitration: string;
 				arbiter: string;
 				outcome: string;
+			};
+			takeDown: {
+				open: string;
+				title: string;
+				hint: string;
+				reasonHint: string;
+				done: string;
+				notOnDelivered: string;
 			};
 			arbitrate: {
 				open: string;

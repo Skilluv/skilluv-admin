@@ -18,6 +18,8 @@
 		type SecurityFindingRow,
 		type SecurityFindingStatus,
 		type SecurityHallOfFame,
+		type SecurityOverview,
+		type SecurityResearchToken,
 		type SecuritySeverityTier,
 		type SecurityTargetKind
 	} from '$lib/types';
@@ -52,9 +54,24 @@
 	// a challenge is written, the public record when somebody asks how the
 	// programme is doing.
 
-	type Tab = 'findings' | 'dedup' | 'claims' | 'programmes' | 'catalogue' | 'record';
+	type Tab =
+		| 'findings'
+		| 'dedup'
+		| 'claims'
+		| 'programmes'
+		| 'catalogue'
+		| 'tokens'
+		| 'record';
 
-	const TABS: Tab[] = ['findings', 'dedup', 'claims', 'programmes', 'catalogue', 'record'];
+	const TABS: Tab[] = [
+		'findings',
+		'dedup',
+		'claims',
+		'programmes',
+		'catalogue',
+		'tokens',
+		'record'
+	];
 
 	function tabFromUrl(url: URL): Tab {
 		const t = url.searchParams.get('tab');
@@ -82,6 +99,15 @@
 
 	let findings = $state<SecurityFindingRow[]>([]);
 	let findingsLoading = $state(true);
+	let overview = $state<SecurityOverview | null>(null);
+
+	// --- Research tokens ---
+	let tokens = $state<SecurityResearchToken[]>([]);
+	let tokensLoading = $state(false);
+	let tokensActiveOnly = $state(false);
+	let tokensQuery = $state('');
+	let tokenToRevoke = $state<SecurityResearchToken | null>(null);
+	let revokingToken = $state(false);
 
 	// --- The other five ---
 	let pairs = $state<SecurityDedupPair[]>([]);
@@ -114,6 +140,8 @@
 				return loadClaims();
 			case 'programmes':
 				return loadProgrammes();
+			case 'tokens':
+				return loadTokens();
 			case 'record':
 				return loadRecord();
 			default:
@@ -144,8 +172,28 @@
 		syncUrl();
 	}
 
+	/**
+	 * The overview travels with the queue rather than on its own timer.
+	 *
+	 * They are the same screen and the operator reads them together; letting
+	 * the tiles lag a refresh behind the rows they summarise is how a count
+	 * ends up contradicting the list underneath it.
+	 */
+	async function loadOverview() {
+		try {
+			const res = await securityApi.overview();
+			overview = res.data;
+		} catch {
+			// A failed aggregate must not cost the queue. The tiles simply do
+			// not render — better than showing stale or invented numbers next
+			// to rows that did load.
+			overview = null;
+		}
+	}
+
 	async function loadFindings() {
 		findingsLoading = true;
+		void loadOverview();
 		try {
 			const res = await securityApi.queue({
 				status: status || undefined,
@@ -231,6 +279,40 @@
 		} finally {
 			sweeping = false;
 		}
+	}
+
+	async function loadTokens() {
+		tokensLoading = true;
+		try {
+			const res = await securityApi.researchTokens({
+				active_only: tokensActiveOnly || undefined,
+				q: tokensQuery.trim() || undefined
+			});
+			tokens = res.data.tokens;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			tokensLoading = false;
+		}
+	}
+
+	async function revokeToken(reason: string) {
+		if (!tokenToRevoke) return;
+		revokingToken = true;
+		try {
+			await securityApi.revokeResearchToken(tokenToRevoke.id);
+			toast.success(t('admin.security.tokens.revokedToast'));
+			tokenToRevoke = null;
+			await loadTokens();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			revokingToken = false;
+		}
+		// The reason is collected by the dialog for the operator's own
+		// benefit and for the audit trail the backend writes; the revoke
+		// endpoint records `by_operator` itself and takes no body.
+		void reason;
 	}
 
 	// ── External claims ──────────────────────────────────────────
@@ -556,6 +638,77 @@
 	</div>
 
 	{#if tab === 'findings'}
+		{#if overview}
+			<section class="mb-6">
+				<div class="mb-2 flex flex-wrap items-center gap-2">
+					<h2 class="text-sm font-semibold uppercase tracking-wider text-text-muted">
+						{t('admin.security.overview.title')}
+					</h2>
+					<Badge variant="default">
+						{t('admin.security.overview.slaDaysLabel', { n: overview.triage_sla_days })}
+					</Badge>
+				</div>
+				<p class="mb-3 text-xs text-text-muted">{t('admin.security.overview.hint')}</p>
+
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<StatCard
+						label={t('admin.security.overview.slaBreach')}
+						value={overview.breaching_triage_sla}
+						color={overview.breaching_triage_sla > 0 ? 'error' : 'success'}
+						hint={t('admin.security.overview.slaHint')}
+					/>
+					<StatCard
+						label={t('admin.security.overview.oldestUntriaged')}
+						value={overview.oldest_untriaged_hours === null
+							? t('admin.security.overview.noneWaiting')
+							: `${overview.oldest_untriaged_hours}${t('admin.security.hoursShort')}`}
+						color={overview.oldest_untriaged_hours === null ? 'success' : 'warning'}
+					/>
+					<StatCard
+						label={t('admin.security.overview.openRounds')}
+						value={overview.open_rounds}
+					/>
+					<StatCard
+						label={t('admin.security.overview.embargoesOverdue')}
+						value={overview.embargoes_overdue}
+						color={overview.embargoes_overdue > 0 ? 'error' : 'default'}
+					/>
+					<StatCard
+						label={t('admin.security.overview.embargoes7d')}
+						value={overview.embargoes_expiring_7d}
+						color={overview.embargoes_expiring_7d > 0 ? 'warning' : 'default'}
+					/>
+					<StatCard
+						label={t('admin.security.overview.suspectedDuplicates')}
+						value={overview.suspected_duplicates}
+					/>
+				</div>
+
+				<div class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-text-muted">
+					<span class="flex flex-wrap items-center gap-1.5">
+						<span class="uppercase tracking-wider">
+							{t('admin.security.overview.byStatus')}
+						</span>
+						{#each Object.entries(overview.by_status) as [k, n] (k)}
+							<Badge variant={statusVariant(k as SecurityFindingStatus)}>
+								{statusLabel(k)}&nbsp;{n}
+							</Badge>
+						{/each}
+					</span>
+					<span class="flex flex-wrap items-center gap-1.5">
+						<span class="uppercase tracking-wider">
+							{t('admin.security.overview.bySeverity')}
+						</span>
+						{#each Object.entries(overview.by_severity) as [k, n] (k)}
+							<Badge variant={severityVariant(k as SecuritySeverityTier)}>
+								{severityLabel(k)}&nbsp;{n}
+							</Badge>
+						{/each}
+					</span>
+				</div>
+			</section>
+		{/if}
+
 		<p class="mb-4 text-xs text-text-muted">{t('admin.security.queueHint')}</p>
 
 		<div class="mb-5 flex flex-wrap items-end gap-3">
@@ -897,6 +1050,100 @@
 			<Plus size={14} strokeWidth={2} />
 			{t('admin.security.catalogue.create')}
 		</Button>
+	{:else if tab === 'tokens'}
+		<p class="mb-4 max-w-3xl text-xs text-text-muted">{t('admin.security.tokens.hint')}</p>
+
+		<div class="mb-5 flex flex-wrap items-end gap-3">
+			<Input
+				label={t('admin.security.tokens.search')}
+				bind:value={tokensQuery}
+				class="w-56"
+			/>
+			<label class="flex h-11 items-center gap-2 text-sm text-text-muted">
+				<input
+					type="checkbox"
+					bind:checked={tokensActiveOnly}
+					class="h-4 w-4 rounded border-border bg-surface-elevated accent-primary"
+				/>
+				{t('admin.security.tokens.activeOnly')}
+			</label>
+			<Button variant="primary" size="sm" onclick={loadTokens} loading={tokensLoading}>
+				<RefreshCw size={14} strokeWidth={2} />
+				{t('admin.common.refreshBtn')}
+			</Button>
+		</div>
+
+		{#if tokensLoading}
+			<Skeleton class="h-48 w-full" rounded="xl" />
+		{:else if tokens.length === 0}
+			<div class="rounded-2xl border border-border bg-surface-elevated p-10 text-center">
+				<p class="text-sm text-text-muted">{t('admin.security.tokens.empty')}</p>
+			</div>
+		{:else}
+			<div class="space-y-2">
+				{#each tokens as tk (tk.id)}
+					<article class="rounded-2xl border border-border bg-surface-elevated p-5">
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div class="min-w-0">
+								<div class="flex flex-wrap items-center gap-2">
+									{#if tk.revoked_at}
+										<Badge variant="error">{t('admin.security.tokens.revoked')}</Badge>
+									{:else if tk.expired}
+										<Badge variant="warning">{t('admin.security.tokens.expired')}</Badge>
+									{:else}
+										<Badge variant="success">{t('admin.security.tokens.active')}</Badge>
+									{/if}
+									<a
+										href={`/users/${tk.username}`}
+										class="text-sm font-medium text-primary hover:underline"
+									>
+										{tk.display_name ?? tk.username}
+									</a>
+									{#if tk.label}
+										<span class="text-xs text-text-muted">{tk.label}</span>
+									{/if}
+								</div>
+								<p class="mt-1 font-mono text-[10px] text-text-muted" title={t('admin.security.tokens.prefixHint')}>
+									{t('admin.security.tokens.prefix')}: {tk.token_prefix}
+								</p>
+							</div>
+
+							{#if !tk.revoked_at}
+								<Button variant="ghost" size="sm" onclick={() => (tokenToRevoke = tk)}>
+									{t('admin.security.tokens.revokeBtn')}
+								</Button>
+							{/if}
+						</div>
+
+						<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-text-muted">
+							<span>
+								{t('admin.security.tokens.issued')}
+								<span class="font-mono">{fmtDay(tk.issued_at)}</span>
+							</span>
+							<span>
+								{t('admin.security.tokens.expires')}
+								<span class="font-mono">{fmtDay(tk.expires_at)}</span>
+							</span>
+							<span>
+								{t('admin.security.tokens.lastUsed')}
+								<span class="font-mono">{fmtDate(tk.last_used_at)}</span>
+							</span>
+							<span><span class="font-mono">{tk.requests_seen}</span> {t('admin.security.tokens.requests')}</span>
+							<span>
+								<span class="font-mono">{tk.findings}</span>
+								{t('admin.security.tokens.findings')}
+								(<span class="font-mono">{tk.findings_confirmed}</span>
+								{t('admin.security.tokens.findingsConfirmed')})
+							</span>
+						</div>
+
+						{#if tk.revoked_reason}
+							<p class="mt-2 text-xs text-warning">{tk.revoked_reason}</p>
+						{/if}
+					</article>
+				{/each}
+			</div>
+		{/if}
 	{:else}
 		<p class="mb-4 max-w-3xl text-xs text-text-muted">{t('admin.security.record.hint')}</p>
 
@@ -1329,3 +1576,14 @@
 		</Button>
 	{/snippet}
 </Modal>
+
+<ConfirmDangerousDialog
+	open={tokenToRevoke !== null}
+	title={t('admin.security.tokens.revokeTitle')}
+	description={t('admin.security.tokens.revokeHint')}
+	actionLabel={t('admin.security.tokens.revokeBtn')}
+	minReasonLength={10}
+	loading={revokingToken}
+	onconfirm={revokeToken}
+	onclose={() => (tokenToRevoke = null)}
+/>

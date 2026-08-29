@@ -2,7 +2,7 @@
 
 **Scope :** documentation exhaustive de tout ce qu'un compte `role='admin'` peut faire côté backend (`skilluv-backend`), exposé via l'app dédiée `skilluv-admin` sur `admin.skilluv.com` (dev : `localhost:5174`).
 
-**Version :** 2026-08-28.
+**Version :** 2026-08-29.
 **Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21.
 
 **Changelog depuis 2026-07-08** :
@@ -1287,18 +1287,79 @@ tournament whatever its subject:
 | POST | `/api/admin/tournaments/{id}/prize/fund` | `{funder_enterprise_id, amount, currency, provider_reference}`. Amount as a **string**: a float round-trip is how a prize becomes 1499.9999. |
 | POST | `/api/admin/tournaments/{id}/prize/refund` | `{reason}`, 10 characters minimum. |
 
-### 21.2 What is still missing backend-side
+### 21.2 What SKI-338 added, and what it settled
 
-Filed as Linear issues rather than left as a comment in a Svelte file:
+The three gaps this section used to list are closed. The backend shipped the
+batch (migrations 0596–0598), and all six surfaces are consumed here.
 
-- **No aggregated overview** for either domain. `/security` composes its
-  counters from `GET /api/security/hall-of-fame`, which is public and
-  five-minute-cached; `/design` shows none at all, because nothing computes
-  them.
-- **No `design_curator` / `design_moderator` capabilities.** SKI-205 specifies
-  them; the grantable list (migration 0229) does not carry them, so the brief
-  queue is gated by `community_curator` and the plagiarism queue by
-  `plagiarism_reviewer`.
-- **No listing route for research tokens.** `POST /api/admin/security/research-tokens/{id}/revoke`
-  exists and nothing enumerates the tokens, so the revoke is reachable only
-  with an id from elsewhere.
+| Method | Path | Consumed by |
+|---|---|---|
+| GET | `/api/admin/security/overview` | the tiles at the top of `/security`, queue tab |
+| POST | `/api/admin/security/findings/{id}/comments` | the internal-notes section on the finding detail |
+| GET | `/api/admin/security/research-tokens` | the **Research tokens** tab on `/security`, which finally makes the revoke reachable |
+| GET | `/api/admin/missions` | now the standard `{data, pagination, meta}` envelope — the pager shows a real count |
+| POST | `/api/admin/missions/{slug}/status` | take-down on `/missions/{slug}` |
+
+Three details of the overview are worth restating, because the screen depends
+on each of them:
+
+- **`withdrawn` and `not_applicable` are not counted.** Closed business in a
+  backlog makes it look like work that is not there.
+- **`oldest_untriaged_hours` is `null`, not `0`, when nothing waits.** Zero
+  hours reads as "something just arrived", which is the opposite. The tile
+  prints a phrase rather than a number in that case.
+- **`triage_sla_days` travels with the count it is measured against**, so the
+  page names its own threshold instead of hard-coding one that would drift
+  from the safe harbour.
+
+The tiles load with the queue rather than on their own timer: they are the
+same screen, and a summary lagging a refresh behind the rows beneath it is
+how a count ends up contradicting the list it describes. When the aggregate
+fails, the tiles do not render — showing stale numbers beside rows that did
+load is worse than showing none.
+
+### 21.3 On `design_curator` — the backend declined, and it was right
+
+SKI-205 asked for `design_curator` and `design_moderator`. Neither was
+created, and the argument holds:
+
+- The CHECK this document used to call the authority **no longer exists**.
+  Migration 0404 replaced it with the `capability_catalog` table, for the
+  reason it states — five migrations restating one list meant the sixth would
+  be the next domain.
+- **`domain_curator:design` already carries the exact scope** SKI-205
+  describes for `design_curator`: a domain's challenges, contests and
+  featurings, not its users and not its money. `/admin/design/briefs` and its
+  two actions now accept it. Two names for one role is how a permissions
+  model stops being readable.
+- `design_moderator` stays uncreated on the argument in D5: the plagiarism
+  queue is cross-domain by construction.
+
+### 21.4 The one thing this app still guesses
+
+The capability list in `src/lib/types/index.ts` is a copy of
+`capability_catalog`, and **part of that table is generated** —
+`security_reviewer:{family}` and its siblings are derived from
+`orientations.reviewer_group` by a trigger (migration 0542 says so), so they
+appear in no migration and change whenever an orientation moves family.
+
+Nothing serves the catalogue. Until **SKI-351** lands, what is enumerable is
+enumerated by hand, which unblocks the operators — without it nobody could
+grant `domain_curator:design`, `mission_arbiter` or `security_triager`, and
+the screens those gate were unreachable by anybody but a global admin. It is
+a stopgap and the file says so.
+
+### 21.5 What is genuinely absent, and deliberately
+
+Verified against the tree on 2026-08-29, not inferred:
+
+| Ticket | Artefact | State |
+|---|---|---|
+| SKI-139 | `ctf_instances` — per-user container spawn | absent, Phase 2 |
+| SKI-141 | CTF scoreboard over WebSocket | absent |
+| SKI-147 | JupyterHub analysis sandbox | absent, Phase 2 |
+| SKI-149 | `/competitions` on the public front end | absent |
+| SKI-172 | VS Code extension | only `docs/security/IDE-EXTENSION.md` exists |
+| SKI-132 | `docs/security-writeups/` | absent — content, not code |
+
+Nothing on this admin app waits on any of them.

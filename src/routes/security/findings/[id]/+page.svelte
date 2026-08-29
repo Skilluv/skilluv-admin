@@ -328,6 +328,31 @@
 		}
 	}
 
+	// ── Internal notes ─────────────────────────────
+
+	let noteDraft = $state('');
+	let notingBusy = $state(false);
+
+	const noteTooShort = $derived(noteDraft.trim().length < 3);
+
+	async function addNote() {
+		notingBusy = true;
+		try {
+			await securityApi.addComment(id, noteDraft.trim());
+			toast.success(t('admin.security.comments.added'));
+			noteDraft = '';
+			// Re-read rather than push the note into the list locally: the
+			// author name and the timestamp are the server's, and a note that
+			// renders with a guessed author is worse than one that takes a
+			// second to appear.
+			await reload();
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			notingBusy = false;
+		}
+	}
+
 	// ── Labels ───────────────────────────────────────────────────
 
 	function statusLabel(s: string): string {
@@ -570,6 +595,63 @@
 							{/each}
 						</ul>
 					{/if}
+				</section>
+
+				<!-- ── Internal notes ──────────────────── -->
+				<section class="rounded-2xl border border-border bg-surface-elevated p-5">
+					<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
+						{t('admin.security.comments.title')}
+					</h2>
+					<p class="mb-3 text-xs text-text-muted">{t('admin.security.comments.hint')}</p>
+
+					{#if data.comments.length === 0}
+						<p class="text-sm text-text-muted">{t('admin.security.comments.empty')}</p>
+					{:else}
+						<ol class="space-y-2">
+							{#each data.comments as c (c.id)}
+								<li class="rounded-xl bg-surface-overlay px-3 py-2">
+									<div class="mb-1 flex flex-wrap items-center gap-2">
+										<span class="text-xs font-medium text-text-primary">
+											{c.author_display_name ?? c.author}
+										</span>
+										<span class="font-mono text-[10px] text-text-muted">
+											{fmtDate(c.at)}
+										</span>
+									</div>
+									<p class="whitespace-pre-wrap text-sm text-text-primary">{c.body_md}</p>
+								</li>
+							{/each}
+						</ol>
+					{/if}
+
+					<div class="mt-4 flex flex-col gap-2">
+						<label for="internal-note" class="sr-only">
+							{t('admin.security.comments.add')}
+						</label>
+						<textarea
+							id="internal-note"
+							bind:value={noteDraft}
+							rows="3"
+							placeholder={t('admin.security.comments.placeholder')}
+							class="w-full rounded-xl border border-border bg-surface-elevated px-4 py-2.5 text-sm text-text-primary focus:border-primary focus:ring-1 focus:ring-primary"
+						></textarea>
+						<div class="flex flex-wrap items-center justify-between gap-2">
+							<p class="text-xs {noteTooShort && noteDraft.length > 0 ? 'text-warning' : 'text-text-muted'}">
+								{#if noteTooShort && noteDraft.length > 0}
+									{t('admin.security.comments.tooShort')}
+								{/if}
+							</p>
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={addNote}
+								loading={notingBusy}
+								disabled={noteTooShort}
+							>
+								{t('admin.security.comments.add')}
+							</Button>
+						</div>
+					</div>
 				</section>
 
 				<!-- ── Audit trail ─────────────────────────────── -->

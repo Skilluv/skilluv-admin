@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { missionsApi, ARBITRATION_REASON_MIN } from '$api/missions';
+	import { missionsApi, ARBITRATION_REASON_MIN, TAKEDOWN_REASON_MIN } from '$api/missions';
 	import { errorMessage } from '$api/errors';
 	import { toast } from '$stores/toast.svelte';
 	import { i18n, intlLocale } from '$lib/i18n';
@@ -10,7 +10,8 @@
 	import Modal from '$components/ui/Modal.svelte';
 	import Select from '$components/ui/Select.svelte';
 	import Skeleton from '$components/ui/Skeleton.svelte';
-	import { Briefcase, ChevronRight, ExternalLink, Info, Scale } from '@lucide/svelte';
+	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
+	import { Briefcase, ChevronRight, ExternalLink, Info, Scale, Ban } from '@lucide/svelte';
 
 	// One mission, and the one decision somebody outside it can take
 	// (SKI-162, SKI-249).
@@ -79,6 +80,41 @@
 			toast.error(errorMessage(e));
 		} finally {
 			arbitrating = false;
+		}
+	}
+
+	// ── Take-down ──────────────────────────────────
+
+	let takeDownOpen = $state(false);
+	let takingDown = $state(false);
+
+	/**
+	 * A delivered mission is arbitrated, not taken down.
+	 *
+	 * The backend answers 409 and says so, but the button is hidden there
+	 * rather than left to fail: the two acts look similar and lead to
+	 * opposite places, and finding that out after writing the reason is the
+	 * wrong moment to learn it.
+	 */
+	const takeDownable = $derived(
+		data !== null &&
+			!data.arbitration &&
+			data.mission.status !== 'delivered' &&
+			data.mission.status !== 'closed' &&
+			data.mission.status !== 'cancelled'
+	);
+
+	async function takeDown(reason: string) {
+		takingDown = true;
+		try {
+			const res = await missionsApi.takeDown(slug, reason);
+			data = res.data;
+			toast.success(t('admin.missions.takeDown.done'));
+			takeDownOpen = false;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			takingDown = false;
 		}
 	}
 
@@ -170,13 +206,30 @@
 				</p>
 			</div>
 
-			{#if arbitrable}
-				<Button variant="danger" size="md" onclick={() => (arbitrateOpen = true)}>
-					<Scale size={16} strokeWidth={2} />
-					{t('admin.missions.arbitrate.open')}
-				</Button>
-			{/if}
+			<div class="flex flex-wrap gap-2">
+				{#if arbitrable}
+					<Button variant="danger" size="md" onclick={() => (arbitrateOpen = true)}>
+						<Scale size={16} strokeWidth={2} />
+						{t('admin.missions.arbitrate.open')}
+					</Button>
+				{/if}
+				{#if takeDownable}
+					<Button variant="secondary" size="md" onclick={() => (takeDownOpen = true)}>
+						<Ban size={16} strokeWidth={2} />
+						{t('admin.missions.takeDown.open')}
+					</Button>
+				{/if}
+			</div>
 		</header>
+
+		{#if data.mission.status === 'delivered' && !data.arbitration}
+			<p
+				class="mb-6 flex items-start gap-2 rounded-xl border border-border bg-surface-elevated px-4 py-3 text-xs text-text-muted"
+			>
+				<Info size={12} strokeWidth={2} class="mt-0.5 shrink-0" />
+				<span>{t('admin.missions.takeDown.notOnDelivered')}</span>
+			</p>
+		{/if}
 
 		{#if !data.arbitration && !arbitrable}
 			<p
@@ -413,3 +466,15 @@
 		</Button>
 	{/snippet}
 </Modal>
+
+<ConfirmDangerousDialog
+	open={takeDownOpen}
+	title={t('admin.missions.takeDown.title')}
+	description={t('admin.missions.takeDown.hint')}
+	actionLabel={t('admin.missions.takeDown.open')}
+	reasonHint={t('admin.missions.takeDown.reasonHint')}
+	minReasonLength={TAKEDOWN_REASON_MIN}
+	loading={takingDown}
+	onconfirm={takeDown}
+	onclose={() => (takeDownOpen = false)}
+/>

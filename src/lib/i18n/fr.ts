@@ -1516,13 +1516,19 @@ export const fr: Translations = {
 				kyc_reviewer: 'Reviewer KYC',
 				community_curator: 'Curateur Communauté',
 				verified_apprentice: 'Apprenti vérifié',
-				apprentice_verifier: 'Vérificateur d\'apprentis'
+				apprentice_verifier: 'Vérificateur d\'apprentis',
+				mission_arbiter: 'Arbitre de mission',
+				security_triager: 'Triage sécurité',
+				sre: 'SRE',
+				featured_ops_engineer: 'Ops mis en avant'
 			},
 			families: {
 				challenge_validator: 'Validateur',
 				code_reviewer: 'Reviewer code',
 				ai_reviewer: 'Reviewer IA',
-				design_reviewer: 'Reviewer design'
+				design_reviewer: 'Reviewer design',
+				security_reviewer: 'Reviewer sécurité',
+				domain_curator: 'Curator de domaine'
 			},
 			familyDescriptions: {
 				challenge_validator:
@@ -1563,6 +1569,53 @@ export const fr: Translations = {
 			tabProgrammes: 'Programmes',
 			tabCatalogue: 'Catalogue',
 			tabRecord: 'Registre public',
+			tabTokens: 'Research tokens',
+			overview: {
+				title: 'Sante de la file',
+				hint: 'Lu en une seule requete, donc tous les chiffres decrivent le meme instant. Les dossiers clos — retires et hors scope — ne sont pas comptes : un arriere qui les inclut ressemble a du travail qui n\'existe pas.',
+				slaBreach: 'Hors delai de triage',
+				slaHint: 'Le chiffre sur lequel le safe harbour est juge. Les findings dont le triage a ete saute par rang sont exclus : ils ont ete repondus a la seconde ou ils sont arrives.',
+				oldestUntriaged: 'Plus ancien non lu',
+				noneWaiting: 'rien en attente',
+				openRounds: 'Questions ouvertes',
+				embargoes7d: 'Embargos a 7 jours',
+				embargoesOverdue: 'Embargos depasses',
+				suspectedDuplicates: 'Doublons suspectes',
+				byStatus: 'Par statut',
+				bySeverity: 'Par severite',
+				slaDaysLabel: 'SLA : {n} jours'
+			},
+			comments: {
+				title: 'Notes internes',
+				hint: 'Entre les gens qui traitent ce finding, et nulle part ailleurs. L\'auteur ne les voit jamais et aucune notification ne les transporte. En ajout seul : une note qui a decide comment un finding a ete traite fait partie de la facon dont il a ete traite.',
+				empty: 'Aucune note pour l\'instant.',
+				placeholder: 'Ce que la prochaine personne sur ce finding doit savoir',
+				add: 'Ajouter une note',
+				added: 'Note ajoutee',
+				tooShort: 'Trois caracteres minimum : ecris quelque chose sur quoi la personne suivante peut agir.'
+			},
+			tokens: {
+				hint: 'Les research tokens identifient le trafic de test contre la plateforme et lui accordent d\'autres rate limits. C\'est la moitie qui manquait a la revocation : le moment ou on veut en revoquer un, c\'est en regardant du trafic, pas en connaissant un id.',
+				empty: 'Aucun token ne correspond.',
+				activeOnly: 'Utilisables seulement',
+				search: 'Porteur ou libelle',
+				holder: 'Porteur',
+				prefix: 'Prefixe',
+				prefixHint: 'Le token lui-meme n\'est jamais renvoye. Ceci est ce qui matche une ligne de log.',
+				issued: 'Emis',
+				expires: 'Expire',
+				expired: 'Expire',
+				revoked: 'Revoque',
+				active: 'Utilisable',
+				lastUsed: 'Derniere utilisation',
+				requests: 'requetes vues',
+				findings: 'findings deposes',
+				findingsConfirmed: 'confirmes',
+				revokeBtn: 'Revoquer',
+				revokeTitle: 'Revoquer ce token',
+				revokeHint: 'Le porteur perd les rate limits qu\'il accordait. Son compte et ses findings ne bougent pas.',
+				revokedToast: 'Token revoque'
+			},
 			filters: {
 				status: 'Statut',
 				severity: 'Sévérité',
@@ -1857,6 +1910,7 @@ export const fr: Translations = {
 			},
 			empty: 'Aucune mission ne correspond à ces filtres.',
 			unassigned: 'Non assignée',
+			resultCount: '{n} missions',
 			stuck: 'Bloquée',
 			awaiting: 'En attente de décision',
 			arbitrated: 'Arbitrée',
@@ -1888,6 +1942,14 @@ export const fr: Translations = {
 				noArbitration: 'Personne n\'a décidé cette mission depuis l\'extérieur.',
 				arbiter: 'Arbitre',
 				outcome: 'Issue'
+			},
+			takeDown: {
+				open: 'Retirer',
+				title: 'Retirer cette mission du tableau',
+				hint: 'Skilluv ne relit pas une mission avant sa publication — le KYC decide qui peut poster — donc c\'est le geste d\'apres. Annuler est le seul statut qu\'un administrateur pose sur la mission d\'autrui : la faire avancer appartient aux deux parties.',
+				reasonHint: 'L\'entreprise et la personne qui travaillait dessus lisent ceci, et c\'est le seul recit qu\'ils auront. Vingt caracteres minimum.',
+				done: 'Mission retiree',
+				notOnDelivered: 'Une mission livree s\'arbitre, elle ne se retire pas : annuler reprendrait l\'escrow a quelqu\'un qui a rendu le travail.'
 			},
 			arbitrate: {
 				open: 'Arbitrer',

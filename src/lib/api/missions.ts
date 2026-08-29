@@ -29,6 +29,7 @@
 import type {
 	AdminMissionDetail,
 	AdminMissionRow,
+	ApiPaginatedResponse,
 	ApiResponse,
 	MissionStatus,
 	MissionType,
@@ -71,9 +72,14 @@ export const missionsApi = {
 	 * Ordered by how long a hand-in has gone unanswered, oldest first, then
 	 * by creation date — so the missions that need somebody are at the top
 	 * whether or not the stuck filter is on.
+	 *
+	 * Paginated in the shape every other admin listing answers, `total`
+	 * included: without it a pager can only ever offer one more page when the
+	 * current one comes back full, which is a guess about whether there is
+	 * anything on it.
 	 */
 	list(params?: AdminMissionQuery) {
-		return api.get<ApiResponse<AdminMissionRow[]>>(
+		return api.get<ApiPaginatedResponse<AdminMissionRow>>(
 			'/admin/missions',
 			params as Record<string, string | number | boolean>
 		);
@@ -87,6 +93,32 @@ export const missionsApi = {
 	detail(slug: string) {
 		return api.get<ApiResponse<AdminMissionDetail>>(
 			`/admin/missions/${encodeURIComponent(slug)}`
+		);
+	},
+
+	/**
+	 * Take a mission off the board.
+	 *
+	 * The counterpart of there being no review before publication: Skilluv
+	 * does not read a mission before it goes live — the KYC gate upstream
+	 * decides who may post at all — so it needs the gesture after. Until
+	 * this endpoint existed no administrator could touch a mission, including
+	 * one breaking the terms.
+	 *
+	 * `cancelled` is the only status an administrator sets on somebody else's
+	 * mission; moving it forward belongs to the two parties. Twenty
+	 * characters of reason minimum, read by the enterprise and by whoever was
+	 * working on it, and it is the only account either of them gets.
+	 *
+	 * Refused with 409 on a `delivered` mission, pointing at
+	 * {@link missionsApi.arbitrate}: cancelling there would take the escrow
+	 * back from somebody who handed in the work, on one person's say-so and
+	 * with nothing recording that the delivery was weighed.
+	 */
+	takeDown(slug: string, reason: string) {
+		return api.post<ApiResponse<AdminMissionDetail>>(
+			`/admin/missions/${encodeURIComponent(slug)}/status`,
+			{ status: 'cancelled', reason }
 		);
 	},
 
@@ -116,3 +148,8 @@ export const missionsApi = {
  *  the form can refuse before the round trip, and kept as one constant so the
  *  two cannot drift apart silently. */
 export const ARBITRATION_REASON_MIN = 80;
+
+/** The floor on a take-down reason. Lower than an arbitration because it
+ *  settles nothing between the parties — but not absent, because two
+ *  people read it and `spam` is a verdict rather than a reason. */
+export const TAKEDOWN_REASON_MIN = 20;

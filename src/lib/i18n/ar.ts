@@ -1522,13 +1522,19 @@ export const ar: Translations = {
 				kyc_reviewer: 'مراجع KYC',
 				community_curator: 'منسق مجتمع',
 				verified_apprentice: 'متدرب موثّق',
-				apprentice_verifier: 'مدقّق المتدربين'
+				apprentice_verifier: 'مدقّق المتدربين',
+				mission_arbiter: 'محكّم المهام',
+				security_triager: 'مُصنِّف أمني',
+				sre: 'SRE',
+				featured_ops_engineer: 'مهندس تشغيل مُسلَّط'
 			},
 			families: {
 				challenge_validator: 'مدقّق',
 				code_reviewer: 'مراجع كود',
 				ai_reviewer: 'مراجع ذكاء اصطناعي',
-				design_reviewer: 'مراجع تصميم'
+				design_reviewer: 'مراجع تصميم',
+				security_reviewer: 'مراجع أمني',
+				domain_curator: 'منسّق مجال'
 			},
 			familyDescriptions: {
 				challenge_validator: 'يمكنه استلام وحسم تدقيق الشرائح في مجال {scope}.',
@@ -1568,6 +1574,53 @@ export const ar: Translations = {
 			tabProgrammes: 'البرامج',
 			tabCatalogue: 'الفهرس',
 			tabRecord: 'السجل العام',
+			tabTokens: 'رموز البحث',
+			overview: {
+				title: 'حالة الطابور',
+				hint: 'يُقرأ في استعلام واحد، فكل رقم يصف اللحظة نفسها. الملفات المغلقة — المسحوبة وخارج النطاق — لا تُحتسب: تراكم يشملها يبدو كعمل غير موجود.',
+				slaBreach: 'تجاوز مهلة الفرز',
+				slaHint: 'الرقم الذي يُحكم به على الحماية القانونية. تُستثنى البلاغات التي تُخطّي فرزها بحسب الرتبة — فقد أُجيبت لحظة وصولها.',
+				oldestUntriaged: 'أقدم غير مقروء',
+				noneWaiting: 'لا شيء ينتظر',
+				openRounds: 'أسئلة مفتوحة',
+				embargoes7d: 'حظر ينتهي خلال 7 أيام',
+				embargoesOverdue: 'حظر متجاوز',
+				suspectedDuplicates: 'تكرارات مشتبهة',
+				byStatus: 'حسب الحالة',
+				bySeverity: 'حسب الخطورة',
+				slaDaysLabel: 'المهلة: {n} يومًا'
+			},
+			comments: {
+				title: 'ملاحظات داخلية',
+				hint: 'بين من يعالجون هذا البلاغ، ولا مكان آخر. المُبلِّغ لا يراها أبدًا ولا تحملها أي إشعارات. إضافة فقط: ملاحظة قرّرت كيف عولج البلاغ جزء من كيفية معالجته.',
+				empty: 'لا ملاحظة بعد.',
+				placeholder: 'ما يحتاج الشخص التالي على هذا البلاغ معرفته',
+				add: 'أضف ملاحظة',
+				added: 'أُضيفت الملاحظة',
+				tooShort: 'ثلاثة أحرف كحد أدنى — اكتب ما يمكن للشخص التالي التصرف بناءً عليه.'
+			},
+			tokens: {
+				hint: 'رموز البحث تحدّد حركة الاختبار ضد المنصة وتمنحها حدودًا مختلفة. هذا هو النصف الذي كان ينقص الإبطال: لحظة رغبتك في الإبطال هي حين تنظر إلى الحركة، لا حين تعرف معرّفًا.',
+				empty: 'لا يوجد رمز مطابق.',
+				activeOnly: 'القابلة للاستخدام فقط',
+				search: 'الحامل أو التسمية',
+				holder: 'الحامل',
+				prefix: 'البادئة',
+				prefixHint: 'الرمز نفسه لا يُعاد أبدًا. هذه هي ما يطابق سطر السجل.',
+				issued: 'صدر',
+				expires: 'ينتهي',
+				expired: 'منتهٍ',
+				revoked: 'مُبطَل',
+				active: 'قابل للاستخدام',
+				lastUsed: 'آخر استخدام',
+				requests: 'طلبات مُلاحَظة',
+				findings: 'بلاغات مُقدَّمة',
+				findingsConfirmed: 'مؤكدة',
+				revokeBtn: 'إبطال',
+				revokeTitle: 'إبطال هذا الرمز',
+				revokeHint: 'يفقد الحامل الحدود التي منحها. حسابه وبلاغاته لا تتأثر.',
+				revokedToast: 'أُبطل الرمز'
+			},
 			filters: {
 				status: 'الحالة',
 				severity: 'الخطورة',
@@ -1862,6 +1915,7 @@ export const ar: Translations = {
 			},
 			empty: 'لا توجد مهمة تطابق هذه المرشّحات.',
 			unassigned: 'غير مُسندة',
+			resultCount: '{n} مهمة',
 			stuck: 'عالقة',
 			awaiting: 'بانتظار قرار',
 			arbitrated: 'تم التحكيم',
@@ -1893,6 +1947,14 @@ export const ar: Translations = {
 				noArbitration: 'لم يقرّر أحد هذه المهمة من الخارج.',
 				arbiter: 'المُحكِّم',
 				outcome: 'النتيجة'
+			},
+			takeDown: {
+				open: 'سحب',
+				title: 'سحب هذه المهمة من اللوحة',
+				hint: 'لا تقرأ سكيلوف المهمة قبل نشرها — بوابة اعرف عميلك تقرّر من يحق له النشر — لذا هذه هي الخطوة التالية. الإلغاء هو الحالة الوحيدة التي يضعها المسؤول على مهمة غيره؛ أما دفعها قدمًا فللطرفين.',
+				reasonHint: 'تقرأ هذا الشركة ومن كان يعمل عليها، وهو الرواية الوحيدة التي يحصل عليها أي منهما. عشرون حرفًا كحد أدنى.',
+				done: 'سُحبت المهمة',
+				notOnDelivered: 'المهمة المُسلَّمة تُحكَّم ولا تُسحب — الإلغاء يستردّ الضمان ممن سلّم العمل.'
 			},
 			arbitrate: {
 				open: 'التحكيم',

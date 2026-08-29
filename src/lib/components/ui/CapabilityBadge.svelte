@@ -24,6 +24,14 @@
 		design_reviewer: {
 			variant: 'warning',
 			labelKey: 'admin.capabilities.families.design_reviewer'
+		},
+		security_reviewer: {
+			variant: 'error',
+			labelKey: 'admin.capabilities.families.security_reviewer'
+		},
+		domain_curator: {
+			variant: 'primary',
+			labelKey: 'admin.capabilities.families.domain_curator'
 		}
 	};
 
@@ -45,7 +53,11 @@
 		kyc_reviewer: 'warning',
 		community_curator: 'primary',
 		verified_apprentice: 'success',
-		apprentice_verifier: 'primary'
+		apprentice_verifier: 'primary',
+		mission_arbiter: 'error',
+		security_triager: 'error',
+		sre: 'accent',
+		featured_ops_engineer: 'accent'
 	};
 
 	/** Split once: everything downstream needs both halves or neither. */

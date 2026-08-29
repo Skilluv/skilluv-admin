@@ -144,3 +144,65 @@ describe('the mission vocabulary', () => {
 		expect(MISSION_STATUSES).toContain('delivered');
 	});
 });
+
+describe('missionsApi — the board is paginated', () => {
+	it('reads the standard paginated envelope', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: [],
+				pagination: { page: 2, per_page: 50, total: 137, total_pages: 3 },
+				meta: {}
+			})
+		);
+		const { missionsApi } = await import('./missions');
+		const res = await missionsApi.list({ page: 2, per_page: 50 });
+		// Before SKI-338 this was `ApiResponse<Row[]>` and the pager could only
+		// guess whether one more page existed.
+		expect(res.pagination.total).toBe(137);
+		expect(res.pagination.total_pages).toBe(3);
+	});
+});
+
+describe('missionsApi — taking a mission off the board', () => {
+	it('POSTs cancelled with its reason to the status route', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					mission: { slug: 'm1', status: 'cancelled' },
+					ip_terms: 'x',
+					nda_required: false,
+					rounds: [],
+					invoices: [],
+					arbitration: null
+				},
+				meta: {}
+			})
+		);
+		const { missionsApi } = await import('./missions');
+		const reason = 'The scope names a client system the enterprise does not own.';
+		const res = await missionsApi.takeDown('m1', reason);
+		expect(lastUrl()).toBe('/api/admin/missions/m1/status');
+		expect(JSON.parse(lastCall()[1].body as string)).toEqual({
+			status: 'cancelled',
+			reason
+		});
+		// Answers with the mission as it now stands, so the screen never has to
+		// re-fetch to show what it just did.
+		expect(res.data.mission.status).toBe('cancelled');
+	});
+
+	it('encodes a slug that needs it', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: {}, meta: {} }));
+		const { missionsApi } = await import('./missions');
+		await missionsApi.takeDown('a/b', 'r'.repeat(30));
+		expect(lastUrl()).toBe('/api/admin/missions/a%2Fb/status');
+	});
+
+	it('states the reason floor, lower than an arbitration but not absent', async () => {
+		const { TAKEDOWN_REASON_MIN, ARBITRATION_REASON_MIN } = await import('./missions');
+		expect(TAKEDOWN_REASON_MIN).toBe(20);
+		// A take-down settles nothing between the parties, so it asks for less
+		// than an arbitration — but two people still read it.
+		expect(TAKEDOWN_REASON_MIN).toBeLessThan(ARBITRATION_REASON_MIN);
+	});
+});

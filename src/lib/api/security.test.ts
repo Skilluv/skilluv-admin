@@ -328,3 +328,109 @@ describe('the vocabularies the forms build on', () => {
 		expect(SECURITY_TARGET_KINDS).toEqual(['platform', 'mission', 'project']);
 	});
 });
+
+describe('securityApi — the surfaces SKI-338 added', () => {
+	it('GETs the queue overview', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					by_status: { submitted: 4 },
+					by_severity: { high: 3 },
+					oldest_untriaged_hours: 336,
+					breaching_triage_sla: 1,
+					triage_sla_days: 7,
+					open_rounds: 0,
+					embargoes_expiring_7d: 0,
+					embargoes_overdue: 0,
+					suspected_duplicates: 0
+				},
+				meta: {}
+			})
+		);
+		const { securityApi } = await import('./security');
+		const res = await securityApi.overview();
+		expect(lastUrl()).toBe('/api/admin/security/overview');
+		// The threshold travels with the count so the screen can name what it
+		// compares against instead of hard-coding it.
+		expect(res.data.triage_sla_days).toBe(7);
+	});
+
+	it('reads an empty queue as null hours, not zero', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					by_status: {},
+					by_severity: {},
+					oldest_untriaged_hours: null,
+					breaching_triage_sla: 0,
+					triage_sla_days: 7,
+					open_rounds: 0,
+					embargoes_expiring_7d: 0,
+					embargoes_overdue: 0,
+					suspected_duplicates: 0
+				},
+				meta: {}
+			})
+		);
+		const { securityApi } = await import('./security');
+		const res = await securityApi.overview();
+		// Zero hours would read as "something just arrived", which is the
+		// opposite of nothing waiting.
+		expect(res.data.oldest_untriaged_hours).toBeNull();
+	});
+
+	it('POSTs an internal note to the finding it belongs to', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { id: 'c1' }, meta: {} }));
+		const { securityApi } = await import('./security');
+		await securityApi.addComment('f1', 'could not reproduce on staging');
+		expect(lastUrl()).toBe('/api/admin/security/findings/f1/comments');
+		expect(lastBody()).toEqual({ body_md: 'could not reproduce on staging' });
+	});
+
+	it('GETs the research tokens with their filters', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { tokens: [], note: 'x' }, meta: {} }));
+		const { securityApi } = await import('./security');
+		await securityApi.researchTokens({ active_only: true, q: 'ada', limit: 20 });
+		const url = new URL(lastUrl(), 'http://x');
+		expect(url.pathname).toBe('/api/admin/security/research-tokens');
+		expect(url.searchParams.get('active_only')).toBe('true');
+		expect(url.searchParams.get('q')).toBe('ada');
+		expect(url.searchParams.get('limit')).toBe('20');
+	});
+
+	it('GETs the tokens unfiltered when nothing is asked for', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { tokens: [], note: 'x' }, meta: {} }));
+		const { securityApi } = await import('./security');
+		await securityApi.researchTokens();
+		expect(lastUrl()).toBe('/api/admin/security/research-tokens');
+	});
+
+	it('carries the internal notes on the finding detail', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: {
+					finding: { id: 'f1' },
+					events: [],
+					rounds: [],
+					similar: [],
+					comments: [
+						{
+							id: 'c1',
+							body_md: 'reproduced, opening a round',
+							at: '2026-08-29T10:00:00Z',
+							author: 'ada',
+							author_display_name: 'Ada'
+						}
+					]
+				},
+				meta: {}
+			})
+		);
+		const { securityApi } = await import('./security');
+		const res = await securityApi.detail('f1');
+		// One reader, and it is this one — which is what makes "the reporter
+		// never sees it" a property rather than a promise.
+		expect(res.data.comments).toHaveLength(1);
+		expect(res.data.comments[0].author).toBe('ada');
+	});
+});

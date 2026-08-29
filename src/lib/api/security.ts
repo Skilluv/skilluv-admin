@@ -38,6 +38,8 @@ import type {
 	SecurityFindingRow,
 	SecurityFindingStatus,
 	SecurityHallOfFame,
+	SecurityOverview,
+	SecurityResearchToken,
 	SecurityRoundKind,
 	SecuritySeverityTier,
 	SecurityTargetKind
@@ -230,6 +232,40 @@ export const securityApi = {
 		);
 	},
 
+	/**
+	 * The state of the queue, on one snapshot.
+	 *
+	 * The only aggregate the disclosure surface has, and the reason it
+	 * exists is `breaching_triage_sla`: the platform promises a triage
+	 * delay in its safe harbour, and nothing else says whether it holds.
+	 *
+	 * Read in one statement backend-side, so every number describes the
+	 * same instant. Two counts a second apart can contradict each other on
+	 * the same finding, and nothing on screen would say so.
+	 */
+	overview() {
+		return api.get<ApiResponse<SecurityOverview>>('/admin/security/overview');
+	},
+
+	/**
+	 * Leave an internal note on a finding.
+	 *
+	 * Three characters minimum on both sides: `ok` clears a not-empty
+	 * check and is exactly what the floor refuses. Append-only — there is
+	 * no edit and no delete, because a note that decided how a finding was
+	 * handled is part of how it was handled.
+	 *
+	 * Never notified to the reporter, never on the public finding route.
+	 * People write frankly because they believe it is internal, so a note
+	 * that leaks is worse than no note at all.
+	 */
+	addComment(id: string, bodyMd: string) {
+		return api.post<ApiResponse<{ id: string }>>(
+			`/admin/security/findings/${id}/comments`,
+			{ body_md: bodyMd }
+		);
+	},
+
 	// ── Deduplication and the clock ──────────────────────────────
 
 	/** Everything a scanner thought resembled something else. Nothing here
@@ -315,7 +351,24 @@ export const securityApi = {
 		);
 	},
 
-	/** Revoke somebody's research token. Administrator only. */
+	/**
+	 * Every research token, so the revoke below is reachable at all.
+	 *
+	 * Administrator only, deliberately narrower than the finding queue: a
+	 * token names a person and how much traffic they run, which is not
+	 * part of judging a vulnerability report.
+	 *
+	 * The token itself never comes back — only its prefix, which is what
+	 * matches a log line, and the id, which is what revokes it.
+	 */
+	researchTokens(params?: { active_only?: boolean; q?: string; limit?: number }) {
+		return api.get<ApiResponse<{ tokens: SecurityResearchToken[]; note: string }>>(
+			'/admin/security/research-tokens',
+			params as Record<string, string | number | boolean>
+		);
+	},
+
+	/** Revoke a research token by id. Administrator only. */
 	revokeResearchToken(id: string) {
 		return api.post<ApiResponse<{ revoked: boolean }>>(
 			`/admin/security/research-tokens/${id}/revoke`

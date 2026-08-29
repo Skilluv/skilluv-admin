@@ -45,6 +45,8 @@
 	const PER_PAGE = 50;
 
 	let rows = $state<AdminMissionRow[]>([]);
+	let totalPages = $state(1);
+	let total = $state(0);
 	let loading = $state(true);
 	let types = $state<MissionType[]>([]);
 
@@ -83,9 +85,13 @@
 			};
 			const res = await missionsApi.list(params);
 			rows = res.data;
+			total = res.pagination.total;
+			totalPages = res.pagination.total_pages;
 		} catch (e) {
 			toast.error(errorMessage(e));
 			rows = [];
+			total = 0;
+			totalPages = 1;
 		} finally {
 			loading = false;
 		}
@@ -119,10 +125,10 @@
 		void load();
 	}
 
-	// The backend returns a page, not a count. Rather than invent a total,
-	// the pager offers one more page while the current one is full — which
-	// is the only thing this data supports saying.
-	const pageCount = $derived(rows.length === PER_PAGE ? pageNo + 1 : pageNo);
+	// A real count, since SKI-338 put the standard paginated envelope on this
+	// listing. Before that the pager offered one more page whenever the
+	// current one came back full, which was a guess about whether anything
+	// was on it.
 
 	function statusLabel(s: string): string {
 		return t(`admin.missions.statuses.${s}`);
@@ -261,6 +267,10 @@
 	{#if loading}
 		<Skeleton class="h-64 w-full" rounded="xl" />
 	{:else}
+		<p class="mb-3 text-xs text-text-muted">
+			{t('admin.missions.resultCount', { n: total })}
+		</p>
+
 		<Table columns={columns} rows={tableRows} emptyLabel={t('admin.missions.empty')}>
 			{#snippet cell(row, col)}
 				{@const m = row as unknown as AdminMissionRow}
@@ -309,8 +319,8 @@
 			{/snippet}
 		</Table>
 
-		{#if pageCount > 1 || pageNo > 1}
-			<Pagination current={pageNo} total={pageCount} onchange={changePage} />
+		{#if totalPages > 1}
+			<Pagination current={pageNo} total={totalPages} onchange={changePage} />
 		{/if}
 	{/if}
 </div>

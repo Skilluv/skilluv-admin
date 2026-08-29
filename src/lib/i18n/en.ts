@@ -1516,13 +1516,19 @@ export const en: Translations = {
 				kyc_reviewer: 'KYC Reviewer',
 				community_curator: 'Community Curator',
 				verified_apprentice: 'Verified Apprentice',
-				apprentice_verifier: 'Apprentice Verifier'
+				apprentice_verifier: 'Apprentice Verifier',
+				mission_arbiter: 'Mission arbiter',
+				security_triager: 'Security triager',
+				sre: 'SRE',
+				featured_ops_engineer: 'Featured ops engineer'
 			},
 			families: {
 				challenge_validator: 'Validator',
 				code_reviewer: 'Code reviewer',
 				ai_reviewer: 'AI reviewer',
-				design_reviewer: 'Design reviewer'
+				design_reviewer: 'Design reviewer',
+				security_reviewer: 'Security reviewer',
+				domain_curator: 'Domain curator'
 			},
 			familyDescriptions: {
 				challenge_validator: 'Can pick up and decide slice validations in the {scope} domain.',
@@ -1562,6 +1568,53 @@ export const en: Translations = {
 			tabProgrammes: 'Programmes',
 			tabCatalogue: 'Catalogue',
 			tabRecord: 'Public record',
+			tabTokens: 'Research tokens',
+			overview: {
+				title: 'Queue health',
+				hint: 'Read in one statement, so every number below describes the same instant. Closed business — withdrawn and out of scope — is not counted: a backlog that includes it looks like work that is not there.',
+				slaBreach: 'Past the triage SLA',
+				slaHint: 'The number the safe harbour is judged on. Findings whose triage was skipped by rank are excluded — they were answered the moment they arrived.',
+				oldestUntriaged: 'Oldest unread',
+				noneWaiting: 'nothing waiting',
+				openRounds: 'Questions open',
+				embargoes7d: 'Embargoes ending in 7 days',
+				embargoesOverdue: 'Embargoes overdue',
+				suspectedDuplicates: 'Suspected duplicates',
+				byStatus: 'By status',
+				bySeverity: 'By severity',
+				slaDaysLabel: 'SLA: {n} days'
+			},
+			comments: {
+				title: 'Internal notes',
+				hint: 'Between the people working this finding, and nowhere else. The reporter never sees these and no notification carries them. Append-only: a note that decided how a finding was handled is part of how it was handled.',
+				empty: 'No note yet.',
+				placeholder: 'What the next person on this finding needs to know',
+				add: 'Add a note',
+				added: 'Note added',
+				tooShort: 'Three characters minimum — write something the next person can act on.'
+			},
+			tokens: {
+				hint: 'Research tokens identify test traffic against the platform and earn it different rate limits. This is the half the revoke needed: the moment you want to revoke one is when you are looking at traffic, not when you happen to know an id.',
+				empty: 'No token matches.',
+				activeOnly: 'Usable only',
+				search: 'Holder or label',
+				holder: 'Holder',
+				prefix: 'Prefix',
+				prefixHint: 'The token itself is never returned. This is what matches a log line.',
+				issued: 'Issued',
+				expires: 'Expires',
+				expired: 'Expired',
+				revoked: 'Revoked',
+				active: 'Usable',
+				lastUsed: 'Last used',
+				requests: 'requests seen',
+				findings: 'findings filed',
+				findingsConfirmed: 'confirmed',
+				revokeBtn: 'Revoke',
+				revokeTitle: 'Revoke this token',
+				revokeHint: 'The holder loses the rate limits it granted. Their account and their findings are untouched.',
+				revokedToast: 'Token revoked'
+			},
 			filters: {
 				status: 'Status',
 				severity: 'Severity',
@@ -1856,6 +1909,7 @@ export const en: Translations = {
 			},
 			empty: 'No mission matches these filters.',
 			unassigned: 'Unassigned',
+			resultCount: '{n} missions',
 			stuck: 'Stuck',
 			awaiting: 'Awaiting a decision',
 			arbitrated: 'Arbitrated',
@@ -1887,6 +1941,14 @@ export const en: Translations = {
 				noArbitration: 'Nobody has decided this mission from outside.',
 				arbiter: 'Arbiter',
 				outcome: 'Outcome'
+			},
+			takeDown: {
+				open: 'Take down',
+				title: 'Take this mission off the board',
+				hint: 'Skilluv does not read a mission before it goes live — the KYC gate decides who may post at all — so this is the gesture after. Cancelling is the only status an administrator sets on somebody else\'s mission; moving it forward belongs to the two parties.',
+				reasonHint: 'The enterprise and whoever was working on it both read this, and it is the only account either of them gets. Twenty characters minimum.',
+				done: 'Mission taken down',
+				notOnDelivered: 'A delivered mission is arbitrated, not taken down — cancelling would take the escrow back from somebody who handed in the work.'
 			},
 			arbitrate: {
 				open: 'Arbitrate',
