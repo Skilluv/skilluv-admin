@@ -3,7 +3,8 @@
 **Scope :** documentation exhaustive de tout ce qu'un compte `role='admin'` peut faire côté backend (`skilluv-backend`), exposé via l'app dédiée `skilluv-admin` sur `admin.skilluv.com` (dev : `localhost:5174`).
 
 **Version :** 2026-08-29.
-**Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21.
+**Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21, plus les lignes commerciales et domaines de la section 22.
+**Couverture de la surface admin :** 224 / 268 verbes servis (83,6 %), mesurée par `node scripts/unconsumed-routes.mjs`. Les 44 restants sont des écritures dont l'`{id}` n'est atteignable par personne — voir §22.4 et SKI-354.
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
@@ -1393,3 +1394,102 @@ Verified against the tree on 2026-08-29, not inferred:
 | SKI-132 | `docs/security-writeups/` | absent — content, not code |
 
 Nothing on this admin app waits on any of them.
+
+---
+
+## 22. The reverse audit, and the screens it produced
+
+Every section above answers "what does this app do with the routes it
+calls". This one answers the question nobody had asked: **what does the
+backend serve that nothing calls.**
+
+### 22.1 The tool
+
+`scripts/unconsumed-routes.mjs` is the mirror of `routes.contract.test.ts`.
+The test asks whether everything this client calls exists; the script asks
+whether everything that exists is called. Both read
+`src/lib/api/backend-routes.json`, which `sync-backend-routes.mjs` generates
+from the backend's own `.route(…)` registrations — and which now records the
+**HTTP verbs** as well as the paths.
+
+The verbs matter more than they look. Without them an audit cannot tell a
+route nobody calls from a route that is read but never written to, and the
+second reads as done on any path-only comparison. Several of the gaps below
+were exactly that.
+
+```
+node scripts/unconsumed-routes.mjs          # admin surface
+node scripts/unconsumed-routes.mjs --all    # everything served
+node scripts/unconsumed-routes.mjs --json   # machine-readable
+```
+
+It answers coverage, not correctness. Plenty of the public surface has no
+business in an admin panel, which is why the default scope is `/admin/**`,
+and the judgement about what *should* be consumed stays with the reader.
+
+**One thing it deliberately does not do is count itself as authoritative.**
+Its first version reported `GET /admin/email-preview` as unconsumed. That
+route had worked from the first day — consumed as an `<iframe src>` built by
+a helper returning a URL string, which no scan of `api.get(…)` can see. A
+false entry on a list somebody reads as work to do costs a real afternoon,
+so the script now counts every `/api/...` string literal as a reference and
+reports those separately.
+
+### 22.2 What the audit found, in one sentence
+
+Of 268 admin verbs served, **151 were consumed** when the audit was written.
+The gap was not evenly spread: it was a set of whole product lines that had
+been built enterprise-side and never given a staff surface.
+
+### 22.3 The screens built from it
+
+| Screen | Routes | What it is for |
+|---|---|---|
+| `/sales` | `sales_pipeline.rs` (7), `revenue.rs` (2) | The pipeline, overdue next steps, renewals, and what the platform earns |
+| `/data` | `data_line.rs` (7) | Consent cohorts first, then reports, licences and white-label deployments |
+| `/game` | `admin_game.rs` (10) | The mod queue, game slices awaiting a signature, jams, attestations, featurings |
+| `/recruitment` | `recruitment.rs` (4) | The campaign queue, assignment, shortlisting, departures |
+| `/ops-practice` | `ops_practice.rs` (5) | Overdue remediation, and the verifications that turn operational work into proof |
+| `/domains` | `admin_domains.rs` (3), `credentials.rs` (3) | A per-domain dashboard, and outside certifications awaiting review |
+| `/contracts` | `enterprise_products.rs` (3), `talent_line.rs` (1) | The register every product line writes into, and what lapses next |
+| `/studios` | `engagements.rs` (4) | Forming a bookable team, and disbanding one |
+| `/operations` (extended) | seven modules (12) | Feature flags, tags, one-off runs, the assistant ledger |
+| `/engagement` (rewired) | `cohorts.rs` (2), `talent_offers.rs` (3) | The same two lists, now read as moderation sees them, with the two actions |
+
+Coverage after these: **224 of 268 admin verbs (83.6%)**.
+
+### 22.4 The 44 that remain, and why
+
+They are not a backlog of unbuilt screens. **They are write routes whose
+`{id}` an admin has no way to obtain**, and the cause is uniform: everything
+a company buys is listed only by `/api/enterprise/*`, which passes through
+`require_enterprise` — a guard that resolves the *caller's* enterprise. Staff
+are nobody's enterprise, so they have the buttons and not the list.
+
+That is SKI-354, which proposes one route (`GET /api/admin/enterprise-
+products`, over a table ten backend modules already write into) plus three
+finance queues, and would unblock about twenty of them.
+
+Two smaller findings are in the same ticket:
+
+- **`/admin/events` carries two unrelated resources.** `GET/POST
+  /admin/events` is the badge-event collection (`admin_ops.rs`); `POST
+  /admin/events/{id}/status` acts on a community event (`events.rs`). Nothing
+  is broken — axum routes them correctly — but the first does not list what
+  the second acts on, and a reader will assume it does.
+- **A studio being formed is in no list.** `GET /studios` returns `active`
+  only, so `/studios` holds the id from the create call and does the whole
+  formation in one sitting. It says so on the page.
+
+### 22.5 What to run after a backend batch
+
+Both directions, in this order:
+
+```
+node scripts/sync-backend-routes.mjs   # refresh the snapshot, read the diff
+npm test                               # the contract test fails on a moved path
+node scripts/unconsumed-routes.mjs     # what arrived that nothing calls yet
+```
+
+Refreshing the snapshot to make a red contract test green is how that test
+stops being worth having. The diff is the point.
