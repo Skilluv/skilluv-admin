@@ -51,7 +51,16 @@ function rustFiles(dir) {
  * both sides before comparison.
  */
 export function normalise(path) {
-	return path.trim().replace(/\/+$/, '').replace(/\{[^}]*\}/g, '{}') || '/';
+	const cleaned = path.trim().replace(/\/+$/, '').replace(/\{[^}]*\}/g, '{}') || '/';
+	// Five routes are registered on routers mounted at the root rather than
+	// under `/api`, so they spell the prefix themselves — `well_known_routes`
+	// also serves `/.well-known/security.txt`, and `metrics_routes` also
+	// serves `/metrics`. Their full URL is the same shape as everybody
+	// else's, so the prefix comes off here and both sides of the audit speak
+	// one language. Without this, `/api/admin/accounting/export` reads as
+	// uncalled while the operations page has been downloading from it all
+	// along.
+	return cleaned === '/api' ? cleaned : cleaned.replace(/^\/api(?=\/)/, '') || '/';
 }
 
 /**
@@ -82,7 +91,113 @@ export function routeBlock(text, from) {
 	return text.slice(from);
 }
 
+/**
+ * The guards that mean "this route is for staff, not for whoever owns the
+ * row".
+ *
+ * The reason this matters: **a staff surface is not identified by its path.**
+ * `/admin/**` is a convention, not a rule, and the domain modules do not
+ * follow it — `/quality/bugs/review-queue`, `/beginner/verifications/queue`
+ * and `/leadership/cohorts/{id}/graduate` are all reviewer surfaces gated by
+ * a capability and served outside `/admin`.
+ *
+ * An audit scoped to the prefix reports those as out of scope, which is a
+ * quieter way of being wrong than reporting them as absent. This session did
+ * exactly that for a full day.
+ */
+const GUARDS = [
+	'require_any_capability',
+	'require_capability',
+	'require_admin',
+	'require_reader',
+	'require_curator',
+	'AdminGate'
+];
+
 const VERBS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
+
+/** Line comments, blanked so a guard named in prose does not count as one. */
+function stripLineComments(text) {
+	return text.replace(/\/\/[^\n]*/g, '');
+}
+
+/** `require_admin` must not match `require_admin_2fa`, which is a different
+ *  thing and gates every admin route regardless. */
+function callsAny(body, names) {
+	return names.some((n) => new RegExp(`\\b${n}\\s*[(:]`).test(body));
+}
+
+/**
+ * Every function in a file, as name -> body.
+ *
+ * Bodies are bounded by matching braces rather than by "up to the next
+ * `pub`". The looser version swallows the following function and marks
+ * innocent handlers as guarded — `/bookmarks` and `/users/me/goals` both came
+ * back as staff surfaces on the first attempt.
+ */
+function functionBodies(text) {
+	const out = new Map();
+	for (const m of text.matchAll(/\basync fn (\w+)\s*\(/g)) {
+		const open = text.indexOf('{', m.index);
+		if (open === -1) continue;
+		let depth = 0;
+		let i = open;
+		for (; i < text.length; i += 1) {
+			if (text[i] === '{') depth += 1;
+			else if (text[i] === '}') {
+				depth -= 1;
+				if (depth === 0) break;
+			}
+		}
+		out.set(m[1], text.slice(open, i + 1));
+	}
+	return out;
+}
+
+/**
+ * Handler names that end up behind a guard, directly or through a wrapper.
+ *
+ * The indirection is not incidental. `quality.rs` guards its review queue
+ * with a module-local `require_any_quality_reviewer`, which builds the
+ * capability list from `REVIEWER_GROUPS` so that adding a sixth family
+ * reaches the guard without anybody editing it. A one-level scan calls that
+ * route unguarded and drops a whole domain's reviewer surface out of the
+ * audit — which is what happened.
+ *
+ * So: seed with the real guards, then repeatedly add any function that calls
+ * something already in the set, until nothing new appears.
+ */
+export function guardedHandlers(raw) {
+	const text = stripLineComments(raw);
+	const bodies = functionBodies(text);
+	const guards = new Set(GUARDS);
+
+	for (;;) {
+		const names = [...guards];
+		let grew = false;
+		for (const [name, body] of bodies) {
+			if (guards.has(name)) continue;
+			if (callsAny(body, names)) {
+				guards.add(name);
+				grew = true;
+			}
+		}
+		if (!grew) break;
+	}
+
+	// `AdminGate` and friends are extractors, so a handler can be guarded by
+	// its own signature rather than by its body.
+	for (const m of text.matchAll(/\basync fn (\w+)\s*\(([^{]*)/g)) {
+		if (callsAny(m[2], GUARDS) || /AdminGate/.test(m[2])) guards.add(m[1]);
+	}
+
+	return new Set([...guards].filter((n) => bodies.has(n)));
+}
+
+/** The handler identifiers a `.route(...)` block names. */
+export function handlersIn(block) {
+	return [...block.matchAll(/\b(?:get|post|put|patch|delete)\s*\(\s*(\w+)/g)].map((m) => m[1]);
+}
 
 /**
  * The verbs a `.route(...)` block registers.
@@ -103,20 +218,31 @@ export function verbsIn(block) {
 const src = join(BACKEND, 'src');
 /** path -> Set of verbs. One path can be registered in several files. */
 const served = new Map();
+/** Paths whose handler is behind one of the staff guards. */
+const guardedPaths = new Set();
+
 for (const file of rustFiles(src)) {
 	const text = readFileSync(file, 'utf8');
+	const guarded = guardedHandlers(text);
 	for (const match of text.matchAll(/\.route\(\s*"([^"]+)"/g)) {
 		const path = normalise(match[1]);
 		const open = text.indexOf('(', match.index);
-		const verbs = verbsIn(routeBlock(text, open));
+		const block = routeBlock(text, open);
 		const seen = served.get(path) ?? new Set();
-		for (const v of verbs) seen.add(v);
+		for (const v of verbsIn(block)) seen.add(v);
 		served.set(path, seen);
+		if (handlersIn(block).some((h) => guarded.has(h))) guardedPaths.add(path);
 	}
 }
 
 const sorted = [...served.keys()].sort();
-const endpoints = sorted.map((path) => ({ path, methods: [...served.get(path)].sort() }));
+const endpoints = sorted.map((path) => ({
+	path,
+	methods: [...served.get(path)].sort(),
+	// True when a capability or admin guard stands in front of it. The path
+	// prefix does not say this, and several whole domains rely on that.
+	guarded: guardedPaths.has(path)
+}));
 writeFileSync(
 	OUT,
 	JSON.stringify(

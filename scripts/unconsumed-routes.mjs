@@ -10,9 +10,30 @@
  *
  * Usage:
  *
- *     node scripts/unconsumed-routes.mjs            # admin surface only
+ *     node scripts/unconsumed-routes.mjs            # the staff surface
+ *     node scripts/unconsumed-routes.mjs --admin    # `/admin/**` only
  *     node scripts/unconsumed-routes.mjs --all      # every served route
  *     node scripts/unconsumed-routes.mjs --json     # machine-readable
+ *
+ * ## What counts as the staff surface
+ *
+ * `/admin/**`, **plus every route behind a capability guard wherever it
+ * lives**. The second half is not a refinement; leaving it out is how this
+ * audit missed five whole domains.
+ *
+ * `/admin` is a convention and the domain modules do not follow it.
+ * `/quality/bugs/review-queue`, `/beginner/verifications/queue` and
+ * `/communication/slices/{id}/translation-reviews` are reviewer surfaces
+ * gated by `require_any_capability` and served outside the prefix. Scoped to
+ * the prefix, this script called them out of scope — which reads as "nothing
+ * to see" rather than as "not looked at", and is the quieter way of being
+ * wrong.
+ *
+ * What is deliberately *not* in scope is a route gated by ownership.
+ * `POST /leadership/cohorts/{id}/graduate` checks that the caller leads the
+ * cohort; `POST /audio/castings/{id}/select` filters on `opened_by`. Those
+ * are the practitioner's own gestures and have no business in an admin
+ * panel. The snapshot's `guarded` flag draws exactly that line.
  *
  * ## What it can and cannot tell you
  *
@@ -20,10 +41,8 @@
  * POST shows up as a partial — that is the case worth catching, because it
  * reads as "done" on any path-only audit while the write half is unreachable.
  *
- * It cannot tell you a route *should* be consumed. Plenty of the public
- * surface has no business in an admin panel, which is why the default scope
- * is `/admin/**`. Judgement stays with the reader; this only removes the
- * excuse of not knowing.
+ * It still cannot tell you a route *should* be consumed. Judgement stays with
+ * the reader; this only removes the excuse of not knowing.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -35,6 +54,7 @@ const SNAPSHOT = JSON.parse(readFileSync(join(API_DIR, 'backend-routes.json'), '
 
 const args = new Set(process.argv.slice(2));
 const SCOPE_ALL = args.has('--all');
+const ADMIN_ONLY = args.has('--admin');
 const AS_JSON = args.has('--json');
 
 /** Replace every `${…}` in a template literal with `{}`. Holes nest. */
@@ -125,12 +145,25 @@ function referenced() {
 
 const CALLED = consumed();
 const REFERENCED = referenced();
-const inScope = (p) => SCOPE_ALL || p.startsWith('/admin/') || p === '/admin';
+/**
+ * The staff surface: `/admin/**` plus anything a capability guards.
+ *
+ * `--admin` restores the prefix-only scope, kept because it is the number
+ * the backend tickets quote. `--all` is every served route and is mostly
+ * noise — the public API is not this app's job.
+ */
+function inScope(endpoint) {
+	if (SCOPE_ALL) return true;
+	const isAdmin = endpoint.path.startsWith('/admin/') || endpoint.path === '/admin';
+	if (ADMIN_ONLY) return isAdmin;
+	return isAdmin || endpoint.guarded === true;
+}
 
 const missing = [];
 const byUrl = [];
-for (const { path, methods } of SNAPSHOT.endpoints) {
-	if (!inScope(path)) continue;
+for (const endpoint of SNAPSHOT.endpoints) {
+	if (!inScope(endpoint)) continue;
+	const { path, methods } = endpoint;
 	const unused = methods.filter((m) => !CALLED.has(`${m} ${path}`));
 	if (unused.length === 0) continue;
 	if (REFERENCED.has(path)) {
@@ -138,17 +171,21 @@ for (const { path, methods } of SNAPSHOT.endpoints) {
 		continue;
 	}
 	const partial = unused.length < methods.length;
-	missing.push({ path, unused, methods, partial });
+	missing.push({ path, unused, methods, partial, guarded: endpoint.guarded });
 }
 
 if (AS_JSON) {
 	console.log(
-		JSON.stringify({ scope: SCOPE_ALL ? 'all' : 'admin', missing, consumed_by_url: byUrl }, null, 2)
+		JSON.stringify(
+			{ scope: SCOPE_ALL ? 'all' : ADMIN_ONLY ? 'admin' : 'staff', missing, consumed_by_url: byUrl },
+			null,
+			2
+		)
 	);
 	process.exit(0);
 }
 
-const scoped = SNAPSHOT.endpoints.filter((e) => inScope(e.path));
+const scoped = SNAPSHOT.endpoints.filter(inScope);
 const verbsServed = scoped.reduce((n, e) => n + e.methods.length, 0);
 const verbsMissing = missing.reduce((n, e) => n + e.unused.length, 0);
 
@@ -169,10 +206,18 @@ console.log(
 		`(${((100 * (verbsServed - verbsMissing)) / verbsServed).toFixed(1)}%)\n`
 );
 
-/** Group by the segment after `/admin/`, which is how the backend files split. */
+/**
+ * Group by the segment that names the resource.
+ *
+ * That is the second segment under `/admin/` and the first everywhere else —
+ * `/admin/finance/...` and `/quality/bugs/...` both want their own heading,
+ * and keying on a fixed index would file every domain route under its domain
+ * name twice over.
+ */
 const groups = new Map();
 for (const row of missing) {
-	const key = row.path.split('/')[2] ?? '(root)';
+	const parts = row.path.split('/').filter(Boolean);
+	const key = (parts[0] === 'admin' ? parts[1] : parts[0]) ?? '(root)';
 	if (!groups.has(key)) groups.set(key, []);
 	groups.get(key).push(row);
 }
