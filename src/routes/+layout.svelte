@@ -38,6 +38,7 @@
 		ChartNoAxesColumn,
 		TrendingUp,
 		Gamepad2,
+		Database,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -84,6 +85,7 @@
 		},
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
 		{ href: '/sales', label: i18n.t('admin.sales.navLabel'), icon: TrendingUp },
+		{ href: '/data', label: i18n.t('admin.dataLine.navLabel'), icon: Database },
 		{ href: '/money', label: i18n.t('admin.nav.money'), icon: Wallet },
 		{ href: '/disputes', label: i18n.t('admin.nav.disputes'), icon: Scale },
 		{ href: '/emails', label: i18n.t('admin.nav.emails'), icon: Mail },

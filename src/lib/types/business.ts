@@ -190,3 +190,155 @@ export interface RevenueByPillarResponse {
 	pillars: RevenuePillar[];
 	window_days: number;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Data line — reports, licences, white-label deployments
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * `services::data_consent::PURPOSES`.
+ *
+ * Every figure the data line sells rests on one of these, and which one is
+ * never assumed: a report drawn from research consent and one drawn from
+ * commercial consent are different datasets with different people in them.
+ */
+export type DataPurpose =
+	| 'public_score_api'
+	| 'research_licensing'
+	| 'commercial_licensing'
+	| 'identity_aggregation';
+
+/** How many people a purpose currently covers, and whether that is enough to
+ *  publish anything drawn from it. */
+export interface DataCohort {
+	purpose: DataPurpose;
+	people: number;
+	publishable: boolean;
+}
+
+export interface DataCohortsResponse {
+	cohorts: DataCohort[];
+	/** `COHORT_FLOOR`. A chart drawn from four people names those four,
+	 *  whatever its header says. */
+	floor: number;
+}
+
+export type DataClientType =
+	| 'research_lab'
+	| 'university'
+	| 'government'
+	| 'development_bank'
+	| 'enterprise'
+	| 'ngo';
+
+export interface DataReport {
+	id: string;
+	client_type: string;
+	client_org: string;
+	title: string;
+	scope_md: string;
+	delivery_formats: string[];
+	fee: string;
+	currency: string;
+	/** The floor this particular report was commissioned against. Stored per
+	 *  report rather than read from the constant, so a delivery is checked
+	 *  against the rule that applied when it was agreed. */
+	minimum_cohort_size: number;
+	status: string;
+	document_url: string | null;
+	delivered_at: string | null;
+	created_at: string;
+}
+
+export interface DataReportInput {
+	client_type: DataClientType;
+	client_org: string;
+	title: string;
+	scope_md: string;
+	delivery_formats?: string[];
+	fee: string;
+	currency?: string;
+	enterprise_id?: string;
+}
+
+export interface DataLicence {
+	id: string;
+	licensee_org: string;
+	licensee_type: string;
+	purpose: string;
+	contract_purpose_md: string;
+	data_scope: unknown;
+	starts_on: string;
+	ends_on: string | null;
+	total_fee: string;
+	currency: string;
+	/** What the people in the dataset get. A commercial licence paying
+	 *  nobody is refused by the backend. */
+	talents_share_percent: string;
+	status: string;
+	signed_at: string | null;
+}
+
+export interface DataLicenceInput {
+	licensee_org: string;
+	licensee_type: DataClientType;
+	purpose: DataPurpose;
+	contract_purpose_md: string;
+	data_scope?: unknown;
+	starts_on: string;
+	ends_on?: string;
+	total_fee: string;
+	currency?: string;
+	talents_share_percent?: string;
+	contract_url?: string;
+}
+
+/** What settling a period actually paid. `amount_each` is the whole share
+ *  divided by the cohort and rounded down. */
+export interface DataSettlement {
+	people_paid: number;
+	amount_each: string;
+}
+
+export type DataPartnerType =
+	| 'university'
+	| 'bootcamp'
+	| 'coding_school'
+	| 'corporate_academy'
+	| 'government';
+
+export interface DataDeployment {
+	id: string;
+	partner_org: string;
+	partner_type: string;
+	country: string | null;
+	deployment_host: string;
+	branding: unknown;
+	features_enabled: string[];
+	/** What the partner may call official. A recognition claim without a
+	 *  signed contract is refused. */
+	official_recognition_scope: string[];
+	setup_fee: string;
+	monthly_fee: string;
+	annual_fee: string | null;
+	currency: string;
+	users_limit: number | null;
+	status: string;
+	launched_on: string | null;
+}
+
+export interface DataDeploymentInput {
+	partner_org: string;
+	partner_type: DataPartnerType;
+	country?: string;
+	deployment_host: string;
+	branding?: unknown;
+	features_enabled?: string[];
+	official_recognition_scope?: string[];
+	setup_fee?: string;
+	monthly_fee?: string;
+	annual_fee?: string;
+	currency?: string;
+	users_limit?: number;
+	contract_url?: string;
+}
