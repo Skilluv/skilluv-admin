@@ -4,7 +4,7 @@
 
 **Version :** 2026-08-29.
 **Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21, plus les lignes commerciales et domaines de la section 22.
-**Couverture de la surface admin :** 224 / 268 verbes servis (83,6 %), mesurée par `node scripts/unconsumed-routes.mjs`. Les 44 restants sont des écritures dont l'`{id}` n'est atteignable par personne — voir §22.4 et SKI-354.
+**Couverture de la surface staff :** 241 / 313 verbes servis (77,0 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability** — voir §22.1, qui explique pourquoi le périmètre restreint au préfixe donnait un chiffre flatteur et faux. Les 72 restants sont pour l'essentiel des écritures dont l'`{id}` n'est atteignable par personne (§22.4, SKI-354).
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
@@ -1435,11 +1435,50 @@ false entry on a list somebody reads as work to do costs a real afternoon,
 so the script now counts every `/api/...` string literal as a reference and
 reports those separately.
 
-### 22.2 What the audit found, in one sentence
+### 22.2 The scope this audit started with was wrong
 
-Of 268 admin verbs served, **151 were consumed** when the audit was written.
-The gap was not evenly spread: it was a set of whole product lines that had
-been built enterprise-side and never given a staff surface.
+The first version of this section reported 224 of 268 admin verbs and called
+it 83.6%. Both numbers were right for the question the tool was asking, and
+the question was the wrong one.
+
+**`/admin` is a convention, not a rule, and the domain modules do not follow
+it.** `/quality/bugs/review-queue`, `/beginner/verifications/queue`,
+`/communication/slices/{id}/translation-reviews` and
+`/forum/posts/{id}/moderate` are staff surfaces gated by
+`require_any_capability` and served outside the prefix. Scoped to the prefix,
+the audit called them out of scope — and a report built on that output said
+those domains had no admin work, which is a conclusion the tool was
+structurally incapable of reaching.
+
+The snapshot now records, per route, whether a guard stands in front of it,
+and the audit scopes to `/admin/**` plus anything guarded. Three details of
+the detector were wrong on the first pass, each failing differently and each
+worth keeping in mind if it is ever rewritten:
+
+- guards named inside `//` comments counted, so `/auth/login` came back as a
+  staff route — `auth.rs` mentions `require_admin_2fa` in prose;
+- substring matching made `require_admin_2fa` match `require_admin`;
+- one-level scanning missed wrappers. `quality.rs` guards its review queue
+  with a module-local `require_any_quality_reviewer` that builds the
+  capability list from `REVIEWER_GROUPS`, so a family added to the catalogue
+  reaches the guard without anybody editing it. Good design, invisible to a
+  shallow scan, and on its own enough to drop a domain out of the audit.
+
+Guard resolution is now transitive to a fixed point, comments are stripped,
+matching is on word boundaries, and the guard names are enumerated from
+`src/middleware/capabilities.rs` rather than guessed — guessing had already
+missed `require_reviewer_for_orientation`.
+
+**What stays out of scope, deliberately:** routes gated by *ownership*.
+`POST /leadership/cohorts/{id}/graduate` checks the caller leads the cohort;
+`POST /audio/castings/{id}/select` filters on `opened_by`. Holding a
+capability is not the same as acting for the platform, and an admin panel
+offering those would be inviting somebody to act in a role they merely
+qualify for.
+
+Honest figures: **241 of 313 staff verbs (77.0%)**, from 151 at the start.
+`--admin` still prints the prefix-only number, because that is the one the
+backend tickets quote.
 
 ### 22.3 The screens built from it
 
@@ -1455,12 +1494,13 @@ been built enterprise-side and never given a staff surface.
 | `/studios` | `engagements.rs` (4) | Forming a bookable team, and disbanding one |
 | `/operations` (extended) | seven modules (12) | Feature flags, tags, one-off runs, the assistant ledger |
 | `/engagement` (rewired) | `cohorts.rs` (2), `talent_offers.rs` (3) | The same two lists, now read as moderation sees them, with the two actions |
+| `/review` | seven modules (12) | Apprentice verifications, defect reports, the vouching queue, forum moderation, per-domain slice confirmations |
 
-Coverage after these: **224 of 268 admin verbs (83.6%)**.
+Coverage after these: **241 of 313 staff verbs (77.0%)**.
 
-### 22.4 The 44 that remain, and why
+### 22.4 The 72 that remain, and why
 
-They are not a backlog of unbuilt screens. **They are write routes whose
+Most are not a backlog of unbuilt screens. **They are write routes whose
 `{id}` an admin has no way to obtain**, and the cause is uniform: everything
 a company buys is listed only by `/api/enterprise/*`, which passes through
 `require_enterprise` — a guard that resolves the *caller's* enterprise. Staff
