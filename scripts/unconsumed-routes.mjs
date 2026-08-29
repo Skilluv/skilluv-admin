@@ -70,6 +70,12 @@ function normaliseCallPath(raw) {
 	return path || '/';
 }
 
+function apiModules() {
+	return readdirSync(API_DIR)
+		.filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'client.ts')
+		.map((f) => join(API_DIR, f));
+}
+
 /**
  * Every (verb, path) this client issues.
  *
@@ -78,10 +84,7 @@ function normaliseCallPath(raw) {
  */
 function consumed() {
 	const pairs = new Set();
-	const files = readdirSync(API_DIR)
-		.filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'client.ts')
-		.map((f) => join(API_DIR, f));
-	for (const file of files) {
+	for (const file of apiModules()) {
 		const source = readFileSync(file, 'utf8');
 		const calls = /\bapi\.(get|post|put|patch|delete|upload)\b/g;
 		let match;
@@ -95,26 +98,67 @@ function consumed() {
 	return pairs;
 }
 
+/**
+ * Paths this client names without going through the API client.
+ *
+ * Not every consumption is a fetch. `GET /admin/email-preview` answers with a
+ * whole HTML document and is consumed as an `<iframe src>`, built by a helper
+ * that returns a URL string — so the verb scan above sees nothing and reports
+ * a route that has worked all along.
+ *
+ * That false positive matters more than the missing coverage would: this
+ * report is read as a list of things the backend should fix, and a wrong
+ * entry on it costs somebody an afternoon proving the route is fine. So every
+ * `/api/...` string literal in the modules counts as a reference, and the
+ * routes it covers are reported separately rather than as unconsumed.
+ */
+function referenced() {
+	const paths = new Set();
+	for (const file of apiModules()) {
+		const source = stripTemplateHoles(readFileSync(file, 'utf8'));
+		for (const m of source.matchAll(/(['`])(\/api\/[^'`\s]*)\1/g)) {
+			paths.add(normaliseCallPath(m[2].replace(/^\/api/, '')));
+		}
+	}
+	return paths;
+}
+
 const CALLED = consumed();
+const REFERENCED = referenced();
 const inScope = (p) => SCOPE_ALL || p.startsWith('/admin/') || p === '/admin';
 
 const missing = [];
+const byUrl = [];
 for (const { path, methods } of SNAPSHOT.endpoints) {
 	if (!inScope(path)) continue;
 	const unused = methods.filter((m) => !CALLED.has(`${m} ${path}`));
 	if (unused.length === 0) continue;
+	if (REFERENCED.has(path)) {
+		byUrl.push({ path, methods });
+		continue;
+	}
 	const partial = unused.length < methods.length;
 	missing.push({ path, unused, methods, partial });
 }
 
 if (AS_JSON) {
-	console.log(JSON.stringify({ scope: SCOPE_ALL ? 'all' : 'admin', missing }, null, 2));
+	console.log(
+		JSON.stringify({ scope: SCOPE_ALL ? 'all' : 'admin', missing, consumed_by_url: byUrl }, null, 2)
+	);
 	process.exit(0);
 }
 
 const scoped = SNAPSHOT.endpoints.filter((e) => inScope(e.path));
 const verbsServed = scoped.reduce((n, e) => n + e.methods.length, 0);
 const verbsMissing = missing.reduce((n, e) => n + e.unused.length, 0);
+
+if (byUrl.length > 0) {
+	console.log(
+		`Consumed as a URL rather than a fetch (${byUrl.length}): ` +
+			byUrl.map((e) => e.path).join(', ') +
+			'\n'
+	);
+}
 
 console.log(
 	`${scoped.length} routes in scope (${verbsServed} verbs). ` +

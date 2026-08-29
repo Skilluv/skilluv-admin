@@ -19,6 +19,9 @@ export * from './ops';
 /** Domain dashboards and the moderation queues that come with them. */
 export * from './oversight';
 
+/** Platform levers: flags, tags, one-off runs, the assistant ledger. */
+export * from './platform';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).
