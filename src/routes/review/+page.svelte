@@ -75,6 +75,16 @@
 	let declaring = $state(false);
 	let confirming = $state(false);
 
+	let benchmarks = $state<unknown>(null);
+	let benchmarkId = $state('');
+	let benchmarkNotes = $state('');
+	let reproducing = $state(false);
+
+	let creditDeliverable = $state('');
+	let creditUsername = $state('');
+	let creditEvidence = $state('');
+	let crediting = $state(false);
+
 	function fmtMoment(iso: string): string {
 		return new Date(iso).toLocaleString(intlLocale(), {
 			dateStyle: 'short',
@@ -266,6 +276,64 @@
 			toast.error(errorMessage(err));
 		} finally {
 			confirming = false;
+		}
+	}
+
+	async function loadBenchmarks() {
+		if (sliceId.trim() === '') return;
+		try {
+			const res = await reviewApi.sliceBenchmarks(sliceId.trim());
+			benchmarks = res.data;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
+	}
+
+	async function reproduce() {
+		if (benchmarkId.trim() === '' || reproducing) return;
+		reproducing = true;
+		try {
+			// Notes are optional on purpose: "same numbers" is a complete
+			// answer, and demanding prose for it would push reviewers to write
+			// nothing useful rather than nothing at all.
+			await reviewApi.reproduceBenchmark(
+				benchmarkId.trim(),
+				benchmarkNotes.trim() || undefined
+			);
+			toast.success(i18n.t('admin.review.reproduced'));
+			benchmarkId = '';
+			benchmarkNotes = '';
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			reproducing = false;
+		}
+	}
+
+	const canCredit = $derived(
+		!crediting &&
+			creditDeliverable.trim() !== '' &&
+			creditUsername.trim() !== '' &&
+			creditEvidence.trim() !== ''
+	);
+
+	async function credit() {
+		if (!canCredit) return;
+		crediting = true;
+		try {
+			await reviewApi.creditAudioDeliverable(
+				creditDeliverable.trim(),
+				creditUsername.trim(),
+				creditEvidence.trim()
+			);
+			toast.success(i18n.t('admin.review.credited'));
+			creditDeliverable = '';
+			creditUsername = '';
+			creditEvidence = '';
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			crediting = false;
 		}
 	}
 
@@ -741,6 +809,89 @@
 					</Button>
 				</section>
 			</div>
+
+			<section class="mt-6 rounded-2xl border border-border bg-surface-elevated p-5">
+				<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+					{i18n.t('admin.review.benchmarksTitle')}
+				</h2>
+				<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.review.benchmarksHint')}</p>
+				<div class="mb-4">
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={loadBenchmarks}
+						disabled={sliceId.trim() === ''}
+					>
+						{i18n.t('admin.review.loadBenchmarksBtn')}
+					</Button>
+				</div>
+				{#if benchmarks}
+					<pre class="mb-4 max-h-48 overflow-auto rounded-xl border border-border bg-surface-overlay p-3 text-[11px] leading-relaxed">{JSON.stringify(
+							benchmarks,
+							null,
+							2
+						)}</pre>
+				{/if}
+				<div class="flex flex-wrap items-end gap-3">
+					<div class="min-w-44 flex-1">
+						<Input
+							label={i18n.t('admin.review.benchmarkIdLabel')}
+							bind:value={benchmarkId}
+						/>
+					</div>
+					<div class="min-w-44 flex-1">
+						<Input
+							label={i18n.t('admin.review.benchmarkNotesLabel')}
+							hint={i18n.t('admin.review.benchmarkNotesHint')}
+							bind:value={benchmarkNotes}
+						/>
+					</div>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={reproduce}
+						disabled={benchmarkId.trim() === '' || reproducing}
+						loading={reproducing}
+					>
+						{i18n.t('admin.review.reproduceBtn')}
+					</Button>
+				</div>
+			</section>
+
+			<section class="mt-6 rounded-2xl border border-border bg-surface-elevated p-5">
+				<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+					{i18n.t('admin.review.creditTitle')}
+				</h2>
+				<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.review.creditHint')}</p>
+				<div class="flex flex-col gap-4">
+					<div class="grid gap-4 sm:grid-cols-2">
+						<Input
+							label={i18n.t('admin.review.deliverableIdLabel')}
+							bind:value={creditDeliverable}
+						/>
+						<Input
+							label={i18n.t('admin.review.creditUsernameLabel')}
+							bind:value={creditUsername}
+						/>
+					</div>
+					<Input
+						label={i18n.t('admin.review.creditEvidenceLabel')}
+						hint={i18n.t('admin.review.creditEvidenceHint')}
+						bind:value={creditEvidence}
+					/>
+					<div>
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={credit}
+							disabled={!canCredit}
+							loading={crediting}
+						>
+							{i18n.t('admin.review.creditBtn')}
+						</Button>
+					</div>
+				</div>
+			</section>
 		{/if}
 	{/if}
 </div>

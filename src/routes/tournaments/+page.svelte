@@ -15,7 +15,13 @@
 		type TournamentFormat,
 		type SeasonCloseReport
 	} from '$api/admin';
-	import type { JuryInvitation, OutstandingPrize, VoteBurst } from '$lib/types';
+	import { competitionsApi } from '$api/competitions';
+	import type {
+		JuryInvitation,
+		OutstandingPrize,
+		SeasonListRow,
+		VoteBurst
+	} from '$lib/types';
 	import Input from '$components/ui/Input.svelte';
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
@@ -428,6 +434,35 @@
 
 	// Auth enforced by hooks.server.ts — client re-check was racy on deep-links.
 
+	// The seasons list.
+	//
+	// `/admin/seasons` has no GET at all, so this page could create and close
+	// seasons without ever showing them — an action with no list in front of
+	// it, the shape SKI-337 named. `GET /seasons` is the only listing the
+	// backend serves, and it is a read against the same table.
+	//
+	// Its projection is not the one `/admin/seasons` writes: `seasons.rs`
+	// records a theme where `tournament.rs` records a description. Two
+	// modules, one table — filed on SKI-354.
+	let seasonList = $state<SeasonListRow[]>([]);
+	let seasonsLoading = $state(true);
+
+	async function loadSeasons() {
+		seasonsLoading = true;
+		try {
+			const res = await competitionsApi.seasons();
+			seasonList = res.data.seasons;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			seasonsLoading = false;
+		}
+	}
+
+	$effect(() => {
+		void loadSeasons();
+	});
+
 	const inputCls =
 		'w-full rounded-full border border-border bg-surface-overlay px-4 py-2 text-sm focus:border-primary focus:outline-none';
 	const textareaCls =
@@ -477,6 +512,33 @@
 	</div>
 
 	{#if activeTab === 'seasons'}
+		<section class="mb-6 rounded-2xl border border-border bg-surface-elevated p-6">
+			<div class="mb-4 flex items-center gap-2">
+				<Calendar size={16} strokeWidth={2} class="text-accent" />
+				<h2 class="text-lg font-bold">{i18n.t('admin.tournaments.seasonsListTitle')}</h2>
+			</div>
+			{#if seasonsLoading}
+				<p class="text-sm text-text-muted">{i18n.t('admin.common.pending')}</p>
+			{:else if seasonList.length === 0}
+				<p class="text-sm text-text-muted">{i18n.t('admin.tournaments.emptySeasons')}</p>
+			{:else}
+				<ul class="divide-y divide-border">
+					{#each seasonList as s (s.id)}
+						<li class="flex flex-wrap items-center justify-between gap-3 py-2.5">
+							<div class="min-w-0">
+								<span class="text-sm font-medium">{s.name}</span>
+								<Badge variant={s.status === 'active' ? 'success' : 'default'}>{s.status}</Badge>
+								<p class="mt-0.5 text-[11px] text-text-muted">
+									<code class="font-mono">{s.slug}</code>
+									{#if s.theme}· {s.theme}{/if}
+								</p>
+							</div>
+							<code class="font-mono text-[10px] text-text-muted">{s.id}</code>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
 		<div class="grid gap-6 lg:grid-cols-2">
 			<!-- Create season -->
 			<section class="rounded-2xl border border-border bg-surface-elevated p-6">

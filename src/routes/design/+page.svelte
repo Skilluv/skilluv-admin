@@ -257,6 +257,29 @@
 		}
 	}
 
+	/** The case as the accused sees it.
+	 *
+	 *  A second address for the same row, served under `/contests` beside the
+	 *  endpoint the accused answers on. The queue row carries the accusation;
+	 *  this carries what was said back — worth one call before upholding
+	 *  anything.
+	 */
+	let openedCase = $state<PlagiarismCase | null>(null);
+	let openingCase = $state<string | null>(null);
+
+	async function openCaseFile(id: string) {
+		if (openingCase) return;
+		openingCase = id;
+		try {
+			const res = await designApi.plagiarismCase(id);
+			openedCase = res.data;
+		} catch (e) {
+			toast.error(errorMessage(e));
+		} finally {
+			openingCase = null;
+		}
+	}
+
 	function openDecide(c: PlagiarismCase, upheld: boolean) {
 		caseToDecide = c;
 		caseUpheld = upheld;
@@ -715,6 +738,15 @@
 							</div>
 						{:else}
 							<div class="mt-4 flex flex-wrap gap-2">
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => openCaseFile(c.id)}
+									loading={openingCase === c.id}
+									disabled={openingCase !== null}
+								>
+									{t('admin.design.plagiarism.openCase')}
+								</Button>
 								<Button variant="danger" size="sm" onclick={() => openDecide(c, true)}>
 									{t('admin.design.plagiarism.uphold')}
 								</Button>
@@ -722,6 +754,18 @@
 									{t('admin.design.plagiarism.dismiss')}
 								</Button>
 							</div>
+							{#if openedCase && openedCase.id === c.id}
+								<div class="mt-3 rounded-xl border border-border bg-surface-overlay p-3">
+									<p class="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+										{t('admin.design.plagiarism.caseFile')}
+									</p>
+									<pre class="max-h-56 overflow-auto text-[11px] leading-relaxed">{JSON.stringify(
+											openedCase,
+											null,
+											2
+										)}</pre>
+								</div>
+							{/if}
 						{/if}
 					</article>
 				{/each}

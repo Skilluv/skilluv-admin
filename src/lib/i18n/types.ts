@@ -850,6 +850,7 @@ export interface Translations {
 				reviewers: string;
 				featured: string;
 				credentials: string;
+				terrains: string;
 			};
 			stats: {
 				declared: string;
@@ -907,6 +908,16 @@ export interface Translations {
 			refuseBtn: string;
 			credentialVerified: string;
 			credentialRefused: string;
+			adoptBtn: string;
+			declineBtn: string;
+			declineReasonHint: string;
+			declineReasonLabel: string;
+			emptyTerrains: string;
+			projectSlugHint: string;
+			projectSlugLabel: string;
+			terrainAdopted: string;
+			terrainDeclined: string;
+			terrainsNote: string;
 		};
 		contracts: {
 			label: string;
@@ -1103,6 +1114,22 @@ export interface Translations {
 			redactionHint: string;
 			redactionBtn: string;
 			redactionDone: string;
+			benchmarkIdLabel: string;
+			benchmarkNotesHint: string;
+			benchmarkNotesLabel: string;
+			benchmarksHint: string;
+			benchmarksTitle: string;
+			creditBtn: string;
+			creditEvidenceHint: string;
+			creditEvidenceLabel: string;
+			creditHint: string;
+			creditTitle: string;
+			creditUsernameLabel: string;
+			credited: string;
+			deliverableIdLabel: string;
+			loadBenchmarksBtn: string;
+			reproduceBtn: string;
+			reproduced: string;
 		};
 		programs: {
 			label: string;
@@ -1116,6 +1143,7 @@ export interface Translations {
 				events: string;
 				certifications: string;
 				proposals: string;
+				series: string;
 			};
 			emptyLabs: string;
 			monthLabel: string;
@@ -1168,6 +1196,33 @@ export interface Translations {
 			contractValueLabel: string;
 			signedBtn: string;
 			signatureRecorded: string;
+			attachBtn: string;
+			attached: string;
+			awardsHint: string;
+			awardsTitle: string;
+			categoryHint: string;
+			categoryLabel: string;
+			concludeBtn: string;
+			concludeHint: string;
+			concludeTitle: string;
+			contestConcluded: string;
+			contestIdLabel: string;
+			createSeriesBtn: string;
+			emptyNominees: string;
+			emptySeries: string;
+			endsLabel: string;
+			kindLabel: string;
+			loadNomineesBtn: string;
+			nameLabel: string;
+			newSeriesTitle: string;
+			seriesCreated: string;
+			shortlistBtn: string;
+			shortlistWholeSetHint: string;
+			shortlisted: string;
+			slugLabel: string;
+			startsLabel: string;
+			tournamentIdLabel: string;
+			yearLabel: string;
 		};
 		nav: {
 			administration: string;
@@ -1530,6 +1585,8 @@ export interface Translations {
 			tabSeasons: string;
 			tabTournaments: string;
 			createSeason: string;
+			emptySeasons: string;
+			seasonsListTitle: string;
 			seasonCreated: string;
 			seasonOps: string;
 			changeStatus: string;
@@ -1674,6 +1731,19 @@ export interface Translations {
 			certsExpired: string;
 			commissionAmountLabel: string;
 			commissionAwarded: string;
+			countChallenges: string;
+			countConnections: string;
+			countConversations: string;
+			countEnterprises: string;
+			countPendingReports: string;
+			countPool: string;
+			countPoolHint: string;
+			countSocketHint: string;
+			countSubmissionsHint: string;
+			countUsers: string;
+			countUsersHint: string;
+			countersHint: string;
+			countersSection: string;
 			commissionBtn: string;
 			commissionHint: string;
 			commissionTitle: string;
@@ -2415,6 +2485,8 @@ export interface Translations {
 				priorUpheld: string;
 				priorHint: string;
 				uphold: string;
+				caseFile: string;
+				openCase: string;
 				dismiss: string;
 				decideTitle: string;
 				decideHint: string;

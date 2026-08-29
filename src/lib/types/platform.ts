@@ -159,3 +159,35 @@ export interface AssistantLedgerResponse {
 	limit: number;
 	offset: number;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Platform counters
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The same counters Prometheus scrapes, as JSON.
+ *
+ * Gated by the `admin` capability since SKI-31 — it used to be public, and
+ * a headcount plus a pending-report total is enough to read the health of a
+ * platform from outside it.
+ */
+export interface MetricsSummary {
+	users: {
+		total: number;
+		/** Non-banned, profile active. */
+		active: number;
+		/** Distinct users with at least one activity row today, UTC. */
+		today_active: number;
+	};
+	challenges: {
+		published: number;
+		total_submissions: number;
+		/** Started in the last 24 hours. */
+		today_submissions: number;
+	};
+	enterprises: number;
+	moderation: { pending_reports: number };
+	messaging: { active_conversations: number };
+	websocket: { connections: number; rooms: number; users: number };
+	database: { pool_size: number; pool_idle: number };
+}

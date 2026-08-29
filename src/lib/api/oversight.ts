@@ -24,7 +24,8 @@ import type {
 	DomainFeaturedCandidate,
 	DomainOverview,
 	DomainReviewerStats,
-	PendingCredential
+	PendingCredential,
+	TerrainProposal
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -59,6 +60,36 @@ export const oversightApi = {
 		return api.get<ApiResponse<DomainFeaturedCandidate[]>>(
 			`/admin/domains/${domain}/featured-queue`,
 			params as Record<string, number>
+		);
+	},
+
+	// --- Terrains: the projects a domain takes on ---
+
+	/** Proposed terrains for a domain, with what each is waiting on. */
+	domainTerrains(domain: string) {
+		return api.get<ApiResponse<{ terrains: TerrainProposal[] }>>(
+			`/domains/${domain}/terrains`
+		);
+	},
+
+	/** A steward has taken a proposed terrain on, under a project that must
+	 *  already exist. The backend refuses an unknown slug rather than
+	 *  creating one: a project has an owner who greets newcomers and answers
+	 *  for what happens there, and no endpoint can appoint that person. */
+	adoptTerrain(domain: string, slug: string, projectSlug: string) {
+		return api.post<ApiResponse<Record<string, unknown>>>(
+			`/domains/${domain}/terrains/${slug}/adopt`,
+			{ project_slug: projectSlug }
+		);
+	},
+
+	/** Turn a proposal down, on the record. The reason is required: a
+	 *  shortlist that silently loses entries teaches the next researcher
+	 *  nothing, and they will propose the same project again. */
+	declineTerrain(domain: string, slug: string, reason: string) {
+		return api.post<ApiResponse<Record<string, unknown>>>(
+			`/domains/${domain}/terrains/${slug}/decline`,
+			{ reason }
 		);
 	},
 

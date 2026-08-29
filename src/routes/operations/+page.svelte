@@ -10,6 +10,7 @@
 	import type {
 		AssistantStatsResponse,
 		FeatureFlag,
+		MetricsSummary,
 		TagCategory
 	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
@@ -308,8 +309,11 @@
 	let assistantWindow = $state(30);
 	let assistantLoading = $state(true);
 
+	let metrics = $state<MetricsSummary | null>(null);
+
 	$effect(() => {
 		void loadFlags();
+		void loadMetrics();
 	});
 
 	$effect(() => {
@@ -325,6 +329,18 @@
 			toast.error(errorMessage(e));
 		} finally {
 			flagsLoading = false;
+		}
+	}
+
+	async function loadMetrics() {
+		try {
+			const res = await platformApi.metricsSummary();
+			metrics = res.data;
+		} catch {
+			// Counters are context, not the reason anybody opened this page.
+			// A failure here leaves the section out rather than blocking the
+			// jobs below it.
+			metrics = null;
 		}
 	}
 
@@ -581,6 +597,60 @@
 	</div>
 
 	<!-- Safe jobs -->
+	{#if metrics}
+		<section class="mb-10">
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">
+				{i18n.t('admin.operations.countersSection')}
+			</h2>
+			<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.operations.countersHint')}</p>
+			<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+				<StatCard
+					label={i18n.t('admin.operations.countUsers')}
+					value={metrics.users.total}
+					hint={i18n.t('admin.operations.countUsersHint', {
+						active: metrics.users.active,
+						today: metrics.users.today_active
+					})}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countChallenges')}
+					value={metrics.challenges.published}
+					hint={i18n.t('admin.operations.countSubmissionsHint', {
+						total: metrics.challenges.total_submissions,
+						today: metrics.challenges.today_submissions
+					})}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countEnterprises')}
+					value={metrics.enterprises}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countPendingReports')}
+					value={metrics.moderation.pending_reports}
+					color={metrics.moderation.pending_reports > 0 ? 'warning' : 'success'}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countConversations')}
+					value={metrics.messaging.active_conversations}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countConnections')}
+					value={metrics.websocket.connections}
+					hint={i18n.t('admin.operations.countSocketHint', {
+						rooms: metrics.websocket.rooms,
+						users: metrics.websocket.users
+					})}
+				/>
+				<StatCard
+					label={i18n.t('admin.operations.countPool')}
+					value="{metrics.database.pool_size - metrics.database.pool_idle}/{metrics.database
+						.pool_size}"
+					hint={i18n.t('admin.operations.countPoolHint')}
+					color={metrics.database.pool_idle === 0 ? 'error' : 'default'}
+				/>
+			</div>
+		</section>
+	{/if}
 	<section class="mb-10">
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">
 			{i18n.t('admin.operations.jobsSection')}

@@ -148,6 +148,31 @@ export const reviewApi = {
 		);
 	},
 
+	/** Everything measured on one slice. The ids a reproduction needs come
+	 *  from here. */
+	sliceBenchmarks(sliceId: string) {
+		return api.get<ApiResponse<Record<string, unknown>>>(`/slices/${sliceId}/benchmarks`);
+	},
+
+	/** A reviewer re-ran the measurement. `notes` is optional because "same
+	 *  numbers" is a complete answer. */
+	reproduceBenchmark(id: string, notes?: string) {
+		return api.post<ApiResponse<Record<string, unknown>>>(
+			`/benchmarks/${id}/reproduce`,
+			notes ? { notes } : {}
+		);
+	},
+
+	/** Attest a credit on somebody else's released work. By hand, because
+	 *  nothing here can read a credit roll — which is the whole value of the
+	 *  attestation: a competent person went and looked. */
+	creditAudioDeliverable(deliverableId: string, username: string, evidenceUrl: string) {
+		return api.post<ApiResponse<Record<string, unknown>>>(
+			`/audio/deliverables/${deliverableId}/credit`,
+			{ username, evidence_url: evidenceUrl }
+		);
+	},
+
 	/** Confirms a leadership artefact has been redacted. This is what the
 	 *  attestation was waiting for, so the backend recomputes the author's
 	 *  proofs on the spot. */

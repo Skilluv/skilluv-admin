@@ -32,6 +32,7 @@ import type {
 	FeatureFlag,
 	FeatureFlagUpsert,
 	HelloWallMirrorReport,
+	MetricsSummary,
 	ProfileReadmeSyncReport
 } from '$lib/types';
 import { createApiClient } from './client';
@@ -116,6 +117,14 @@ export const platformApi = {
 			`/admin/projects/${encodeURIComponent(slug)}/curated`,
 			{ curated }
 		);
+	},
+
+	// --- Platform counters ---
+
+	/** The same counters Prometheus scrapes, as JSON, for a dashboard that
+	 *  speaks JSON. Gated by `admin` since SKI-31 — it used to be public. */
+	metricsSummary() {
+		return api.get<ApiResponse<MetricsSummary>>('/metrics/summary');
 	},
 
 	// --- Assistant ---

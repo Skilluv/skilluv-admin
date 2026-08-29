@@ -4,7 +4,7 @@
 
 **Version :** 2026-08-29.
 **Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21, plus les lignes commerciales et domaines de la section 22.
-**Couverture de la surface staff :** 241 / 313 verbes servis (77,0 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability** — voir §22.1, qui explique pourquoi le périmètre restreint au préfixe donnait un chiffre flatteur et faux. Les 72 restants sont pour l'essentiel des écritures dont l'`{id}` n'est atteignable par personne (§22.4, SKI-354).
+**Couverture de la surface staff :** 271 / 302 verbes servis (89,7 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability**, moins les routes servies deux fois et celles qui appartiennent au praticien — voir §22.2. **Les 31 restants sont, sans exception, des écritures dont l'`{id}` n'est atteignable par personne** : c'est SKI-354, et rien d'autre.
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
@@ -1476,7 +1476,7 @@ capability is not the same as acting for the platform, and an admin panel
 offering those would be inviting somebody to act in a role they merely
 qualify for.
 
-Honest figures: **241 of 313 staff verbs (77.0%)**, from 151 at the start.
+Honest figures: **271 of 302 staff verbs (89.7%)**, from 151 at the start.
 `--admin` still prints the prefix-only number, because that is the one the
 backend tickets quote.
 
@@ -1494,14 +1494,16 @@ backend tickets quote.
 | `/studios` | `engagements.rs` (4) | Forming a bookable team, and disbanding one |
 | `/operations` (extended) | seven modules (12) | Feature flags, tags, one-off runs, the assistant ledger |
 | `/engagement` (rewired) | `cohorts.rs` (2), `talent_offers.rs` (3) | The same two lists, now read as moderation sees them, with the two actions |
+| `/programs` | seven modules (18) | Labs, beta programmes, launch campaigns, ambassadors, certification audits, community events, series, the awards ballot |
 | `/review` | seven modules (12) | Apprentice verifications, defect reports, the vouching queue, forum moderation, per-domain slice confirmations |
 
-Coverage after these: **241 of 313 staff verbs (77.0%)**.
+Coverage after these: **271 of 302 staff verbs (89.7%)**.
 
-### 22.4 The 72 that remain, and why
+### 22.4 The 31 that remain, and why
 
-Most are not a backlog of unbuilt screens. **They are write routes whose
-`{id}` an admin has no way to obtain**, and the cause is uniform: everything
+They are not a backlog of unbuilt screens, and there is no longer a single
+exception. **Every one is a write route whose `{id}` an admin has no way to
+obtain**, and the cause is uniform: everything
 a company buys is listed only by `/api/enterprise/*`, which passes through
 `require_enterprise` — a guard that resolves the *caller's* enterprise. Staff
 are nobody's enterprise, so they have the buttons and not the list.

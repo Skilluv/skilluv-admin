@@ -3,6 +3,7 @@
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
 	import { programsApi, EVENT_ROLES, EVENT_STATUSES, auditIsComplete } from '$api/programs';
+	import { competitionsApi, SERIES_KINDS } from '$api/competitions';
 	import type {
 		AmbassadorProgramRow,
 		AuditFinding,
@@ -13,7 +14,10 @@
 		EventStatus,
 		LabRow,
 		LaunchCampaignRow,
-		ProposalRow
+		ProposalRow,
+		SeriesKind,
+		SeriesRow,
+		AwardsNominee
 	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
 	import Badge from '$components/ui/Badge.svelte';
@@ -24,7 +28,7 @@
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import { ChevronRight, RefreshCw, Info, Plus, X } from '@lucide/svelte';
 
-	type Tab = 'labs' | 'programs' | 'events' | 'certifications' | 'proposals';
+	type Tab = 'labs' | 'programs' | 'events' | 'certifications' | 'proposals' | 'series';
 
 	let tab = $state<Tab>('labs');
 	let loading = $state(true);
@@ -63,6 +67,27 @@
 	let proposalEnterprise = $state<Record<string, string>>({});
 	let proposalValue = $state<Record<string, string>>({});
 
+	// Series and awards
+	let series = $state<SeriesRow[]>([]);
+	let seriesSlug = $state('');
+	let seriesName = $state('');
+	let seriesKind = $state<SeriesKind>('awards_edition');
+	let seriesStarts = $state('');
+	let seriesEnds = $state('');
+	let creatingSeries = $state(false);
+
+	let attachTo = $state<Record<string, string>>({});
+	let attachCategory = $state<Record<string, string>>({});
+
+	let concludeId = $state('');
+	let concluding = $state(false);
+
+	let awardsYear = $state(new Date().getFullYear());
+	let nominees = $state<AwardsNominee[]>([]);
+	let nomineesYear = $state<number | null>(null);
+	let picked = $state<Set<string>>(new Set());
+	let shortlisting = $state(false);
+
 	function label(row: Record<string, unknown>): string {
 		return (row.title as string) ?? (row.name as string) ?? (row.id as string);
 	}
@@ -99,7 +124,8 @@
 				programsApi.openAmbassadorPrograms(),
 				programsApi.certifications(),
 				programsApi.proposals(),
-				programsApi.events()
+				programsApi.events(),
+				competitionsApi.series()
 			]);
 			labs = results[0].status === 'fulfilled' ? results[0].value.data.labs : [];
 			betas = results[1].status === 'fulfilled' ? results[1].value.data.programs : [];
@@ -109,6 +135,7 @@
 				results[4].status === 'fulfilled' ? results[4].value.data.certifications : [];
 			proposals = results[5].status === 'fulfilled' ? results[5].value.data.proposals : [];
 			events = results[6].status === 'fulfilled' ? results[6].value.data.events : [];
+			series = results[7].status === 'fulfilled' ? results[7].value.data.series : [];
 		} finally {
 			loading = false;
 		}
@@ -283,6 +310,106 @@
 		});
 	}
 
+	const canCreateSeries = $derived(
+		!creatingSeries &&
+			seriesSlug.trim() !== '' &&
+			seriesName.trim() !== '' &&
+			seriesStarts !== '' &&
+			seriesEnds !== ''
+	);
+
+	async function createSeries() {
+		if (!canCreateSeries) return;
+		creatingSeries = true;
+		try {
+			await competitionsApi.createSeries({
+				slug: seriesSlug.trim(),
+				name: seriesName.trim(),
+				kind: seriesKind,
+				starts_at: new Date(seriesStarts).toISOString(),
+				ends_at: new Date(seriesEnds).toISOString()
+			});
+			toast.success(i18n.t('admin.programs.seriesCreated'));
+			seriesSlug = '';
+			seriesName = '';
+			seriesStarts = '';
+			seriesEnds = '';
+			await load();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			creatingSeries = false;
+		}
+	}
+
+	function attach(row: SeriesRow) {
+		const tournament = (attachTo[row.slug] ?? '').trim();
+		if (tournament === '') return;
+		void run(row.slug, async () => {
+			await competitionsApi.attachTournament(
+				row.slug,
+				tournament,
+				(attachCategory[row.slug] ?? '').trim() || undefined
+			);
+			toast.success(i18n.t('admin.programs.attached'));
+			delete attachTo[row.slug];
+			delete attachCategory[row.slug];
+		});
+	}
+
+	async function concludeContest() {
+		if (concludeId.trim() === '' || concluding) return;
+		concluding = true;
+		try {
+			const res = await competitionsApi.concludeContest(concludeId.trim());
+			toast.success(
+				i18n.t('admin.programs.contestConcluded', { amount: res.data.revenue_booked })
+			);
+			concludeId = '';
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			concluding = false;
+		}
+	}
+
+	async function loadNominees() {
+		try {
+			const res = await competitionsApi.awardsEdition(awardsYear);
+			nominees = res.data.nominees;
+			nomineesYear = awardsYear;
+			// Seeded from what is already shortlisted, because the call sends
+			// the whole set: starting from an empty box would silently clear
+			// a ballot somebody else fixed.
+			picked = new Set(nominees.filter((n) => n.shortlisted).map((n) => n.id));
+		} catch (err) {
+			toast.error(errorMessage(err));
+		}
+	}
+
+	function togglePick(id: string) {
+		const next = new Set(picked);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		picked = next;
+	}
+
+	async function submitShortlist() {
+		if (shortlisting || nomineesYear === null) return;
+		shortlisting = true;
+		try {
+			const res = await competitionsApi.shortlistNominees([...picked]);
+			toast.success(i18n.t('admin.programs.shortlisted', { n: res.data.shortlisted }));
+			await loadNominees();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			shortlisting = false;
+		}
+	}
+
+	const seriesKindOptions = $derived(SERIES_KINDS.map((k) => ({ value: k, label: k })));
+
 	const roleOptions = $derived(EVENT_ROLES.map((r) => ({ value: r, label: r })));
 	const statusOptions = $derived(EVENT_STATUSES.map((s) => ({ value: s, label: s })));
 	const auditReady = $derived(auditIsComplete(findings));
@@ -323,7 +450,8 @@
 				{ value: 'programs', label: i18n.t('admin.programs.tabs.programs') },
 				{ value: 'events', label: i18n.t('admin.programs.tabs.events') },
 				{ value: 'certifications', label: i18n.t('admin.programs.tabs.certifications') },
-				{ value: 'proposals', label: i18n.t('admin.programs.tabs.proposals') }
+				{ value: 'proposals', label: i18n.t('admin.programs.tabs.proposals') },
+				{ value: 'series', label: i18n.t('admin.programs.tabs.series') }
 			]}
 			bind:value={tab}
 		/>
@@ -702,7 +830,7 @@
 				{/each}
 			</ul>
 		{/if}
-	{:else}
+	{:else if tab === 'proposals'}
 		{#if proposals.length === 0}
 			<p class="rounded-xl border border-border bg-surface-overlay px-4 py-8 text-center text-sm text-text-muted">
 				{i18n.t('admin.programs.emptyProposals')}
@@ -750,6 +878,194 @@
 				{/each}
 			</ul>
 		{/if}
+	{:else}
+		<section class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">
+			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+				{i18n.t('admin.programs.newSeriesTitle')}
+			</h2>
+			<div class="flex flex-col gap-4">
+				<div class="grid gap-4 sm:grid-cols-2">
+					<Input label={i18n.t('admin.programs.slugLabel')} bind:value={seriesSlug} />
+					<Input label={i18n.t('admin.programs.nameLabel')} bind:value={seriesName} />
+				</div>
+				<Select
+					items={seriesKindOptions}
+					bind:value={seriesKind}
+					placeholder={i18n.t('admin.programs.kindLabel')}
+					shape="rounded"
+				/>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<div class="flex flex-col gap-1.5">
+						<label for="series-starts" class="text-sm font-medium text-text-primary">
+							{i18n.t('admin.programs.startsLabel')}
+						</label>
+						<input
+							id="series-starts"
+							type="datetime-local"
+							bind:value={seriesStarts}
+							class="h-11 w-full rounded-xl border border-border bg-surface-elevated px-4 text-sm"
+						/>
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<label for="series-ends" class="text-sm font-medium text-text-primary">
+							{i18n.t('admin.programs.endsLabel')}
+						</label>
+						<input
+							id="series-ends"
+							type="datetime-local"
+							bind:value={seriesEnds}
+							class="h-11 w-full rounded-xl border border-border bg-surface-elevated px-4 text-sm"
+						/>
+					</div>
+				</div>
+				<div>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={createSeries}
+						disabled={!canCreateSeries}
+						loading={creatingSeries}
+						data-testid="create-series"
+					>
+						{i18n.t('admin.programs.createSeriesBtn')}
+					</Button>
+				</div>
+			</div>
+		</section>
+
+		{#if series.length === 0}
+			<p class="mb-6 rounded-xl border border-border bg-surface-overlay px-4 py-6 text-center text-sm text-text-muted">
+				{i18n.t('admin.programs.emptySeries')}
+			</p>
+		{:else}
+			<ul class="mb-8 flex flex-col gap-3">
+				{#each series as row (row.id)}
+					<li class="rounded-2xl border border-border bg-surface-elevated p-5">
+						<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+							<span class="text-sm font-semibold">
+								{row.name}
+								<code class="ms-2 font-mono text-[10px] text-text-muted">{row.slug}</code>
+							</span>
+							<Badge variant="default" size="sm">{row.kind}</Badge>
+						</div>
+						<div class="flex flex-wrap items-end gap-3">
+							<div class="min-w-44 flex-1">
+								<Input
+									label={i18n.t('admin.programs.tournamentIdLabel')}
+									value={attachTo[row.slug] ?? ''}
+									oninput={(e: Event) =>
+										(attachTo[row.slug] = (e.target as HTMLInputElement).value)}
+								/>
+							</div>
+							<div class="w-40">
+								<Input
+									label={i18n.t('admin.programs.categoryLabel')}
+									hint={i18n.t('admin.programs.categoryHint')}
+									value={attachCategory[row.slug] ?? ''}
+									oninput={(e: Event) =>
+										(attachCategory[row.slug] = (e.target as HTMLInputElement).value)}
+								/>
+							</div>
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={() => attach(row)}
+								disabled={(attachTo[row.slug] ?? '').trim() === '' || busy !== null}
+								loading={busy === row.slug}
+							>
+								{i18n.t('admin.programs.attachBtn')}
+							</Button>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+
+		<section class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">
+			<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+				{i18n.t('admin.programs.concludeTitle')}
+			</h2>
+			<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.programs.concludeHint')}</p>
+			<div class="flex flex-wrap items-end gap-3">
+				<div class="min-w-56 flex-1">
+					<Input label={i18n.t('admin.programs.contestIdLabel')} bind:value={concludeId} />
+				</div>
+				<Button
+					variant="primary"
+					size="sm"
+					onclick={concludeContest}
+					disabled={concludeId.trim() === '' || concluding}
+					loading={concluding}
+				>
+					{i18n.t('admin.programs.concludeBtn')}
+				</Button>
+			</div>
+		</section>
+
+		<section class="rounded-2xl border border-border bg-surface-elevated p-5">
+			<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+				{i18n.t('admin.programs.awardsTitle')}
+			</h2>
+			<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.programs.awardsHint')}</p>
+
+			<div class="mb-4 flex flex-wrap items-end gap-3">
+				<div class="w-32">
+					<Input
+						label={i18n.t('admin.programs.yearLabel')}
+						type="number"
+						value={String(awardsYear)}
+						oninput={(e: Event) =>
+							(awardsYear = Number((e.target as HTMLInputElement).value))}
+					/>
+				</div>
+				<Button variant="secondary" size="sm" onclick={loadNominees}>
+					{i18n.t('admin.programs.loadNomineesBtn')}
+				</Button>
+			</div>
+
+			{#if nomineesYear !== null}
+				{#if nominees.length === 0}
+					<p class="text-sm text-text-muted">{i18n.t('admin.programs.emptyNominees')}</p>
+				{:else}
+					<ul class="mb-4 divide-y divide-border">
+						{#each nominees as n (n.id)}
+							<li class="flex items-start gap-3 py-2">
+								<input
+									type="checkbox"
+									checked={picked.has(n.id)}
+									onchange={() => togglePick(n.id)}
+									class="mt-1 h-4 w-4 rounded"
+									aria-label={n.subject_label ?? n.subject_id}
+								/>
+								<div class="min-w-0">
+									<p class="text-sm">
+										{n.subject_label ?? n.subject_id}
+										<Badge variant="default" size="sm">{n.category_slug}</Badge>
+									</p>
+									<p class="mt-0.5 text-xs text-text-muted">{n.citation}</p>
+									<p class="mt-0.5 text-[10px] text-text-muted">
+										{n.community_votes} · {n.jury_votes} · {n.weighted_score}
+									</p>
+								</div>
+							</li>
+						{/each}
+					</ul>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={submitShortlist}
+						loading={shortlisting}
+						disabled={shortlisting}
+						data-testid="submit-shortlist"
+					>
+						{i18n.t('admin.programs.shortlistBtn')}
+					</Button>
+					<p class="mt-2 text-[11px] text-text-muted">
+						{i18n.t('admin.programs.shortlistWholeSetHint')}
+					</p>
+				{/if}
+			{/if}
+		</section>
 	{/if}
 </div>
 

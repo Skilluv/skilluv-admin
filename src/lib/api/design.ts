@@ -164,6 +164,19 @@ export const designApi = {
 	},
 
 	/**
+	 * One case, as the accused sees it.
+	 *
+	 * A second address for the same row, served under `/contests` because it
+	 * is also what the person answering the accusation reads — the response
+	 * endpoint sits beside it. Opening the same view the accused has is worth
+	 * one call before upholding anything: the queue row carries the
+	 * accusation, this carries what was said back.
+	 */
+	plagiarismCase(id: string) {
+		return api.get<ApiResponse<PlagiarismCase>>(`/contests/plagiarism/${id}`);
+	},
+
+	/**
 	 * Decide a case.
 	 *
 	 * Upholding disqualifies the entry; dismissing clears it. Either way the

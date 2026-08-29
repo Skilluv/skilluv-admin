@@ -8,6 +8,7 @@
 		DomainOverview,
 		DomainReviewerStats,
 		PendingCredential,
+		TerrainProposal,
 		ValidatorDomain
 	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
@@ -20,7 +21,7 @@
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
 	import { ChevronRight, RefreshCw, Info, ExternalLink } from '@lucide/svelte';
 
-	type Tab = 'overview' | 'reviewers' | 'featured' | 'credentials';
+	type Tab = 'overview' | 'reviewers' | 'featured' | 'credentials' | 'terrains';
 
 	const DOMAINS: ValidatorDomain[] = [
 		'code',
@@ -41,6 +42,13 @@
 	let reviewers = $state<DomainReviewerStats[]>([]);
 	let featured = $state<DomainFeaturedCandidate[]>([]);
 	let credentials = $state<PendingCredential[]>([]);
+	let terrains = $state<TerrainProposal[]>([]);
+
+	/** Per-proposal drafts: two terrains decided in one sitting must not
+	 *  share a project slug or a refusal reason. */
+	let projectOf = $state<Record<string, string>>({});
+	let declineOf = $state<Record<string, string>>({});
+	let busyTerrain = $state<string | null>(null);
 
 	/** Per-credential note drafts. A review note belongs to the credential it
 	 *  was written about, and one shared field would move it. */
@@ -75,16 +83,18 @@
 			// because reviewing an outside certification is the same job as
 			// running a domain, and splitting it into its own route would put
 			// a one-list page in the navigation.
-			const [o, r, f, c] = await Promise.all([
+			const [o, r, f, c, t] = await Promise.all([
 				oversightApi.domainOverview(d, { days: window }),
 				oversightApi.domainReviewers(d, { days: window }),
 				oversightApi.domainFeaturedQueue(d, { days: window }),
-				oversightApi.pendingCredentials()
+				oversightApi.pendingCredentials(),
+				oversightApi.domainTerrains(d)
 			]);
 			overview = o.data;
 			reviewers = r.data;
 			featured = f.data;
 			credentials = c.data.credentials;
+			terrains = t.data.terrains;
 		} catch (err) {
 			toast.error(errorMessage(err));
 		} finally {
@@ -116,6 +126,38 @@
 			toast.error(errorMessage(err));
 		} finally {
 			busyCredential = null;
+		}
+	}
+
+	async function adopt(t: TerrainProposal) {
+		const project = (projectOf[t.slug] ?? '').trim();
+		if (project === '' || busyTerrain) return;
+		busyTerrain = t.slug;
+		try {
+			await oversightApi.adoptTerrain(domain, t.slug, project);
+			toast.success(i18n.t('admin.oversight.terrainAdopted'));
+			delete projectOf[t.slug];
+			await load(domain, days);
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			busyTerrain = null;
+		}
+	}
+
+	async function decline(t: TerrainProposal) {
+		const reason = (declineOf[t.slug] ?? '').trim();
+		if (reason === '' || busyTerrain) return;
+		busyTerrain = t.slug;
+		try {
+			await oversightApi.declineTerrain(domain, t.slug, reason);
+			toast.success(i18n.t('admin.oversight.terrainDeclined'));
+			delete declineOf[t.slug];
+			await load(domain, days);
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			busyTerrain = null;
 		}
 	}
 
@@ -180,7 +222,8 @@
 				{ value: 'overview', label: i18n.t('admin.oversight.tabs.overview') },
 				{ value: 'reviewers', label: i18n.t('admin.oversight.tabs.reviewers') },
 				{ value: 'featured', label: i18n.t('admin.oversight.tabs.featured') },
-				{ value: 'credentials', label: i18n.t('admin.oversight.tabs.credentials') }
+				{ value: 'credentials', label: i18n.t('admin.oversight.tabs.credentials') },
+				{ value: 'terrains', label: i18n.t('admin.oversight.tabs.terrains') }
 			]}
 			bind:value={tab}
 		/>
@@ -382,7 +425,7 @@
 				{/if}
 			{/snippet}
 		</Table>
-	{:else}
+	{:else if tab === 'credentials'}
 		<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
 			{i18n.t('admin.oversight.credentialsTitle')}
 		</h2>
@@ -457,6 +500,76 @@
 									disabled={!noteOk(c.id) || busyCredential !== null}
 								>
 									{i18n.t('admin.oversight.refuseBtn')}
+								</Button>
+							</div>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	{:else}
+		<p class="mb-5 flex items-start gap-2 text-xs text-text-muted">
+			<Info size={12} strokeWidth={2} class="mt-0.5 shrink-0" />
+			<span>{i18n.t('admin.oversight.terrainsNote')}</span>
+		</p>
+
+		{#if terrains.length === 0}
+			<p class="rounded-xl border border-border bg-surface-overlay px-4 py-8 text-center text-sm text-text-muted">
+				{i18n.t('admin.oversight.emptyTerrains')}
+			</p>
+		{:else}
+			<ul class="flex flex-col gap-4">
+				{#each terrains as t (t.slug)}
+					<li class="rounded-2xl border border-border bg-surface-elevated p-5">
+						<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+							<span class="text-sm font-semibold">
+								{t.name ?? t.title ?? t.slug}
+								<code class="ms-2 font-mono text-[10px] text-text-muted">{t.slug}</code>
+							</span>
+							{#if t.status}
+								<Badge variant="default" size="sm">{t.status}</Badge>
+							{/if}
+						</div>
+
+						<div class="flex flex-col gap-3">
+							<div class="flex flex-wrap items-end gap-3">
+								<div class="min-w-48 flex-1">
+									<Input
+										label={i18n.t('admin.oversight.projectSlugLabel')}
+										hint={i18n.t('admin.oversight.projectSlugHint')}
+										value={projectOf[t.slug] ?? ''}
+										oninput={(e: Event) =>
+											(projectOf[t.slug] = (e.target as HTMLInputElement).value)}
+									/>
+								</div>
+								<Button
+									variant="primary"
+									size="sm"
+									onclick={() => adopt(t)}
+									disabled={(projectOf[t.slug] ?? '').trim() === '' || busyTerrain !== null}
+									loading={busyTerrain === t.slug}
+								>
+									{i18n.t('admin.oversight.adoptBtn')}
+								</Button>
+							</div>
+
+							<div class="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+								<div class="min-w-48 flex-1">
+									<Input
+										label={i18n.t('admin.oversight.declineReasonLabel')}
+										hint={i18n.t('admin.oversight.declineReasonHint')}
+										value={declineOf[t.slug] ?? ''}
+										oninput={(e: Event) =>
+											(declineOf[t.slug] = (e.target as HTMLInputElement).value)}
+									/>
+								</div>
+								<Button
+									variant="secondary"
+									size="sm"
+									onclick={() => decline(t)}
+									disabled={(declineOf[t.slug] ?? '').trim() === '' || busyTerrain !== null}
+								>
+									{i18n.t('admin.oversight.declineBtn')}
 								</Button>
 							</div>
 						</div>
