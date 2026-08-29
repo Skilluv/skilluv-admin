@@ -145,6 +145,58 @@ function referenced() {
 
 const CALLED = consumed();
 const REFERENCED = referenced();
+
+/**
+ * The same act, served at two addresses.
+ *
+ * Six routes exist once under `/admin` and once outside it, behind the same
+ * guard and doing the same thing. This app calls the `/admin` spelling, so
+ * the other is **covered, not missing** — building it would put two buttons
+ * on one action and give the audit trail two shapes.
+ *
+ * Listed rather than derived, because the pairs are not a prefix apart:
+ * `/community/challenges/review` answers to `/admin/community/review`, and
+ * the fraud queue changes noun as well as prefix. A rule that guessed would
+ * eventually pair two routes that only look alike.
+ */
+const EQUIVALENT_TO = new Map([
+	['/community/challenges/review', '/admin/community/review'],
+	['/community/challenges/{}/approve', '/admin/community/{}/approve'],
+	['/community/challenges/{}/reject', '/admin/community/{}/reject'],
+	['/fraud/deliverables/flagged', '/admin/fraud/queue'],
+	['/fraud/deliverables/{}/mark-valid', '/admin/fraud/deliverables/{}/mark-valid'],
+	['/fraud/deliverables/{}/revoke', '/admin/fraud/deliverables/{}/revoke']
+]);
+
+/**
+ * Capability-guarded, but the actor is the person the row belongs to.
+ *
+ * The `guarded` flag answers "is there a capability check", which is the
+ * right question for scoping and the wrong one for these. Uploading your own
+ * audio sources, submitting to a challenge, delivering a mission you were
+ * hired for, withdrawing an opportunity you posted — each needs a capability
+ * to do at all, and none of them is the platform acting.
+ *
+ * An admin panel offering them would be inviting somebody to act in a role
+ * they merely qualify for, which is a different mistake from leaving a
+ * screen unbuilt and a worse one.
+ */
+const PRACTITIONER_SURFACES = new Set([
+	'/audio/castings',
+	'/audio/slices/{}/files',
+	'/audio/slices/{}/sources',
+	'/audio/slices/{}/sources/complete',
+	'/challenges/{}/submit',
+	'/missions/{}/deliveries',
+	'/opportunities/{}'
+]);
+
+/** True when the twin of an aliased route is already called. */
+function coveredByTwin(path) {
+	const twin = EQUIVALENT_TO.get(path);
+	if (!twin) return false;
+	return [...CALLED].some((pair) => pair.endsWith(` ${twin}`));
+}
 /**
  * The staff surface: `/admin/**` plus anything a capability guards.
  *
@@ -156,11 +208,15 @@ function inScope(endpoint) {
 	if (SCOPE_ALL) return true;
 	const isAdmin = endpoint.path.startsWith('/admin/') || endpoint.path === '/admin';
 	if (ADMIN_ONLY) return isAdmin;
+	// A practitioner's own gesture is never this app's work, so it is out of
+	// the denominator rather than sitting in it as permanent debt.
+	if (PRACTITIONER_SURFACES.has(endpoint.path)) return false;
 	return isAdmin || endpoint.guarded === true;
 }
 
 const missing = [];
 const byUrl = [];
+const aliased = [];
 for (const endpoint of SNAPSHOT.endpoints) {
 	if (!inScope(endpoint)) continue;
 	const { path, methods } = endpoint;
@@ -170,6 +226,10 @@ for (const endpoint of SNAPSHOT.endpoints) {
 		byUrl.push({ path, methods });
 		continue;
 	}
+	if (coveredByTwin(path)) {
+		aliased.push({ path, methods, twin: EQUIVALENT_TO.get(path) });
+		continue;
+	}
 	const partial = unused.length < methods.length;
 	missing.push({ path, unused, methods, partial, guarded: endpoint.guarded });
 }
@@ -177,7 +237,12 @@ for (const endpoint of SNAPSHOT.endpoints) {
 if (AS_JSON) {
 	console.log(
 		JSON.stringify(
-			{ scope: SCOPE_ALL ? 'all' : ADMIN_ONLY ? 'admin' : 'staff', missing, consumed_by_url: byUrl },
+			{
+				scope: SCOPE_ALL ? 'all' : ADMIN_ONLY ? 'admin' : 'staff',
+				missing,
+				consumed_by_url: byUrl,
+				consumed_under_another_name: aliased
+			},
 			null,
 			2
 		)
@@ -188,6 +253,14 @@ if (AS_JSON) {
 const scoped = SNAPSHOT.endpoints.filter(inScope);
 const verbsServed = scoped.reduce((n, e) => n + e.methods.length, 0);
 const verbsMissing = missing.reduce((n, e) => n + e.unused.length, 0);
+
+if (aliased.length > 0) {
+	console.log(
+		`Served twice, called under the /admin spelling (${aliased.length}): ` +
+			aliased.map((e) => `${e.path} = ${e.twin}`).join(', ') +
+			'\n'
+	);
+}
 
 if (byUrl.length > 0) {
 	console.log(
