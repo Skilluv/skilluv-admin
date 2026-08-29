@@ -752,6 +752,87 @@ export interface Translations {
 			selectLabel: string;
 			requiredField: string;
 		};
+		opsPractice: {
+			label: string;
+			title: string;
+			subtitle: string;
+			navLabel: string;
+			sloNote: string;
+			tabs: {
+				overdue: string;
+				verify: string;
+				attestations: string;
+			};
+			overdueStat: string;
+			emptyOverdue: string;
+			cols: {
+				incident: string;
+				action: string;
+				due: string;
+				owner: string;
+				severity: string;
+			};
+			verifyObjectiveTitle: string;
+			verifyObjectiveHint: string;
+			objectiveIdLabel: string;
+			verifyCostTitle: string;
+			costIdLabel: string;
+			sloLabel: string;
+			verifyBtn: string;
+			verifiedWithAttestation: string;
+			verifiedNoAttestation: string;
+			artefactTitle: string;
+			artefactHint: string;
+			basisLabel: string;
+			userIdLabel: string;
+			deliverableIdLabel: string;
+			artefactTitleLabel: string;
+			evidenceUrlLabel: string;
+			featuredTitle: string;
+			featuredHint: string;
+			reasonLabel: string;
+			issueBtn: string;
+			issued: string;
+		};
+		recruitment: {
+			label: string;
+			title: string;
+			subtitle: string;
+			navLabel: string;
+			respondNote: string;
+			stats: {
+				open: string;
+				unassigned: string;
+			};
+			cols: {
+				campaign: string;
+				company: string;
+				status: string;
+				shortlisted: string;
+				assigned: string;
+			};
+			empty: string;
+			unassignedBadge: string;
+			assignTitle: string;
+			assignHint: string;
+			recruiterIdLabel: string;
+			assignBtn: string;
+			assigned: string;
+			shortlistTitle: string;
+			talentIdLabel: string;
+			matchReasonLabel: string;
+			matchReasonHint: string;
+			matchReasonTooShort: string;
+			shortlistBtn: string;
+			shortlisted: string;
+			departureTitle: string;
+			departureHint: string;
+			feeIdLabel: string;
+			leftAtLabel: string;
+			departureReasonLabel: string;
+			departureBtn: string;
+			departureRecorded: string;
+		};
 		nav: {
 			administration: string;
 			signOut: string;

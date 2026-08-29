@@ -13,6 +13,9 @@ export * from './business';
  *  path for the screens. */
 export * from './game';
 
+/** The ops domain's practice surface — incidents, objectives, cost work. */
+export * from './ops';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).

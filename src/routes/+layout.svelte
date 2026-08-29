@@ -39,6 +39,8 @@
 		TrendingUp,
 		Gamepad2,
 		Database,
+		ServerCog,
+		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
 
@@ -86,6 +88,7 @@
 		{ href: '/tenants', label: i18n.t('admin.nav.tenantsLabel'), icon: Building2 },
 		{ href: '/sales', label: i18n.t('admin.sales.navLabel'), icon: TrendingUp },
 		{ href: '/data', label: i18n.t('admin.dataLine.navLabel'), icon: Database },
+		{ href: '/recruitment', label: i18n.t('admin.recruitment.navLabel'), icon: UserSearch },
 		{ href: '/money', label: i18n.t('admin.nav.money'), icon: Wallet },
 		{ href: '/disputes', label: i18n.t('admin.nav.disputes'), icon: Scale },
 		{ href: '/emails', label: i18n.t('admin.nav.emails'), icon: Mail },
@@ -94,6 +97,7 @@
 		{ href: '/sponsored-challenges', label: i18n.t('admin.nav.sponsorings'), icon: Megaphone },
 		{ href: '/tournaments', label: i18n.t('admin.nav.tournamentsSeasons'), icon: Swords },
 		{ href: '/audit-log', label: i18n.t('admin.nav.auditLabel'), icon: Clock },
+		{ href: '/ops-practice', label: i18n.t('admin.opsPractice.navLabel'), icon: ServerCog },
 		{ href: '/operations', label: i18n.t('admin.nav.operations'), icon: Wrench },
 		{ href: '/sso-sessions', label: i18n.t('admin.nav.ssoSessions'), icon: KeyRound }
 	]);

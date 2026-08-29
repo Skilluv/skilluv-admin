@@ -342,3 +342,40 @@ export interface DataDeploymentInput {
 	users_limit?: number;
 	contract_url?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Recruitment
+// ─────────────────────────────────────────────────────────────────────
+
+/** A campaign on the internal queue.
+ *
+ *  Closed and cancelled campaigns are excluded server-side, so this is a
+ *  worklist rather than an archive. */
+export interface RecruitmentCampaign {
+	id: string;
+	title: string;
+	kind: string;
+	status: string;
+	company_name: string;
+	assigned_to: string | null;
+	shortlisted: number;
+	/** Served rather than derived from `assigned_to` on the client: it is
+	 *  also the sort key, and a campaign with nobody on it is a campaign
+	 *  nobody is doing. */
+	unassigned: boolean;
+}
+
+export interface ShortlistInput {
+	talent_user_id: string;
+	/** Why this person, with links. Required — the backend refuses a
+	 *  shortlisting with no argument, and the person being put forward is
+	 *  asked on the strength of it. */
+	match_reason_md: string;
+}
+
+/** Somebody left inside the guarantee window. `left_at` is an instant: a
+ *  departure is a moment, and the refund is computed against it. */
+export interface DepartureInput {
+	left_at: string;
+	reason: string;
+}
