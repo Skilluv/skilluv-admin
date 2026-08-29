@@ -42,6 +42,7 @@
 		ServerCog,
 		Compass,
 		FileSignature,
+		UsersRound,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -98,6 +99,7 @@
 		{ href: '/enterprise-kyc', label: i18n.t('admin.nav.kycEnterprises'), icon: ShieldCheck },
 		{ href: '/enterprises', label: i18n.t('admin.nav.enterprises'), icon: Briefcase },
 		{ href: '/contracts', label: i18n.t('admin.contracts.navLabel'), icon: FileSignature },
+		{ href: '/studios', label: i18n.t('admin.studios.navLabel'), icon: UsersRound },
 		{ href: '/sponsored-challenges', label: i18n.t('admin.nav.sponsorings'), icon: Megaphone },
 		{ href: '/tournaments', label: i18n.t('admin.nav.tournamentsSeasons'), icon: Swords },
 		{ href: '/audit-log', label: i18n.t('admin.nav.auditLabel'), icon: Clock },

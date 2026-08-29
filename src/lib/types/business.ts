@@ -447,3 +447,53 @@ export interface EntitlementGrant {
 	kind: string;
 	granted?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Studios — a bookable team
+// ─────────────────────────────────────────────────────────────────────
+
+export interface Studio {
+	id: string;
+	slug: string;
+	name: string;
+	/** What this studio is for. The backend refuses an empty one: "a studio
+	 *  that does everything is a job board with a name". */
+	specialization: string;
+	domains: string[];
+	day_rate: string;
+	currency: string;
+	max_members: number;
+	lead_user_id: string | null;
+	/** `forming` until activated, then `active`, then `disbanded`. Only
+	 *  `active` studios appear in the public list — which is why forming one
+	 *  is a single sitting. */
+	status: string;
+	formed_at: string;
+}
+
+export interface StudioMember {
+	user_id: string;
+	username: string;
+	role_on_engagement: string;
+	/** Percentage of the team's side of the money. Every member's shares must
+	 *  total 100 before the studio can be activated. */
+	share_percent: string;
+	accepted_at: string | null;
+	declined_at: string | null;
+}
+
+export interface StudioInput {
+	slug: string;
+	name: string;
+	specialization: string;
+	domains?: string[];
+	day_rate: string;
+	currency?: string;
+	max_members?: number;
+}
+
+export interface StudioMemberInput {
+	user_id: string;
+	role: string;
+	share_percent: string;
+}
