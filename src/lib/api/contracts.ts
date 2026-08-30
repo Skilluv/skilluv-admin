@@ -15,7 +15,9 @@
  * out.
  */
 import type {
+	ApiPaginatedResponse,
 	ApiResponse,
+	ProductRegistryRow,
 	EnterpriseProduct,
 	EnterpriseProductRenewal,
 	EntitlementGrant,
@@ -27,6 +29,35 @@ import { createApiClient } from './client';
 const api = createApiClient();
 
 export const contractsApi = {
+	/**
+	 * Every product any enterprise holds, with the id of the row it came
+	 * from.
+	 *
+	 * The route SKI-354 asked for, and the one that ends the failure it
+	 * described: `source_id` **is** the `{id}` twenty-one write routes take,
+	 * and `source_table` says which module owns it. Both were already in the
+	 * table; nothing served them.
+	 *
+	 * Deliberately not filtered the way `renewals` is. That one answers "what
+	 * is about to lapse" and filters `status = 'active' AND renews_at IS NOT
+	 * NULL` to do it; a register inheriting those filters would hide the
+	 * `pending` product waiting to be activated, which is the row somebody
+	 * came here for.
+	 */
+	registry(params?: {
+		product_type?: string;
+		status?: string;
+		enterprise_id?: string;
+		q?: string;
+		page?: number;
+		per_page?: number;
+	}) {
+		return api.get<ApiPaginatedResponse<ProductRegistryRow>>(
+			'/admin/enterprise-products',
+			params as Record<string, string | number>
+		);
+	},
+
 	/** Sixty days by default server-side, which is roughly the notice an
 	 *  annual contract needs. Clamped to 1..365. */
 	renewals(params?: { within_days?: number }) {

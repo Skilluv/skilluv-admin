@@ -45,6 +45,7 @@
 		UsersRound,
 		ClipboardCheck,
 		CalendarRange,
+		Banknote,
 		UserSearch,
 		LogOut
 	} from '@lucide/svelte';
@@ -97,6 +98,7 @@
 		{ href: '/data', label: i18n.t('admin.dataLine.navLabel'), icon: Database },
 		{ href: '/recruitment', label: i18n.t('admin.recruitment.navLabel'), icon: UserSearch },
 		{ href: '/money', label: i18n.t('admin.nav.money'), icon: Wallet },
+		{ href: '/finance', label: i18n.t('admin.financeLine.navLabel'), icon: Banknote },
 		{ href: '/disputes', label: i18n.t('admin.nav.disputes'), icon: Scale },
 		{ href: '/emails', label: i18n.t('admin.nav.emails'), icon: Mail },
 		{ href: '/enterprise-kyc', label: i18n.t('admin.nav.kycEnterprises'), icon: ShieldCheck },

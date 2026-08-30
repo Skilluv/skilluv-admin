@@ -4,7 +4,7 @@
 
 **Version :** 2026-08-29.
 **Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21, plus les lignes commerciales et domaines de la section 22.
-**Couverture de la surface staff :** 271 / 302 verbes servis (89,7 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability**, moins les routes servies deux fois et celles qui appartiennent au praticien — voir §22.2. **Les 31 restants sont, sans exception, des écritures dont l'`{id}` n'est atteignable par personne** : c'est SKI-354, et rien d'autre.
+**Couverture de la surface staff :** 307 / 308 verbes servis (99,7 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability**, moins les routes servies deux fois et celles qui appartiennent au praticien — voir §22.2. **Le seul restant est `POST /admin/lab-contributions/{id}/judge`, dont aucun GET n'existe nulle part** : c'est SKI-354, et rien d'autre.
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
@@ -1476,9 +1476,9 @@ capability is not the same as acting for the platform, and an admin panel
 offering those would be inviting somebody to act in a role they merely
 qualify for.
 
-Honest figures: **271 of 302 staff verbs (89.7%)**, from 151 at the start.
-`--admin` still prints the prefix-only number, because that is the one the
-backend tickets quote.
+Honest figures, at the time that scope error was corrected: **271 of 302
+staff verbs (89.7%)**, from 151 at the start. The current figure is in §22.3;
+the denominator has since grown with the routes SKI-354 added.
 
 ### 22.3 The screens built from it
 
@@ -1490,29 +1490,43 @@ backend tickets quote.
 | `/recruitment` | `recruitment.rs` (4) | The campaign queue, assignment, shortlisting, departures |
 | `/ops-practice` | `ops_practice.rs` (5) | Overdue remediation, and the verifications that turn operational work into proof |
 | `/domains` | `admin_domains.rs` (3), `credentials.rs` (3) | A per-domain dashboard, and outside certifications awaiting review |
-| `/contracts` | `enterprise_products.rs` (3), `talent_line.rs` (1) | The register every product line writes into, and what lapses next |
+| `/contracts` | `enterprise_products.rs` (4), `talent_line.rs` (1) | The register every product line writes into, what lapses next, and the twenty verbs the register's `source_id` unlocked |
 | `/studios` | `engagements.rs` (4) | Forming a bookable team, and disbanding one |
+| `/finance` | `finance.rs` (11) | Advances awaiting disbursal, undecided referrals, unpaid guarantee claims, draft partnerships |
 | `/operations` (extended) | seven modules (12) | Feature flags, tags, one-off runs, the assistant ledger |
 | `/engagement` (rewired) | `cohorts.rs` (2), `talent_offers.rs` (3) | The same two lists, now read as moderation sees them, with the two actions |
-| `/programs` | seven modules (18) | Labs, beta programmes, launch campaigns, ambassadors, certification audits, community events, series, the awards ballot |
+| `/programs` | eight modules (21) | Labs, beta programmes, launch campaigns, ambassadors, certification audits, community events, series, the awards ballot, sponsored content |
 | `/review` | seven modules (12) | Apprentice verifications, defect reports, the vouching queue, forum moderation, per-domain slice confirmations |
+| `/tournaments` (extended) | `tournament.rs` (2) | The panel's own screen: a contest's entries and the verdict on each |
 
-Coverage after these: **271 of 302 staff verbs (89.7%)**.
+Coverage after these: **307 of 308 staff verbs (99.7%)**, from 151 at the
+start. `--admin` prints 274 of 275 for the prefix alone, because that is the
+number the backend tickets quote.
 
-### 22.4 The 31 that remain, and why
+**A metric that can be gamed is worth saying out loud.** The audit counts
+`api.*` call sites, so adding a client method raises the number whether or
+not anybody can reach it. Every route counted above is reachable from a
+screen; four of them spent an afternoon as API methods with no interface, and
+the interfaces were built rather than the number banked.
 
-They are not a backlog of unbuilt screens, and there is no longer a single
-exception. **Every one is a write route whose `{id}` an admin has no way to
-obtain**, and the cause is uniform: everything
-a company buys is listed only by `/api/enterprise/*`, which passes through
-`require_enterprise` — a guard that resolves the *caller's* enterprise. Staff
-are nobody's enterprise, so they have the buttons and not the list.
+### 22.4 The one that remains, and why
 
-That is SKI-354, which proposes one route (`GET /api/admin/enterprise-
-products`, over a table ten backend modules already write into) plus three
-finance queues, and would unblock about twenty of them.
+**`POST /admin/lab-contributions/{id}/judge` — there is no GET anywhere.**
+Not under `/admin`, not under `/labs`, not publicly. A lab's contributions
+are written by contributors and settled in bulk by `POST
+/admin/labs/{id}/settle`, but the per-contribution ids the judge route takes
+are served by nothing, so an administrator has the verb and no way to name
+its object. It is the same failure SKI-354 described, in the one module that
+batch did not reach, and it is filed there.
 
-Two smaller findings are in the same ticket:
+Everything else in this section's previous list is gone. SKI-354 landed `GET
+/api/admin/enterprise-products` — the product register, over a table ten
+backend modules already write into, returning `source_table` and `source_id`
+per row — plus the four finance queues and the sponsored-content listing.
+`source_id` **is** the `{id}` the twenty servicing routes take, which is why
+one route closed twenty gaps.
+
+Two smaller findings from that audit are still open on the same ticket:
 
 - **`/admin/events` carries two unrelated resources.** `GET/POST
   /admin/events` is the badge-event collection (`admin_ops.rs`); `POST
@@ -1522,6 +1536,11 @@ Two smaller findings are in the same ticket:
 - **A studio being formed is in no list.** `GET /studios` returns `active`
   only, so `/studios` holds the id from the create call and does the whole
   formation in one sitting. It says so on the page.
+- **Two modules write the one `seasons` table with different column sets.**
+  `tournament.rs` writes `description`, `seasons.rs` writes `theme`, and both
+  `INSERT INTO seasons`. A season created through one path is missing a field
+  the other assumes, which is why `Season` and `SeasonListRow` are typed
+  apart in this client.
 
 ### 22.5 What to run after a backend batch
 

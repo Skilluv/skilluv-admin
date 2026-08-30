@@ -28,6 +28,9 @@ export * from './review';
 /** Programmes and competitions: labs, betas, campaigns, events, audits. */
 export * from './programs';
 
+/** The finance line, the product register, and the servicing inputs. */
+export * from './finance';
+
 // --- Enums ---
 
 /** Backend P16.1 — primary_domain enum côté orientations (mig 0088).

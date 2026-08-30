@@ -111,3 +111,26 @@ describe('contractsApi', () => {
 		expect(PRODUCT_STATUSES.filter(statusNeedsReason)).toEqual(['cancelled']);
 	});
 });
+
+describe('contractsApi — the product register', () => {
+	it('reads the register unfiltered', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: [], meta: { total: 0 } }));
+		const { contractsApi } = await import('./contracts');
+		await contractsApi.registry();
+		// No implicit filter. `renewals` answers "what lapses soon" and
+		// filters `status = 'active'` to do it; a register that inherited
+		// that would hide the pending row somebody came here to activate.
+		expect(lastUrl()).toBe('/api/admin/enterprise-products');
+	});
+
+	it('passes a status and a search through', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: [], meta: { total: 0 } }));
+		const { contractsApi } = await import('./contracts');
+		await contractsApi.registry({ status: 'pending', q: 'acme', page: 2 });
+		const url = lastUrl();
+		expect(url.startsWith('/api/admin/enterprise-products?')).toBe(true);
+		expect(url).toContain('status=pending');
+		expect(url).toContain('q=acme');
+		expect(url).toContain('page=2');
+	});
+});

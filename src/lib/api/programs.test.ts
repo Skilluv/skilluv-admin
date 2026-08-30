@@ -163,13 +163,75 @@ describe('the vocabulary, and the two actions this module refuses to wire', () =
 		expect(EVENT_STATUSES).toEqual(['draft', 'published', 'live', 'finished', 'cancelled']);
 	});
 
-	it('exposes no way to activate a draft programme or open a draft campaign', async () => {
+	it('keeps the two draft-only actions out of this module', async () => {
 		const mod = await import('./programs');
 		const names = Object.keys(mod.programsApi);
-		// Both act on a draft, and a draft is in no list an admin can reach.
-		// Wiring them would mean a form asking for a UUID out of psql, which is
-		// the problem SKI-337 named rather than a way around it.
+		// Both act on a draft, which is in no public list. They live in
+		// `servicing.ts` now that SKI-354 serves the product register, keyed on
+		// the `source_id` it returns — not here, where everything hangs off a
+		// public list.
 		expect(names.some((n) => /activate/i.test(n))).toBe(false);
 		expect(names.some((n) => /openCampaign|openProgram/i.test(n))).toBe(false);
+	});
+});
+
+describe('programsApi — sponsored content', () => {
+	it('lists commissioned pieces, drafts included', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { content: [] }, meta: {} }));
+		const { programsApi } = await import('./programs');
+		await programsApi.sponsoredContent();
+		// The one product line the backend listed nowhere before SKI-354.
+		// Publishing worked only in the session that created the piece.
+		expect(lastUrl()).toBe('/api/admin/sponsored-content');
+	});
+
+	it('filters by status when asked', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { content: [] }, meta: {} }));
+		const { programsApi } = await import('./programs');
+		await programsApi.sponsoredContent({ status: 'draft' });
+		expect(lastUrl()).toBe('/api/admin/sponsored-content?status=draft');
+	});
+
+	it('commissions a piece without a disclosure and lets the backend write one', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { content_id: 'sc1' }, meta: {} }));
+		const { programsApi } = await import('./programs');
+		await programsApi.commissionSponsoredContent({
+			sponsor_enterprise_id: 'e1',
+			content_type: 'blog_post',
+			title: 'How we ship',
+			fee: '1200.00'
+		});
+		expect(lastUrl()).toBe('/api/admin/sponsored-content');
+		// No `disclosure_text` key. Omitted, the backend writes wording that
+		// names the sponsor; an empty string would be a disclosure that says
+		// nothing, and under ten characters it is discarded anyway.
+		expect(lastBody()).toEqual({
+			sponsor_enterprise_id: 'e1',
+			content_type: 'blog_post',
+			title: 'How we ship',
+			fee: '1200.00'
+		});
+	});
+
+	it('publishes at a URL, which is what books the fee', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { revenue_booked: '1200.00' }, meta: {} }));
+		const { programsApi } = await import('./programs');
+		const res = await programsApi.publishSponsoredContent('sc1', 'https://example.test/piece');
+		expect(lastUrl()).toBe('/api/admin/sponsored-content/sc1/publish');
+		// The URL is required, not decorative: the money moves here, and the
+		// backend refuses anything that is not https or a second publish.
+		expect(lastBody()).toEqual({ url: 'https://example.test/piece' });
+		expect(res.data.revenue_booked).toBe('1200.00');
+	});
+
+	it('lists the five kinds the backend runs', async () => {
+		const { SPONSORED_CONTENT_TYPES } = await import('$lib/types');
+		expect(SPONSORED_CONTENT_TYPES).toEqual([
+			'blog_post',
+			'video',
+			'newsletter',
+			'podcast',
+			'recap'
+		]);
 	});
 });

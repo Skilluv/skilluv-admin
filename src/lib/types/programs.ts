@@ -196,3 +196,54 @@ export interface SeasonListRow {
 	created_at: string;
 	updated_at: string;
 }
+
+/** One contest entry, as the submissions listing returns it. */
+export interface TournamentSubmission {
+	id: string;
+	tournament_id: string;
+	participant_type: string;
+	participant_id: string;
+	submitted_by: string;
+	artifact_url: string;
+	artifact_type: string;
+	secondary_url: string | null;
+	summary: string;
+	language: string | null;
+	/** Set on a measured contest and null on a judged one. Which of the two
+	 *  it is decides whether a score may be sent with an acceptance. */
+	measured_value: number | null;
+	status: string;
+	judge_score: number | null;
+	judged_by: string | null;
+	judged_at: string | null;
+	judge_notes: string | null;
+	submitted_at: string;
+	updated_at: string;
+}
+
+/**
+ * The entries of one contest, plus whether the caller is reading them blind.
+ *
+ * `blinded` is not decoration. During the submission window of a blind
+ * contest, a reader who is not a juror sees only their own entry — a list of
+ * one that would otherwise read as a contest nobody entered. `blind_until`
+ * says when that ends.
+ */
+export interface TournamentSubmissions {
+	submissions: TournamentSubmission[];
+	blinded: boolean;
+	blind_until: string | null;
+}
+
+/** A juror's verdict on one contest entry. */
+export interface JudgeSubmissionInput {
+	/** `accepted`, `rejected` or `disqualified`. */
+	status: 'accepted' | 'rejected' | 'disqualified';
+	/** 0..100. Required to accept a judged entry, refused on a measured one —
+	 *  the contest knows which it is, so the client sends what was typed and
+	 *  lets the backend say. */
+	judge_score?: number;
+	judge_notes?: string;
+}
+
+export const JUDGE_STATUSES = ['accepted', 'rejected', 'disqualified'] as const;

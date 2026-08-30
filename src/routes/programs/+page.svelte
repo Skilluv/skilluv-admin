@@ -3,6 +3,7 @@
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
 	import { programsApi, EVENT_ROLES, EVENT_STATUSES, auditIsComplete } from '$api/programs';
+	import { SPONSORED_CONTENT_TYPES } from '$lib/types';
 	import { competitionsApi, SERIES_KINDS } from '$api/competitions';
 	import type {
 		AmbassadorProgramRow,
@@ -17,6 +18,7 @@
 		ProposalRow,
 		SeriesKind,
 		SeriesRow,
+		SponsoredContentRow,
 		AwardsNominee
 	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
@@ -28,7 +30,14 @@
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
 	import { ChevronRight, RefreshCw, Info, Plus, X } from '@lucide/svelte';
 
-	type Tab = 'labs' | 'programs' | 'events' | 'certifications' | 'proposals' | 'series';
+	type Tab =
+		| 'labs'
+		| 'programs'
+		| 'events'
+		| 'certifications'
+		| 'proposals'
+		| 'series'
+		| 'sponsored';
 
 	let tab = $state<Tab>('labs');
 	let loading = $state(true);
@@ -74,6 +83,83 @@
 	let seriesKind = $state<SeriesKind>('awards_edition');
 	let seriesStarts = $state('');
 	let seriesEnds = $state('');
+
+	// --- Sponsored content ---
+	//
+	// The one product line the backend listed nowhere until SKI-354. It is
+	// loaded on demand rather than with the other seven: the tab is rarely
+	// the one somebody opens the page for, and the list is admin-only where
+	// the rest are public reads.
+	let sponsored = $state<SponsoredContentRow[]>([]);
+	let sponsoredLoading = $state(false);
+	let sponsoredLoaded = $state(false);
+	let sponsoredStatus = $state('');
+
+	let contentSponsor = $state('');
+	let contentType = $state('blog_post');
+	let contentTitle = $state('');
+	let contentFee = $state('');
+	let contentEvent = $state('');
+	let contentDisclosure = $state('');
+	let contentAuthor = $state('');
+	let commissioning = $state(false);
+
+	/** One URL per piece: publishing is the act of saying where it went, and
+	 *  a shared field would offer the last answer for the next question. */
+	let publishUrl = $state<Record<string, string>>({});
+
+	async function loadSponsored() {
+		sponsoredLoading = true;
+		try {
+			const res = await programsApi.sponsoredContent(
+				sponsoredStatus ? { status: sponsoredStatus } : undefined
+			);
+			sponsored = res.data.content;
+			sponsoredLoaded = true;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			sponsoredLoading = false;
+		}
+	}
+
+	async function commission() {
+		if (!contentSponsor.trim() || !contentTitle.trim() || !contentFee.trim()) return;
+		commissioning = true;
+		try {
+			await programsApi.commissionSponsoredContent({
+				sponsor_enterprise_id: contentSponsor.trim(),
+				content_type: contentType,
+				title: contentTitle.trim(),
+				fee: contentFee.trim(),
+				...(contentEvent.trim() ? { event_id: contentEvent.trim() } : {}),
+				...(contentDisclosure.trim() ? { disclosure_text: contentDisclosure.trim() } : {}),
+				...(contentAuthor.trim() ? { author_user_id: contentAuthor.trim() } : {})
+			});
+			toast.success(i18n.t('admin.programs.commissioned'));
+			contentTitle = '';
+			contentFee = '';
+			contentDisclosure = '';
+			await loadSponsored();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			commissioning = false;
+		}
+	}
+
+	async function publish(row: SponsoredContentRow) {
+		const url = (publishUrl[row.id] ?? '').trim();
+		if (!url) return;
+		await run(row.id, async () => {
+			const res = await programsApi.publishSponsoredContent(row.id, url);
+			toast.success(
+				i18n.t('admin.programs.published', { amount: res.data.revenue_booked })
+			);
+			publishUrl[row.id] = '';
+			await loadSponsored();
+		});
+	}
 	let creatingSeries = $state(false);
 
 	let attachTo = $state<Record<string, string>>({});
@@ -451,7 +537,8 @@
 				{ value: 'events', label: i18n.t('admin.programs.tabs.events') },
 				{ value: 'certifications', label: i18n.t('admin.programs.tabs.certifications') },
 				{ value: 'proposals', label: i18n.t('admin.programs.tabs.proposals') },
-				{ value: 'series', label: i18n.t('admin.programs.tabs.series') }
+				{ value: 'series', label: i18n.t('admin.programs.tabs.series') },
+				{ value: 'sponsored', label: i18n.t('admin.programs.tabs.sponsored') }
 			]}
 			bind:value={tab}
 		/>
@@ -878,7 +965,7 @@
 				{/each}
 			</ul>
 		{/if}
-	{:else}
+	{:else if tab === 'series'}
 		<section class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">
 			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-widest text-text-muted">
 				{i18n.t('admin.programs.newSeriesTitle')}
@@ -1065,6 +1152,158 @@
 					</p>
 				{/if}
 			{/if}
+		</section>
+	{:else if tab === 'sponsored'}
+		<p class="mb-4 flex items-start gap-2 rounded-xl border border-border bg-surface-overlay px-3 py-2 text-xs text-text-muted">
+			<Info size={13} strokeWidth={2} class="mt-0.5 shrink-0" />
+			<span>{i18n.t('admin.programs.sponsoredHint')}</span>
+		</p>
+
+		<div class="mb-4 flex flex-wrap items-end gap-3">
+			<div class="w-48">
+				<label class="flex flex-col gap-1.5">
+					<span class="text-sm font-medium text-text-primary">
+						{i18n.t('admin.programs.statusFilterLabel')}
+					</span>
+					<Select
+						items={[
+							{ value: '', label: i18n.t('admin.programs.allStatuses') },
+							{ value: 'draft', label: 'draft' },
+							{ value: 'published', label: 'published' }
+						]}
+						bind:value={sponsoredStatus}
+						shape="rounded"
+					/>
+				</label>
+			</div>
+			<Button variant="secondary" size="sm" onclick={loadSponsored} loading={sponsoredLoading}>
+				<RefreshCw size={14} strokeWidth={2} />
+				{i18n.t('admin.programs.loadSponsoredBtn')}
+			</Button>
+		</div>
+
+		{#if sponsoredLoaded}
+			{#if sponsored.length === 0}
+				<p class="mb-6 rounded-xl border border-border bg-surface-overlay px-4 py-8 text-center text-sm text-text-muted">
+					{i18n.t('admin.programs.emptySponsored')}
+				</p>
+			{:else}
+				<ul class="mb-6 flex flex-col gap-3">
+					{#each sponsored as row (row.id)}
+						<li class="rounded-2xl border border-border bg-surface-elevated p-5">
+							<div class="mb-2 flex flex-wrap items-center gap-2">
+								<span class="text-sm font-bold">{row.title}</span>
+								<Badge variant={row.published_at ? 'success' : 'warning'}>{row.status}</Badge>
+								<Badge variant="default">{row.content_type}</Badge>
+								{#if row.company_name}
+									<span class="text-xs text-text-muted">{row.company_name}</span>
+								{/if}
+								{#if row.fee}
+									<span class="text-xs text-text-muted">{row.fee} {row.currency ?? ''}</span>
+								{/if}
+							</div>
+
+							{#if row.published_at}
+								<p class="text-xs text-text-muted">
+									{i18n.t('admin.programs.publishedOn')}
+									{new Date(row.published_at).toLocaleDateString(intlLocale())}
+									{#if row.content_url}
+										·
+										<a
+											href={row.content_url}
+											target="_blank"
+											rel="noreferrer noopener"
+											class="text-primary hover:underline"
+										>
+											{i18n.t('admin.programs.openPiece')}
+										</a>
+									{/if}
+								</p>
+							{:else}
+								<div class="flex flex-wrap items-end gap-3">
+									<div class="min-w-56 flex-1">
+										<Input
+											label={i18n.t('admin.programs.publishUrlLabel')}
+											hint={i18n.t('admin.programs.publishUrlHint')}
+											value={publishUrl[row.id] ?? ''}
+											oninput={(e: Event) =>
+												(publishUrl[row.id] = (e.target as HTMLInputElement).value)}
+										/>
+									</div>
+									<Button
+										variant="primary"
+										size="sm"
+										onclick={() => publish(row)}
+										disabled={(publishUrl[row.id] ?? '').trim() === '' || busy !== null}
+										loading={busy === row.id}
+									>
+										{i18n.t('admin.programs.publishBtn')}
+									</Button>
+								</div>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{/if}
+
+		<section class="rounded-2xl border border-border bg-surface-elevated p-5">
+			<h2 class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+				{i18n.t('admin.programs.commissionTitle')}
+			</h2>
+			<p class="mb-4 text-xs text-text-muted">{i18n.t('admin.programs.commissionHint')}</p>
+
+			<div class="grid gap-3 sm:grid-cols-2">
+				<Input
+					label={i18n.t('admin.programs.sponsorIdLabel')}
+					bind:value={contentSponsor}
+				/>
+				<label class="flex flex-col gap-1.5">
+					<span class="text-sm font-medium text-text-primary">
+						{i18n.t('admin.programs.contentTypeLabel')}
+					</span>
+					<Select
+						items={SPONSORED_CONTENT_TYPES.map((t) => ({ value: t, label: t }))}
+						bind:value={contentType}
+						shape="rounded"
+					/>
+				</label>
+				<Input label={i18n.t('admin.programs.contentTitleLabel')} bind:value={contentTitle} />
+				<Input
+					label={i18n.t('admin.programs.feeLabel')}
+					hint={i18n.t('admin.programs.feeHint')}
+					bind:value={contentFee}
+				/>
+				<Input
+					label={i18n.t('admin.programs.eventIdLabel')}
+					hint={i18n.t('admin.programs.eventIdHint')}
+					bind:value={contentEvent}
+				/>
+				<Input label={i18n.t('admin.programs.authorIdLabel')} bind:value={contentAuthor} />
+				<div class="sm:col-span-2">
+					<Input
+						label={i18n.t('admin.programs.disclosureLabel')}
+						hint={i18n.t('admin.programs.disclosureHint')}
+						bind:value={contentDisclosure}
+					/>
+				</div>
+			</div>
+
+			<div class="mt-4">
+				<Button
+					variant="primary"
+					size="sm"
+					onclick={commission}
+					disabled={contentSponsor.trim() === '' ||
+						contentTitle.trim() === '' ||
+						contentFee.trim() === '' ||
+						commissioning}
+					loading={commissioning}
+				>
+					<Plus size={14} strokeWidth={2} />
+					{i18n.t('admin.programs.commissionBtn')}
+				</Button>
+			</div>
 		</section>
 	{/if}
 </div>

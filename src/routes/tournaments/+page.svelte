@@ -16,10 +16,12 @@
 		type SeasonCloseReport
 	} from '$api/admin';
 	import { competitionsApi } from '$api/competitions';
+	import { JUDGE_STATUSES } from '$lib/types';
 	import type {
 		JuryInvitation,
 		OutstandingPrize,
 		SeasonListRow,
+		TournamentSubmission,
 		VoteBurst
 	} from '$lib/types';
 	import Input from '$components/ui/Input.svelte';
@@ -28,7 +30,7 @@
 	import Select from '$components/ui/Select.svelte';
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
 	import ConfirmDangerousDialog from '$components/ui/ConfirmDangerousDialog.svelte';
-	import { Swords, Calendar, Trophy, Sparkles, ChevronRight, Flag, DoorClosed, Gavel, Coins, Activity } from '@lucide/svelte';
+	import { Swords, Calendar, Trophy, Sparkles, ChevronRight, Flag, DoorClosed, Gavel, Coins, Activity, ClipboardCheck, EyeOff } from '@lucide/svelte';
 
 	type Tab = 'seasons' | 'tournaments' | 'contests';
 	let activeTab = $state<Tab>('seasons');
@@ -69,6 +71,80 @@
 	let refundTournamentId = $state('');
 	let showRefund = $state(false);
 	let refunding = $state(false);
+
+	// --- Judging ---
+	//
+	// The panel's own screen. Judging is gated on `jury_tournament`, not on
+	// `admin`: administering the platform and knowing whether a TDD entry is
+	// good are different competences, and the backend says so. An admin who
+	// is not a juror will be refused here, which is correct.
+	let judgeSlug = $state('');
+	let submissions = $state<TournamentSubmission[]>([]);
+	let submissionsBlinded = $state(false);
+	let submissionsBlindUntil = $state<string | null>(null);
+	let submissionsLoading = $state(false);
+	let submissionsLoaded = $state(false);
+
+	// One draft per entry rather than one shared form: a juror works down the
+	// list, and a single form would silently carry the last verdict onto the
+	// next entry.
+	let verdictStatus = $state<Record<string, string>>({});
+	let verdictScore = $state<Record<string, string>>({});
+	let verdictNotes = $state<Record<string, string>>({});
+	let judging = $state<string | null>(null);
+
+	async function loadSubmissions() {
+		if (!judgeSlug.trim()) return;
+		submissionsLoading = true;
+		try {
+			const res = await competitionsApi.tournamentSubmissions(judgeSlug.trim());
+			submissions = res.data.submissions;
+			// Seeded rather than left undefined: the verdict select binds to
+			// these, and an absent key would render as a chosen-nothing that
+			// looks like a choice.
+			for (const entry of submissions) {
+				verdictStatus[entry.id] ??= '';
+				verdictScore[entry.id] ??= '';
+				verdictNotes[entry.id] ??= '';
+			}
+			submissionsBlinded = res.data.blinded;
+			submissionsBlindUntil = res.data.blind_until;
+			submissionsLoaded = true;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			submissionsLoading = false;
+		}
+	}
+
+	async function judge(entry: TournamentSubmission) {
+		const status = verdictStatus[entry.id];
+		if (!status) return;
+		judging = entry.id;
+		try {
+			const score = verdictScore[entry.id]?.trim();
+			const notes = verdictNotes[entry.id]?.trim();
+			const res = await competitionsApi.judgeSubmission(entry.id, {
+				status: status as 'accepted' | 'rejected' | 'disqualified',
+				// Sent when typed and omitted when not. Whether a score is
+				// required or refused depends on the contest being judged or
+				// measured, which only the backend knows — so it decides, and
+				// its 400 is the message the juror reads.
+				...(score ? { judge_score: Number(score) } : {}),
+				...(notes ? { judge_notes: notes } : {})
+			});
+			// Replace the row in place. Reloading would re-blind nothing and
+			// lose the drafts on every other entry.
+			submissions = submissions.map((s) => (s.id === entry.id ? res.data.submission : s));
+			verdictScore[entry.id] = '';
+			verdictNotes[entry.id] = '';
+			toast.success(i18n.t('admin.tournaments.contestOps.judged'));
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			judging = null;
+		}
+	}
 
 	async function loadJury() {
 		if (!jurySlug.trim()) return;
@@ -1140,6 +1216,166 @@
 						</Button>
 					</div>
 				</div>
+			</section>
+
+			<!-- Judging -->
+			<section class="rounded-2xl border border-border bg-surface-elevated p-6 lg:col-span-2">
+				<div class="mb-4 flex items-center gap-2">
+					<ClipboardCheck size={16} strokeWidth={2} class="text-accent" />
+					<h2 class="text-sm font-bold uppercase tracking-wider">
+						{i18n.t('admin.tournaments.contestOps.judgeTitle')}
+					</h2>
+				</div>
+				<p class="mb-4 text-xs text-text-muted">
+					{i18n.t('admin.tournaments.contestOps.judgeHint')}
+				</p>
+
+				<div class="flex flex-wrap items-end gap-3">
+					<Input
+						label={i18n.t('admin.tournaments.contestOps.jurySlugLabel')}
+						bind:value={judgeSlug}
+						class="min-w-[12rem] flex-1"
+					/>
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={loadSubmissions}
+						loading={submissionsLoading}
+					>
+						{i18n.t('admin.tournaments.contestOps.loadSubmissions')}
+					</Button>
+				</div>
+
+				{#if submissionsLoaded}
+					{#if submissionsBlinded}
+						<p
+							class="mt-4 flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-text-muted"
+						>
+							<EyeOff size={13} strokeWidth={2} class="mt-0.5 shrink-0 text-warning" />
+							<span>
+								{i18n.t('admin.tournaments.contestOps.blindedNote')}
+								{#if submissionsBlindUntil}
+									{i18n.t('admin.tournaments.contestOps.blindUntil')}
+									{new Date(submissionsBlindUntil).toLocaleString()}
+								{/if}
+							</span>
+						</p>
+					{/if}
+
+					{#if submissions.length === 0}
+						<p class="mt-4 text-sm text-text-muted">
+							{i18n.t('admin.tournaments.contestOps.submissionsEmpty')}
+						</p>
+					{:else}
+						<ul class="mt-4 space-y-3">
+							{#each submissions as entry (entry.id)}
+								<li class="rounded-xl border border-border bg-surface-overlay p-4">
+									<div class="mb-2 flex flex-wrap items-center gap-2">
+										<Badge
+											variant={entry.status === 'accepted'
+												? 'success'
+												: entry.status === 'submitted'
+													? 'warning'
+													: 'error'}
+										>
+											{entry.status}
+										</Badge>
+										{#if entry.measured_value !== null}
+											<Badge variant="primary">
+												{i18n.t('admin.tournaments.contestOps.measured')}: {entry.measured_value}
+											</Badge>
+										{/if}
+										{#if entry.judge_score !== null}
+											<Badge variant="primary">
+												{i18n.t('admin.tournaments.contestOps.scoreLabel')}: {entry.judge_score}
+											</Badge>
+										{/if}
+										{#if entry.language}
+											<Badge variant="default">{entry.language}</Badge>
+										{/if}
+										<code class="font-mono text-[10px] text-text-muted">{entry.id}</code>
+									</div>
+
+									<p class="mb-2 text-sm text-text-primary">{entry.summary}</p>
+
+									<div class="mb-3 flex flex-wrap items-center gap-3 text-xs">
+										<a
+											href={entry.artifact_url}
+											target="_blank"
+											rel="noreferrer noopener"
+											class="text-primary hover:underline"
+										>
+											{entry.artifact_type}
+										</a>
+										{#if entry.secondary_url}
+											<a
+												href={entry.secondary_url}
+												target="_blank"
+												rel="noreferrer noopener"
+												class="text-primary hover:underline"
+											>
+												{i18n.t('admin.tournaments.contestOps.secondaryUrl')}
+											</a>
+										{/if}
+										<span class="text-text-muted">
+											{new Date(entry.submitted_at).toLocaleString()}
+										</span>
+									</div>
+
+									{#if entry.judged_at}
+										<p class="mb-3 text-xs text-text-muted">
+											{i18n.t('admin.tournaments.contestOps.judgedOn')}
+											{new Date(entry.judged_at).toLocaleString()}
+											{#if entry.judge_notes}
+												— {entry.judge_notes}
+											{/if}
+										</p>
+									{/if}
+
+									<div class="grid gap-3 border-t border-border pt-3 sm:grid-cols-4">
+										<label class="flex flex-col gap-1.5">
+											<span class="text-sm font-medium text-text-primary">
+												{i18n.t('admin.tournaments.contestOps.verdictLabel')}
+											</span>
+											<Select
+												items={JUDGE_STATUSES.map((s) => ({
+													value: s,
+													label: i18n.t(`admin.tournaments.contestOps.verdicts.${s}`)
+												}))}
+												bind:value={verdictStatus[entry.id]}
+												placeholder={i18n.t('admin.tournaments.contestOps.verdictPlaceholder')}
+												shape="rounded"
+											/>
+										</label>
+										<Input
+											label={i18n.t('admin.tournaments.contestOps.scoreLabel')}
+											type="number"
+											min="0"
+											max="100"
+											bind:value={verdictScore[entry.id]}
+										/>
+										<Input
+											label={i18n.t('admin.tournaments.contestOps.notesLabel')}
+											bind:value={verdictNotes[entry.id]}
+											class="sm:col-span-2"
+										/>
+									</div>
+									<div class="mt-3">
+										<Button
+											variant="primary"
+											size="sm"
+											disabled={!verdictStatus[entry.id]}
+											loading={judging === entry.id}
+											onclick={() => judge(entry)}
+										>
+											{i18n.t('admin.tournaments.contestOps.judgeBtn')}
+										</Button>
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{/if}
 			</section>
 		</div>
 	{/if}

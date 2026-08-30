@@ -9,11 +9,15 @@
  * ## The line this module does not cross
  *
  * `POST /admin/ambassador-programs/{id}/activate` and
- * `POST /admin/launch-campaigns/{id}/open` are absent, deliberately. They act
- * on a **draft**, and a draft is in no public list — only in
- * `/enterprise/*`, which is scoped to the calling company. Wiring them would
- * mean a form asking for a UUID somebody got out of psql, which is the
- * problem SKI-337 named rather than a way around it. They are in SKI-354.
+ * `POST /admin/launch-campaigns/{id}/open` are not here. They act on a
+ * **draft**, and a draft is in no public list — so for as long as the only
+ * reads were public ones, wiring them would have meant a form asking for a
+ * UUID out of psql.
+ *
+ * SKI-354 shipped `GET /admin/enterprise-products`, and they now live in
+ * `servicing.ts` keyed on the `source_id` that register returns. They stay
+ * out of this module because its organising idea is unchanged: everything
+ * here hangs off a public list.
  */
 import type {
 	AmbassadorProgramRow,
@@ -26,7 +30,9 @@ import type {
 	EventStatus,
 	LabRow,
 	LaunchCampaignRow,
-	ProposalRow
+	ProposalRow,
+	SponsoredContentInput,
+	SponsoredContentRow
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -69,6 +75,16 @@ export const programsApi = {
 	events(params?: { event_type?: string }) {
 		return api.get<ApiResponse<{ events: EventRow[] }>>(
 			'/events',
+			params as Record<string, string>
+		);
+	},
+
+	/** Sponsored content, unpublished first. Listed nowhere before SKI-354 —
+	 *  not admin, not enterprise, not public — so publishing a piece worked
+	 *  only in the session that created it. */
+	sponsoredContent(params?: { status?: string }) {
+		return api.get<ApiResponse<{ content: SponsoredContentRow[] }>>(
+			'/admin/sponsored-content',
 			params as Record<string, string>
 		);
 	},
@@ -142,6 +158,26 @@ export const programsApi = {
 			enterprise_id: enterpriseId,
 			contract_value: contractValue
 		});
+	},
+
+	/** Commission a piece. Returns the id, which is what made publishing
+	 *  work in the creating session even while no listing existed. */
+	commissionSponsoredContent(input: SponsoredContentInput) {
+		return api.post<ApiResponse<{ content_id: string }>>('/admin/sponsored-content', input);
+	},
+
+	/**
+	 * Publish a piece at a URL, which books its fee as revenue.
+	 *
+	 * The URL is where the piece actually went and is required: the backend
+	 * refuses anything that is not https, and refuses a second publish. The
+	 * money moves here, not at commission time.
+	 */
+	publishSponsoredContent(id: string, url: string) {
+		return api.post<ApiResponse<{ revenue_booked: string }>>(
+			`/admin/sponsored-content/${id}/publish`,
+			{ url }
+		);
 	},
 
 	/** Appoint a juror, organiser, speaker or sponsor representative.

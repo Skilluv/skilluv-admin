@@ -134,3 +134,40 @@ describe('competitionsApi — contests and awards', () => {
 		expect(lastBody()).toEqual({ nominee_ids: ['n1', 'n2', 'n3'] });
 	});
 });
+
+describe('competitionsApi — judging', () => {
+	it('reads the entries of one contest by slug', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { submissions: [], blinded: true, blind_until: null }, meta: {} })
+		);
+		const { competitionsApi } = await import('./competitions');
+		const res = await competitionsApi.tournamentSubmissions('design-cup-2026');
+		expect(lastUrl()).toBe('/api/tournaments/design-cup-2026/submissions');
+		// `blinded` is carried, not dropped. During the window a non-juror
+		// sees only their own entry, and a list of one that did not say so
+		// would read as a contest nobody entered.
+		expect(res.data.blinded).toBe(true);
+	});
+
+	it('escapes a slug rather than pasting it into the path', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { submissions: [], blinded: false, blind_until: null }, meta: {} })
+		);
+		const { competitionsApi } = await import('./competitions');
+		await competitionsApi.tournamentSubmissions('a b/c');
+		expect(lastUrl()).toBe('/api/tournaments/a%20b%2Fc/submissions');
+	});
+
+	it('sends a score with an acceptance and lets the backend refuse it', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { submission: {} }, meta: {} }));
+		const { competitionsApi } = await import('./competitions');
+		await competitionsApi.judgeSubmission('s1', { status: 'accepted', judge_score: 82 });
+		expect(lastUrl()).toBe('/api/submissions/s1/judge');
+		expect(lastBody()).toEqual({ status: 'accepted', judge_score: 82 });
+	});
+
+	it('names the three verdicts', async () => {
+		const { JUDGE_STATUSES } = await import('$lib/types');
+		expect(JUDGE_STATUSES).toEqual(['accepted', 'rejected', 'disqualified']);
+	});
+});

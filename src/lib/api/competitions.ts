@@ -30,8 +30,11 @@ import type {
 	ApiResponse,
 	AwardsEdition,
 	CreateSeriesInput,
+	JudgeSubmissionInput,
 	SeasonListRow,
-	SeriesRow
+	SeriesRow,
+	TournamentSubmission,
+	TournamentSubmissions
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -81,6 +84,29 @@ export const competitionsApi = {
 	/** Books the contest's revenue. */
 	concludeContest(id: string) {
 		return api.post<ApiResponse<{ revenue_booked: string }>>(`/admin/contests/${id}/conclude`);
+	},
+
+	/** Entries in one contest. Blinded during the submission window unless
+	 *  the caller is a juror, which is the backend's decision and not this
+	 *  client's — it asks and renders what comes back. */
+	tournamentSubmissions(slug: string) {
+		return api.get<ApiResponse<TournamentSubmissions>>(
+			`/tournaments/${encodeURIComponent(slug)}/submissions`
+		);
+	},
+
+	/**
+	 * Judge one entry.
+	 *
+	 * `jury_tournament` or `admin`. A score is required to accept a *judged*
+	 * entry and refused on a *measured* one — the contest knows which it is,
+	 * so the 400 says so rather than the form guessing.
+	 */
+	judgeSubmission(id: string, input: JudgeSubmissionInput) {
+		return api.post<ApiResponse<{ submission: TournamentSubmission }>>(
+			`/submissions/${id}/judge`,
+			input
+		);
 	},
 
 	// --- Awards ---
