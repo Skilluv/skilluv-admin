@@ -3,7 +3,7 @@
 	import { toast } from '$stores/toast.svelte';
 	import { errorMessage } from '$api/errors';
 	import { programsApi, EVENT_ROLES, EVENT_STATUSES, auditIsComplete } from '$api/programs';
-	import { SPONSORED_CONTENT_TYPES } from '$lib/types';
+	import { CONTRIBUTION_STATUSES, SPONSORED_CONTENT_TYPES } from '$lib/types';
 	import { competitionsApi, SERIES_KINDS } from '$api/competitions';
 	import type {
 		AmbassadorProgramRow,
@@ -13,6 +13,7 @@
 		EventRole,
 		EventRow,
 		EventStatus,
+		LabContributionRow,
 		LabRow,
 		LaunchCampaignRow,
 		ProposalRow,
@@ -56,6 +57,68 @@
 	 *  and two programmes must not share an ambassador. */
 	let monthOf = $state<Record<string, string>>({});
 	let userOf = $state<Record<string, string>>({});
+
+	// --- Lab contributions ---
+	//
+	// Settling pays a whole month at once; judging is per contribution, and
+	// the ids it takes had no listing at all until the backend served one.
+	// The list is opened per lab rather than loaded with the tab: it belongs
+	// to a lab somebody is looking at, and eight labs' contributions on one
+	// screen is a wall.
+	let openLab = $state<string | null>(null);
+	let contributions = $state<Record<string, LabContributionRow[]>>({});
+	let contributionStatus = $state<Record<string, string>>({});
+	let loadingContributions = $state<string | null>(null);
+	/** Per-contribution refusal reasons. Two judged in one sitting must not
+	 *  share one, which is the whole reason this is a map. */
+	let refusalOf = $state<Record<string, string>>({});
+	let judging = $state<string | null>(null);
+
+	async function loadContributions(labId: string) {
+		loadingContributions = labId;
+		try {
+			const status = contributionStatus[labId] ?? 'pending';
+			const res = await programsApi.labContributions(labId, status ? { status } : undefined);
+			contributions[labId] = res.data.contributions;
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			loadingContributions = null;
+		}
+	}
+
+	async function toggleLab(labId: string) {
+		if (openLab === labId) {
+			openLab = null;
+			return;
+		}
+		openLab = labId;
+		contributionStatus[labId] ??= 'pending';
+		if (!contributions[labId]) await loadContributions(labId);
+	}
+
+	async function judge(labId: string, c: LabContributionRow, accept: boolean) {
+		const reason = (refusalOf[c.id] ?? '').trim();
+		// The backend refuses a refusal with no reason. Stopping here rather
+		// than sending it keeps that message for the cases it is about.
+		if (!accept && !reason) return;
+		judging = c.id;
+		try {
+			await programsApi.judgeContribution(c.id, {
+				accept,
+				...(reason ? { reason } : {})
+			});
+			toast.success(
+				i18n.t(accept ? 'admin.programs.contributionAccepted' : 'admin.programs.contributionRefused')
+			);
+			delete refusalOf[c.id];
+			await loadContributions(labId);
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			judging = null;
+		}
+	}
 
 	// Events
 	let eventUser = $state<Record<string, string>>({});
@@ -184,6 +247,18 @@
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
+		});
+	}
+
+	/** A DATE column, formatted in UTC. `counts_for_month` is a period, and
+	 *  rendering it locally moves it a day west of the Greenwich meridian. */
+	function fmtMonth(day: string): string {
+		const [y, m] = day.split('-').map(Number);
+		if (!y || !m) return day;
+		return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(intlLocale(), {
+			month: 'long',
+			year: 'numeric',
+			timeZone: 'UTC'
 		});
 	}
 
@@ -586,6 +661,141 @@
 							<span class="text-[11px] text-text-muted">
 								{i18n.t('admin.programs.monthHint')}
 							</span>
+						</div>
+
+						<div class="mt-4 border-t border-border pt-3">
+							<Button variant="ghost" size="sm" onclick={() => toggleLab(l.id)}>
+								{openLab === l.id
+									? i18n.t('admin.programs.hideContributions')
+									: i18n.t('admin.programs.showContributions')}
+							</Button>
+
+							{#if openLab === l.id}
+								<p class="mt-3 text-xs text-text-muted">
+									{i18n.t('admin.programs.contributionsHint')}
+								</p>
+
+								<div class="mt-3 flex flex-wrap items-end gap-3">
+									<div class="w-44">
+										<label class="flex flex-col gap-1.5">
+											<span class="text-sm font-medium text-text-primary">
+												{i18n.t('admin.programs.statusFilterLabel')}
+											</span>
+											<Select
+												items={[
+													{ value: '', label: i18n.t('admin.programs.allStatuses') },
+													...CONTRIBUTION_STATUSES.map((c) => ({
+														value: c,
+														label: i18n.t(`admin.programs.contributionStatuses.${c}`)
+													}))
+												]}
+												value={contributionStatus[l.id] ?? 'pending'}
+												onchange={(v) => {
+													contributionStatus[l.id] = v;
+													void loadContributions(l.id);
+												}}
+												shape="rounded"
+											/>
+										</label>
+									</div>
+									<Button
+										variant="secondary"
+										size="sm"
+										onclick={() => loadContributions(l.id)}
+										loading={loadingContributions === l.id}
+									>
+										<RefreshCw size={14} strokeWidth={2} />
+										{i18n.t('admin.common.refreshBtn')}
+									</Button>
+								</div>
+
+								{#if (contributions[l.id] ?? []).length === 0}
+									<p class="mt-3 text-sm text-text-muted">
+										{i18n.t('admin.programs.emptyContributions')}
+									</p>
+								{:else}
+									<ul class="mt-3 flex flex-col gap-3">
+										{#each contributions[l.id] ?? [] as c (c.id)}
+											<li class="rounded-xl border border-border bg-surface-overlay p-4">
+												<div class="mb-2 flex flex-wrap items-center gap-2">
+													{#if c.accepted === null}
+														<Badge variant="warning" size="sm">
+															{i18n.t('admin.programs.contributionStatuses.pending')}
+														</Badge>
+													{:else if c.accepted}
+														<Badge variant="success" size="sm">
+															{i18n.t('admin.programs.contributionStatuses.accepted')}
+														</Badge>
+													{:else}
+														<Badge variant="error" size="sm">
+															{i18n.t('admin.programs.contributionStatuses.rejected')}
+														</Badge>
+													{/if}
+													<Badge variant="default" size="sm">{c.activity_type}</Badge>
+													<span class="text-xs text-text-muted">
+														{fmtMonth(c.counts_for_month)}
+													</span>
+													<a
+														href={`/users/${c.contributor_user_id}`}
+														class="text-xs text-primary hover:underline"
+													>
+														{c.contributor_username ?? c.contributor_user_id.slice(0, 8)}
+													</a>
+													{#if c.paid_at}
+														<span class="text-xs text-text-muted">
+															{i18n.t('admin.programs.paidOn')}
+															{fmtMoment(c.paid_at)}
+															{#if c.reward}· {c.reward}{/if}
+														</span>
+													{/if}
+												</div>
+
+												<p class="mb-3 whitespace-pre-line text-sm text-text-primary">
+													{c.summary_md}
+												</p>
+
+												{#if c.rejection_reason}
+													<p class="mb-3 text-xs text-text-muted">
+														{i18n.t('admin.programs.refusedBecause')}
+														{c.rejection_reason}
+													</p>
+												{/if}
+
+												{#if c.accepted === null}
+													<div class="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+														<div class="min-w-56 flex-1">
+															<Input
+																label={i18n.t('admin.programs.refusalReasonLabel')}
+																hint={i18n.t('admin.programs.refusalReasonHint')}
+																value={refusalOf[c.id] ?? ''}
+																oninput={(e: Event) =>
+																	(refusalOf[c.id] = (e.target as HTMLInputElement).value)}
+															/>
+														</div>
+														<Button
+															variant="primary"
+															size="sm"
+															onclick={() => judge(l.id, c, true)}
+															disabled={judging !== null}
+															loading={judging === c.id}
+														>
+															{i18n.t('admin.programs.acceptBtn')}
+														</Button>
+														<Button
+															variant="secondary"
+															size="sm"
+															onclick={() => judge(l.id, c, false)}
+															disabled={(refusalOf[c.id] ?? '').trim() === '' || judging !== null}
+														>
+															{i18n.t('admin.programs.refuseBtn')}
+														</Button>
+													</div>
+												{/if}
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							{/if}
 						</div>
 					</li>
 				{/each}

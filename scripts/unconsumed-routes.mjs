@@ -165,15 +165,10 @@ const EQUIVALENT_TO = new Map([
 	['/community/challenges/{}/reject', '/admin/community/{}/reject'],
 	['/fraud/deliverables/flagged', '/admin/fraud/queue'],
 	['/fraud/deliverables/{}/mark-valid', '/admin/fraud/deliverables/{}/mark-valid'],
-	['/fraud/deliverables/{}/revoke', '/admin/fraud/deliverables/{}/revoke'],
-	// Two modules write the one `seasons` table. `tournament.rs` serves
-	// `/admin/seasons` and records a description; `seasons.rs` serves
-	// `/seasons` and records a theme. This app writes through the first and
-	// reads through the second — `GET /seasons` is the only listing there is.
-	// The write half of `seasons.rs` is therefore covered, not missing. The
-	// duplication is a backend question and is on SKI-354.
-	['/seasons', '/admin/seasons'],
-	['/seasons/{}/activate', '/admin/seasons/{}/status']
+	['/fraud/deliverables/{}/revoke', '/admin/fraud/deliverables/{}/revoke']
+	// Seasons were a third pair here until the backend removed the duplicate
+	// writer. `/seasons` and `/seasons/{}/activate` are now called directly,
+	// so an entry for them would map a live route onto one that is gone.
 ]);
 
 /**

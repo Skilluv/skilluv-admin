@@ -9,6 +9,7 @@
 		DomainReviewerStats,
 		PendingCredential,
 		TerrainProposal,
+		TradeReadiness,
 		ValidatorDomain
 	} from '$lib/types';
 	import Button from '$components/ui/Button.svelte';
@@ -21,7 +22,7 @@
 	import SegmentedControl from '$components/ui/SegmentedControl.svelte';
 	import { ChevronRight, RefreshCw, Info, ExternalLink } from '@lucide/svelte';
 
-	type Tab = 'overview' | 'reviewers' | 'featured' | 'credentials' | 'terrains';
+	type Tab = 'overview' | 'reviewers' | 'featured' | 'credentials' | 'terrains' | 'catalogue';
 
 	const DOMAINS: ValidatorDomain[] = [
 		'code',
@@ -54,6 +55,46 @@
 	 *  was written about, and one shared field would move it. */
 	let notes = $state<Record<string, string>>({});
 	let busyCredential = $state<string | null>(null);
+
+	// --- Opening a trade's catalogue ---
+	//
+	// Not loaded with the rest: the readiness call is per *orientation*, and
+	// this page is per domain. A domain holds several trades, and which one
+	// somebody is opening is a thing they have to say.
+	let tradeSlug = $state('');
+	let readiness = $state<TradeReadiness | null>(null);
+	let readinessLoading = $state(false);
+	let publishing = $state(false);
+
+	async function loadReadiness() {
+		if (!tradeSlug.trim()) return;
+		readinessLoading = true;
+		try {
+			const res = await oversightApi.orientationChallenges(tradeSlug.trim().toLowerCase());
+			readiness = res.data;
+		} catch (err) {
+			toast.error(errorMessage(err));
+			readiness = null;
+		} finally {
+			readinessLoading = false;
+		}
+	}
+
+	async function publishCatalogue() {
+		if (!readiness || publishing) return;
+		publishing = true;
+		try {
+			const res = await oversightApi.publishOrientationChallenges(readiness.orientation_slug);
+			// The response is the readiness again, so the screen shows the
+			// state that was published rather than the one it asked about.
+			readiness = res.data;
+			toast.success(i18n.t('admin.oversight.cataloguePublished'));
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			publishing = false;
+		}
+	}
 
 	function fmtDay(day: string | null): string {
 		if (!day) return '—';
@@ -223,7 +264,8 @@
 				{ value: 'reviewers', label: i18n.t('admin.oversight.tabs.reviewers') },
 				{ value: 'featured', label: i18n.t('admin.oversight.tabs.featured') },
 				{ value: 'credentials', label: i18n.t('admin.oversight.tabs.credentials') },
-				{ value: 'terrains', label: i18n.t('admin.oversight.tabs.terrains') }
+				{ value: 'terrains', label: i18n.t('admin.oversight.tabs.terrains') },
+				{ value: 'catalogue', label: i18n.t('admin.oversight.tabs.catalogue') }
 			]}
 			bind:value={tab}
 		/>
@@ -507,7 +549,7 @@
 				{/each}
 			</ul>
 		{/if}
-	{:else}
+	{:else if tab === 'terrains'}
 		<p class="mb-5 flex items-start gap-2 text-xs text-text-muted">
 			<Info size={12} strokeWidth={2} class="mt-0.5 shrink-0" />
 			<span>{i18n.t('admin.oversight.terrainsNote')}</span>
@@ -577,5 +619,120 @@
 				{/each}
 			</ul>
 		{/if}
+	{:else}
+		<p class="mb-5 flex items-start gap-2 text-xs text-text-muted">
+			<Info size={12} strokeWidth={2} class="mt-0.5 shrink-0" />
+			<span>{i18n.t('admin.oversight.catalogueNote')}</span>
+		</p>
+
+		<div class="mb-6 flex flex-wrap items-end gap-3">
+			<div class="min-w-56 flex-1">
+				<Input
+					label={i18n.t('admin.oversight.tradeSlugLabel')}
+					hint={i18n.t('admin.oversight.tradeSlugHint')}
+					bind:value={tradeSlug}
+				/>
+			</div>
+			<Button variant="secondary" size="sm" onclick={loadReadiness} loading={readinessLoading}>
+				{i18n.t('admin.oversight.checkReadinessBtn')}
+			</Button>
+		</div>
+
+		{#if readiness}
+			<div class="mb-5 grid gap-3 sm:grid-cols-4">
+				<StatCard label={i18n.t('admin.oversight.totalChallenges')} value={readiness.total} />
+				<StatCard label={i18n.t('admin.oversight.publishedChallenges')} value={readiness.published} />
+				<StatCard
+					label={i18n.t('admin.oversight.unwrittenChallenges')}
+					value={readiness.unwritten}
+					color={readiness.unwritten > 0 ? 'warning' : 'default'}
+				/>
+				<StatCard
+					label={i18n.t('admin.oversight.reviewersAvailable')}
+					value={readiness.reviewers}
+					color={readiness.reviewers === 0 ? 'warning' : 'default'}
+				/>
+			</div>
+
+			<section class="mb-6 rounded-2xl border border-border bg-surface-elevated p-5">
+				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+					<span class="text-sm font-semibold">
+						{readiness.orientation_name}
+						<code class="ms-2 font-mono text-[10px] text-text-muted">
+							{readiness.orientation_slug}
+						</code>
+					</span>
+					{#if readiness.reviewer_group}
+						<Badge variant="default" size="sm">{readiness.reviewer_group}</Badge>
+					{:else}
+						<Badge variant="warning" size="sm">
+							{i18n.t('admin.oversight.noReviewerGroup')}
+						</Badge>
+					{/if}
+				</div>
+
+				{#if readiness.blockers.length === 0}
+					<p class="mb-4 text-sm text-success">{i18n.t('admin.oversight.readyToOpen')}</p>
+				{:else}
+					<!-- The server's sentences, rendered as they came. Deriving a
+					     second reading of "ready" from the counters would give
+					     this screen an opinion that could disagree with the one
+					     next to the UPDATE. -->
+					<ul class="mb-4 flex flex-col gap-2">
+						{#each readiness.blockers as blocker (blocker)}
+							<li
+								class="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-soft px-3 py-2 text-xs"
+							>
+								<Info size={13} strokeWidth={2} class="mt-0.5 shrink-0 text-warning" />
+								<span>{blocker}</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				<Button
+					variant="primary"
+					size="sm"
+					onclick={publishCatalogue}
+					disabled={readiness.blockers.length > 0 || publishing}
+					loading={publishing}
+				>
+					{i18n.t('admin.oversight.publishCatalogueBtn')}
+				</Button>
+				<p class="mt-2 text-[11px] text-text-muted">
+					{i18n.t('admin.oversight.publishCatalogueHint')}
+				</p>
+			</section>
+
+			{#if readiness.challenges.length === 0}
+				<p class="rounded-xl border border-border bg-surface-overlay px-4 py-8 text-center text-sm text-text-muted">
+					{i18n.t('admin.oversight.emptyChallenges')}
+				</p>
+			{:else}
+				<ul class="flex flex-col gap-3">
+					{#each readiness.challenges as c (c.id)}
+						<li class="rounded-2xl border border-border bg-surface-elevated p-5">
+							<div class="mb-2 flex flex-wrap items-center gap-2">
+								<span class="text-sm font-semibold">{c.title}</span>
+								<Badge variant={c.status === 'published' ? 'success' : 'warning'} size="sm">
+									{c.status}
+								</Badge>
+								<Badge variant="default" size="sm">
+									{i18n.t('admin.oversight.difficulty')}
+									{c.difficulty}
+								</Badge>
+								{#if !c.written}
+									<Badge variant="error" size="sm">
+										{i18n.t('admin.oversight.stubBrief')}
+									</Badge>
+								{/if}
+							</div>
+							<p class="text-sm text-text-muted">{c.description}</p>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{/if}
 	{/if}
 </div>
+

@@ -1,34 +1,32 @@
 /**
  * Series, seasons, contests and awards.
  *
- * Seven routes that complete surfaces this app already had half of.
+ * ## Seasons are one surface again
  *
- * ## The seasons duplication, and why this module reads one and writes the
- * other
+ * They were two. `tournament.rs` served `POST /admin/seasons` and
+ * `{id}/status` writing `slug, name, description`; `seasons.rs` served
+ * `GET/POST /seasons` and `{slug}/activate` writing `slug, name, theme`.
+ * Both `INSERT INTO seasons`, so a season created through one path was
+ * missing a column the other assumed — which is why this client typed the
+ * two shapes apart rather than pretend they agreed.
  *
- * The backend serves **two independent season surfaces over one table**:
+ * The backend has since **removed the `tournament.rs` writer**, leaving one
+ * table with one writer and one shape. `SeasonListRow` is that shape, and
+ * the reads and the writes are in this module together now.
  *
- *   * `tournament.rs` — `POST /admin/seasons`, `{id}/status`, `{id}/close`,
- *     writing `slug, name, description, starts_at, ends_at`;
- *   * `seasons.rs` — `GET/POST /seasons`, `GET /seasons/current`,
- *     `POST /seasons/{slug}/activate`, writing `slug, name, theme,
- *     starts_at, ends_at`.
+ * Two consequences worth stating, because they are not cosmetic:
  *
- * Both `INSERT INTO seasons`. The column sets differ — one records a theme,
- * the other a description — so a season created through one path is missing
- * a field the other assumes.
- *
- * This app writes through `/admin/seasons`, which is what the tournaments
- * page has always used. What it lacked was a **list**: `/admin/seasons` has
- * no GET at all, so the page could create and close seasons without ever
- * showing them. `GET /seasons` is the only listing that exists, so that is
- * what is called here — a read against the same table, not a second writer.
- *
- * The duplication itself is a backend question and is filed on SKI-354.
+ *   * a season carries a **theme**, never a description;
+ *   * activation is addressed **by slug** and is its own act. There is no
+ *     general status write any more: `POST /seasons/{slug}/activate`
+ *     promotes one season and demotes whatever was active, and closing is
+ *     the separate `POST /admin/seasons/{id}/close`, which is by id because
+ *     it returns a report about a season rather than naming a new one.
  */
 import type {
 	ApiResponse,
 	AwardsEdition,
+	CreateSeasonInput,
 	CreateSeriesInput,
 	JudgeSubmissionInput,
 	SeasonListRow,
@@ -43,10 +41,28 @@ const api = createApiClient();
 export const competitionsApi = {
 	// --- Seasons ---
 
-	/** Every season, newest first. The only listing the backend serves — see
-	 *  the module note. */
+	/** Every season, newest first. */
 	seasons() {
 		return api.get<ApiResponse<{ seasons: SeasonListRow[] }>>('/seasons');
+	},
+
+	/** Create a season. `theme` is required and is what the one surviving
+	 *  writer records — there is no description column to write. */
+	createSeason(input: CreateSeasonInput) {
+		return api.post<ApiResponse<{ season: SeasonListRow }>>('/seasons', input);
+	},
+
+	/**
+	 * Promote a season to active, which demotes whatever was active.
+	 *
+	 * By slug, not by id — the route names the season the way the rest of
+	 * this surface does. It is the only status write there is: everything
+	 * else a season becomes, it becomes by being closed.
+	 */
+	activateSeason(slug: string) {
+		return api.post<ApiResponse<{ season: SeasonListRow }>>(
+			`/seasons/${encodeURIComponent(slug)}/activate`
+		);
 	},
 
 	// --- Series ---

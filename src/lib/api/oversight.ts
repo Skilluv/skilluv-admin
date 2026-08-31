@@ -25,7 +25,8 @@ import type {
 	DomainOverview,
 	DomainReviewerStats,
 	PendingCredential,
-	TerrainProposal
+	TerrainProposal,
+	TradeReadiness
 } from '$lib/types';
 import { createApiClient } from './client';
 
@@ -60,6 +61,41 @@ export const oversightApi = {
 		return api.get<ApiResponse<DomainFeaturedCandidate[]>>(
 			`/admin/domains/${domain}/featured-queue`,
 			params as Record<string, number>
+		);
+	},
+
+	// --- Opening a trade's catalogue ---
+
+	/**
+	 * What is still in the way of opening one trade to learners.
+	 *
+	 * 130 design challenges were seeded as drafts carrying a title and an
+	 * intent but no brief, deliberately: a challenge nobody has read must not
+	 * be handed to somebody who is learning. This says which of them are
+	 * still stubs, whether the trade names a review family, and whether
+	 * anybody holds it.
+	 *
+	 * Guarded on `domain_curator:{domain}` rather than on `admin` — opening
+	 * your own trade should not require running the platform.
+	 */
+	orientationChallenges(slug: string) {
+		return api.get<ApiResponse<TradeReadiness>>(
+			`/admin/orientations/${encodeURIComponent(slug)}/challenges`
+		);
+	},
+
+	/**
+	 * Open the whole catalogue, or be told what is missing.
+	 *
+	 * All of it or none of it: publishing three of five leaves a trade that
+	 * looks thin rather than unopened, and a visitor cannot tell those apart.
+	 * Refused while any blocker stands, and the refusal is the same sentence
+	 * the read returned — the two share one reading of "ready" on the server
+	 * so they cannot drift.
+	 */
+	publishOrientationChallenges(slug: string) {
+		return api.post<ApiResponse<TradeReadiness>>(
+			`/admin/orientations/${encodeURIComponent(slug)}/challenges/publish`
 		);
 	},
 

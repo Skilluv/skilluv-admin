@@ -667,14 +667,11 @@ export const adminApi = {
 	},
 
 	// --- Seasons ---
-
-	createSeason(body: CreateSeasonBody) {
-		return api.post<ApiResponse<{ season: Season }>>('/admin/seasons', body);
-	},
-
-	updateSeasonStatus(id: string, status: string) {
-		return api.post<ApiResponse<{ season: Season }>>(`/admin/seasons/${id}/status`, { status });
-	},
+	//
+	// Only closing is left here. Creating and activating moved to
+	// `competitions.ts` when the backend removed this module's writer, and
+	// closing stayed because it is addressed by id and answers with a report
+	// rather than with the season.
 
 	closeSeason(id: string, reason?: string) {
 		return api.post<ApiResponse<{ close_report: SeasonCloseReport }>>(
@@ -1146,26 +1143,6 @@ export interface AuditGenericEntry {
 	ip: string | null;
 	user_agent: string | null;
 	created_at: string;
-}
-
-export interface Season {
-	id: string;
-	slug: string;
-	name: string;
-	description: string | null;
-	starts_at: string;
-	ends_at: string;
-	status: string;
-	closed_at: string | null;
-	created_at: string;
-}
-
-export interface CreateSeasonBody {
-	slug: string;
-	name: string;
-	description?: string;
-	starts_at: string;
-	ends_at: string;
 }
 
 export interface SeasonCloseReport {

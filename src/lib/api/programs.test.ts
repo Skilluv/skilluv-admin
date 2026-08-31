@@ -235,3 +235,51 @@ describe('programsApi — sponsored content', () => {
 		]);
 	});
 });
+
+describe('programsApi — the list behind the judge button', () => {
+	it('lists one lab contributions, filtered by status', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { contributions: [], page: 1, per_page: 50, total: 0 }, meta: {} })
+		);
+		const { programsApi } = await import('./programs');
+		await programsApi.labContributions('l1', { status: 'pending' });
+		expect(lastUrl()).toBe('/api/admin/labs/l1/contributions?status=pending');
+	});
+
+	it('asks for all of them when no status was given', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({ data: { contributions: [], page: 1, per_page: 50, total: 0 }, meta: {} })
+		);
+		const { programsApi } = await import('./programs');
+		await programsApi.labContributions('l1');
+		expect(lastUrl()).toBe('/api/admin/labs/l1/contributions');
+	});
+
+	it('accepts without a reason and refuses with one', async () => {
+		const { programsApi } = await import('./programs');
+
+		fetchMock.mockResolvedValueOnce(okJson({ data: { accepted: true }, meta: {} }));
+		await programsApi.judgeContribution('c1', { accept: true });
+		expect(lastUrl()).toBe('/api/admin/lab-contributions/c1/judge');
+		// No `reason` key at all on an acceptance. An empty string would be a
+		// reason, and there is nothing to explain.
+		expect(lastBody()).toEqual({ accept: true });
+
+		fetchMock.mockResolvedValueOnce(okJson({ data: { accepted: false }, meta: {} }));
+		await programsApi.judgeContribution('c2', {
+			accept: false,
+			reason: 'the brief asked for a working prototype'
+		});
+		expect(lastBody()).toEqual({
+			accept: false,
+			reason: 'the brief asked for a working prototype'
+		});
+	});
+
+	it('spells pending as a filter value, not as a boolean', async () => {
+		const { CONTRIBUTION_STATUSES } = await import('$lib/types');
+		// `accepted` is nullable on the row, so "unjudged" is a third state
+		// rather than a value — which is why the filter takes three words.
+		expect(CONTRIBUTION_STATUSES).toEqual(['pending', 'accepted', 'rejected']);
+	});
+});

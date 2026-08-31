@@ -194,3 +194,28 @@ describe('oversightApi — cohorts and offers, as moderation sees them', () => {
 		expect(isModerationHold(null)).toBe(false);
 	});
 });
+
+describe('oversightApi — opening a trade catalogue', () => {
+	it('reads one trade readiness by slug', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { blockers: [] }, meta: {} }));
+		const { oversightApi } = await import('./oversight');
+		await oversightApi.orientationChallenges('ui-designer');
+		expect(lastUrl()).toBe('/api/admin/orientations/ui-designer/challenges');
+	});
+
+	it('publishes the whole catalogue at its own path', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { blockers: [] }, meta: {} }));
+		const { oversightApi } = await import('./oversight');
+		await oversightApi.publishOrientationChallenges('ui-designer');
+		// One act for the whole set. There is no per-challenge publish, on
+		// purpose: a half-open trade looks thin rather than unopened.
+		expect(lastUrl()).toBe('/api/admin/orientations/ui-designer/challenges/publish');
+	});
+
+	it('escapes the slug', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { blockers: [] }, meta: {} }));
+		const { oversightApi } = await import('./oversight');
+		await oversightApi.orientationChallenges('a b/c');
+		expect(lastUrl()).toBe('/api/admin/orientations/a%20b%2Fc/challenges');
+	});
+});

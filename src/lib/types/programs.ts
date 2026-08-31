@@ -171,18 +171,25 @@ export interface TerrainProposal {
 	[key: string]: unknown;
 }
 
+/** What creating a season takes. A theme, not a description: the writer
+ *  that recorded a description was removed when the duplication was. */
+export interface CreateSeasonInput {
+	slug: string;
+	name: string;
+	theme: string;
+	starts_at: string;
+	ends_at: string;
+}
+
 /**
- * A season as `GET /seasons` returns it.
+ * A season, as the one surviving writer records it and the one listing
+ * returns it.
  *
- * **Not the same shape as `Season` in `api/admin.ts`**, and that is the point
- * rather than an oversight. Two backend modules write the one `seasons`
- * table: `tournament.rs` records a `description` and a `closed_at`,
- * `seasons.rs` records a `theme` and a `retrospective_report_url`. A season
- * created through one path is missing a field the other assumes.
- *
- * This app creates through `/admin/seasons` and lists through `GET /seasons`
- * — the only listing that exists — so both shapes are real and both are
- * typed. The duplication itself is filed on SKI-354.
+ * This used to be one of two shapes. `tournament.rs` wrote a `description`
+ * and a `closed_at` while `seasons.rs` wrote a `theme` and a
+ * `retrospective_report_url`, both into the same table, so a season created
+ * through one path was missing a field the other assumed. The backend
+ * removed the first writer; this is now simply what a season is.
  */
 export interface SeasonListRow {
 	id: string;
@@ -247,3 +254,43 @@ export interface JudgeSubmissionInput {
 }
 
 export const JUDGE_STATUSES = ['accepted', 'rejected', 'disqualified'] as const;
+
+/** One contribution to a living lab, with enough context to judge it
+ *  without opening anything else. */
+export interface LabContributionRow {
+	id: string;
+	lab_id: string;
+	contributor_user_id: string;
+	contributor_username: string | null;
+	/** What the contribution brings, in the contributor's own words. */
+	summary_md: string;
+	activity_type: string;
+	/** A DATE, so format it in UTC — the month it counts for is a period,
+	 *  not an instant, and a local rendering shifts it by a day. */
+	counts_for_month: string;
+	submitted_at: string;
+	/** Null while nobody has judged it, which is a third state rather than a
+	 *  value — and the one the default ordering puts first. */
+	accepted: boolean | null;
+	rejection_reason: string | null;
+	/** Decimal string. */
+	reward: string | null;
+	paid_at: string | null;
+}
+
+/**
+ * A verdict on one contribution.
+ *
+ * A refusal must carry a reason and the backend says why in as many words:
+ * somebody spent an evening on this and the pool is what they were promised
+ * for it. So the client sends what was typed and lets that message through
+ * rather than inventing a shorter one.
+ */
+export interface ContributionJudgementInput {
+	accept: boolean;
+	reason?: string;
+}
+
+/** The three states a contribution can be filtered by. `pending` is the
+ *  absence of a verdict, not a stored value. */
+export const CONTRIBUTION_STATUSES = ['pending', 'accepted', 'rejected'] as const;

@@ -49,13 +49,16 @@ describe('competitionsApi — seasons', () => {
 		expect(lastUrl()).toBe('/api/seasons');
 	});
 
-	it('does not write seasons: that half goes through /admin/seasons', async () => {
+	it('reads and writes seasons in the one module now', async () => {
 		const mod = await import('./competitions');
 		const names = Object.keys(mod.competitionsApi);
-		// Two backend modules write the one `seasons` table with different
-		// column sets. This app writes through `adminApi`, and a second writer
-		// here would produce rows missing whatever the other module records.
-		expect(names.some((n) => /createSeason|activateSeason/i.test(n))).toBe(false);
+		// This used to assert the opposite. Two backend modules wrote the one
+		// `seasons` table with different column sets, so the reads lived here
+		// and the writes lived on `adminApi` to keep the two shapes apart.
+		// The backend removed the second writer; there is one shape, and the
+		// reads and writes belong together.
+		expect(names).toContain('createSeason');
+		expect(names).toContain('activateSeason');
 	});
 });
 
@@ -169,5 +172,49 @@ describe('competitionsApi — judging', () => {
 	it('names the three verdicts', async () => {
 		const { JUDGE_STATUSES } = await import('$lib/types');
 		expect(JUDGE_STATUSES).toEqual(['accepted', 'rejected', 'disqualified']);
+	});
+});
+
+describe('competitionsApi — seasons are one surface again', () => {
+	it('creates through the one surviving writer, with a theme', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { season: {} }, meta: {} }));
+		const { competitionsApi } = await import('./competitions');
+		await competitionsApi.createSeason({
+			slug: 'saison-q1-2026',
+			name: 'Saison Q1 2026',
+			theme: 'shipping in public',
+			starts_at: '2026-01-01T00:00:00Z',
+			ends_at: '2026-03-31T23:59:59Z'
+		});
+		// Not `/admin/seasons`: that writer recorded a description into the
+		// same table and the backend removed it. A theme is what a season has.
+		expect(lastUrl()).toBe('/api/seasons');
+		expect(lastBody()).toEqual({
+			slug: 'saison-q1-2026',
+			name: 'Saison Q1 2026',
+			theme: 'shipping in public',
+			starts_at: '2026-01-01T00:00:00Z',
+			ends_at: '2026-03-31T23:59:59Z'
+		});
+	});
+
+	it('activates by slug, and sends no status', async () => {
+		fetchMock.mockResolvedValueOnce(okJson({ data: { season: {} }, meta: {} }));
+		const { competitionsApi } = await import('./competitions');
+		await competitionsApi.activateSeason('saison-q1-2026');
+		expect(lastUrl()).toBe('/api/seasons/saison-q1-2026/activate');
+		// There is no general status write any more. Activation promotes one
+		// season and demotes another; closing is a different route entirely.
+		expect(lastCall()[1].body).toBeUndefined();
+	});
+
+	it('keeps the removed writer out of the client', async () => {
+		const { competitionsApi } = await import('./competitions');
+		const { adminApi } = await import('./admin');
+		const names = [...Object.keys(competitionsApi), ...Object.keys(adminApi)];
+		expect(names).not.toContain('updateSeasonStatus');
+		// Closing survives, and stayed on `adminApi` because it is addressed
+		// by id and answers with a report rather than with a season.
+		expect(Object.keys(adminApi)).toContain('closeSeason');
 	});
 });

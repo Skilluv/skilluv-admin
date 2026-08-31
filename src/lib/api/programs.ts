@@ -28,6 +28,8 @@ import type {
 	EventRole,
 	EventRow,
 	EventStatus,
+	ContributionJudgementInput,
+	LabContributionRow,
 	LabRow,
 	LaunchCampaignRow,
 	ProposalRow,
@@ -90,6 +92,41 @@ export const programsApi = {
 	},
 
 	// --- Writes ---
+
+	/**
+	 * One lab's contributions, unjudged first.
+	 *
+	 * The list behind the judge button. Submission is write-only and `GET
+	 * /labs` lists labs rather than their contributions, so until this route
+	 * existed the only way to act on a contribution was to settle a whole
+	 * month without ever naming one.
+	 *
+	 * `status` is `pending`, `accepted` or `rejected`; `pending` is the
+	 * absence of a verdict rather than a stored value, which is why the
+	 * server spells the three out instead of taking a boolean.
+	 */
+	labContributions(
+		labId: string,
+		params?: { status?: string; month?: string; page?: number; per_page?: number }
+	) {
+		return api.get<
+			ApiResponse<{
+				contributions: LabContributionRow[];
+				page: number;
+				per_page: number;
+				total: number;
+			}>
+		>(`/admin/labs/${labId}/contributions`, params as Record<string, string | number>);
+	},
+
+	/** Accept or refuse one contribution. A refusal with no reason is
+	 *  refused by the backend, which is the rule and not a formality. */
+	judgeContribution(id: string, input: ContributionJudgementInput) {
+		return api.post<ApiResponse<{ accepted: boolean }>>(
+			`/admin/lab-contributions/${id}/judge`,
+			input
+		);
+	},
 
 	/** Divide a month's pool and pay it out. `month` is any day in the month;
 	 *  the backend uses the first of it. Refused when nothing was accepted

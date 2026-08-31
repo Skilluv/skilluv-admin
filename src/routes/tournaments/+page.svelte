@@ -9,7 +9,6 @@
 		adminApi,
 		TOURNAMENT_KINDS,
 		TOURNAMENT_REQUIRED_RULES,
-		type Season,
 		type Tournament,
 		type TournamentKind,
 		type TournamentFormat,
@@ -253,16 +252,20 @@
 	// --- Season create form ---
 	let sSlug = $state('');
 	let sName = $state('');
-	let sDesc = $state('');
+	let sTheme = $state('');
 	let sStartsAt = $state('');
 	let sEndsAt = $state('');
 	let creatingSeason = $state(false);
-	let lastSeason = $state<Season | null>(null);
+	let lastSeason = $state<SeasonListRow | null>(null);
 
 	// --- Season ops ---
+	//
+	// Two identifiers, because the two routes take two. Activation is
+	// addressed by slug and closing by id, and conflating them into one field
+	// would send whichever the operator happened to have to hand.
 	let seasonOpsId = $state('');
-	let seasonNewStatus = $state('active');
-	let updatingSeasonStatus = $state(false);
+	let seasonOpsSlug = $state('');
+	let activatingSeason = $state(false);
 	let closingSeason = $state(false);
 	let lastCloseReport = $state<SeasonCloseReport | null>(null);
 
@@ -364,19 +367,20 @@
 	async function submitCreateSeason(e: SubmitEvent) {
 		e.preventDefault();
 		if (creatingSeason) return;
-		if (!sSlug.trim() || !sName.trim() || !sStartsAt || !sEndsAt) return;
+		if (!sSlug.trim() || !sName.trim() || !sTheme.trim() || !sStartsAt || !sEndsAt) return;
 		creatingSeason = true;
 		try {
-			const res = await adminApi.createSeason({
+			const res = await competitionsApi.createSeason({
 				slug: sSlug.trim().toLowerCase(),
 				name: sName.trim(),
-				description: sDesc.trim() || undefined,
+				theme: sTheme.trim(),
 				starts_at: new Date(sStartsAt).toISOString(),
 				ends_at: new Date(sEndsAt).toISOString()
 			});
 			lastSeason = res.data.season;
 			toast.success(i18n.t('admin.tournaments.seasonCreated'));
-			sSlug = ''; sName = ''; sDesc = ''; sStartsAt = ''; sEndsAt = '';
+			sSlug = ''; sName = ''; sTheme = ''; sStartsAt = ''; sEndsAt = '';
+			await loadSeasons();
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
@@ -384,17 +388,20 @@
 		}
 	}
 
-	async function submitSeasonStatus(e: SubmitEvent) {
+	async function submitSeasonActivation(e: SubmitEvent) {
 		e.preventDefault();
-		if (updatingSeasonStatus || !seasonOpsId.trim()) return;
-		updatingSeasonStatus = true;
+		if (activatingSeason || !seasonOpsSlug.trim()) return;
+		activatingSeason = true;
 		try {
-			await adminApi.updateSeasonStatus(seasonOpsId.trim(), seasonNewStatus);
-			toast.success(i18n.t('admin.tournaments.seasonStatusUpdated'));
+			await competitionsApi.activateSeason(seasonOpsSlug.trim().toLowerCase());
+			toast.success(i18n.t('admin.tournaments.seasonActivated'));
+			// The list is the thing that just changed twice — one season rose
+			// and another fell — so it is reloaded rather than patched.
+			await loadSeasons();
 		} catch (e) {
 			toast.error(errorMessage(e));
 		} finally {
-			updatingSeasonStatus = false;
+			activatingSeason = false;
 		}
 	}
 
@@ -634,8 +641,9 @@
 						</div>
 					</div>
 					<div>
-						<label for="s-desc" class={labelCls}>{i18n.t('admin.tournaments.seasonDescription')}</label>
-						<textarea id="s-desc" bind:value={sDesc} rows="2" class={textareaCls}></textarea>
+						<label for="s-theme" class={labelCls}>{i18n.t('admin.tournaments.seasonTheme')} *</label>
+						<textarea id="s-theme" bind:value={sTheme} rows="2" required class={textareaCls}></textarea>
+						<p class="mt-1 text-xs text-text-muted">{i18n.t('admin.tournaments.seasonThemeHint')}</p>
 					</div>
 					<div class="grid grid-cols-2 gap-3">
 						<div>
@@ -669,30 +677,41 @@
 					<h2 class="text-lg font-bold">{i18n.t('admin.tournaments.seasonOps')}</h2>
 				</div>
 
-				<div class="mb-4">
-					<label for="so-id" class={labelCls}>{i18n.t('admin.common.seasonIdLabel')} *</label>
-					<input id="so-id" bind:value={seasonOpsId} placeholder="uuid…" class="{inputCls} font-mono text-xs" />
-				</div>
-
-				<form onsubmit={submitSeasonStatus} class="mb-6 space-y-3 border-t border-border pt-4">
+				<form onsubmit={submitSeasonActivation} class="mb-6 space-y-3">
 					<p class="text-xs uppercase tracking-wider text-text-muted">
-						{i18n.t('admin.tournaments.changeStatus')}
+						{i18n.t('admin.tournaments.activateSeason')}
 					</p>
-					<Select
-						items={[
-							{ value: 'upcoming', label: 'upcoming' },
-							{ value: 'active', label: 'active' },
-							{ value: 'closed', label: 'closed' }
-						]}
-						bind:value={seasonNewStatus}
-						class="w-full"
-					/>
-					<Button variant="secondary" size="sm" loading={updatingSeasonStatus}>
-						{i18n.t('admin.common.apply')}
+					<p class="text-xs text-text-muted">
+						{i18n.t('admin.tournaments.activateSeasonHint')}
+					</p>
+					<div>
+						<label for="so-slug" class={labelCls}>
+							{i18n.t('admin.tournaments.seasonSlugLabel')} *
+						</label>
+						<input
+							id="so-slug"
+							bind:value={seasonOpsSlug}
+							placeholder="saison-q1-2026"
+							class="{inputCls} font-mono text-xs"
+						/>
+					</div>
+					<Button variant="secondary" size="sm" loading={activatingSeason}>
+						{i18n.t('admin.tournaments.activateBtn')}
 					</Button>
 				</form>
 
 				<div class="space-y-3 border-t border-border pt-4">
+					<div>
+						<label for="so-id" class={labelCls}>
+							{i18n.t('admin.common.seasonIdLabel')} *
+						</label>
+						<input
+							id="so-id"
+							bind:value={seasonOpsId}
+							placeholder="uuid…"
+							class="{inputCls} font-mono text-xs"
+						/>
+					</div>
 					<p class="text-xs uppercase tracking-wider text-text-muted">
 						{i18n.t('admin.tournaments.closeSeason')}
 					</p>

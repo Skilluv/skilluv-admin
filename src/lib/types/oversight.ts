@@ -145,3 +145,42 @@ export interface AdminTalentOffersResponse {
 	limit: number;
 	offset: number;
 }
+
+/** One challenge in a trade's catalogue, as the readiness call returns it. */
+export interface DraftChallenge {
+	id: string;
+	title: string;
+	description: string;
+	instructions: string;
+	difficulty: number;
+	status: string;
+	/** False while the brief is still what the seeding migration wrote. The
+	 *  server decides where that line is; this client does not re-measure it. */
+	written: boolean;
+}
+
+/**
+ * How ready one trade's catalogue is to be opened to learners.
+ *
+ * `blockers` is the field the screen is built around. It is empty exactly
+ * when publishing would succeed, and each entry is a sentence naming one
+ * thing to fix, in the order somebody would fix them — so the screen renders
+ * the server's sentences rather than deriving its own from the counters.
+ * Two readings of "ready" would eventually disagree, and the one next to the
+ * UPDATE is the one that matters.
+ */
+export interface TradeReadiness {
+	orientation_slug: string;
+	orientation_name: string;
+	/** The review family. Null for a trade that has none — which is itself a
+	 *  blocker, because nothing then decides who may judge a submission. */
+	reviewer_group: string | null;
+	total: number;
+	published: number;
+	/** Drafts whose brief is still the seeded stub. */
+	unwritten: number;
+	/** How many people could review a submission to this trade today. */
+	reviewers: number;
+	blockers: string[];
+	challenges: DraftChallenge[];
+}

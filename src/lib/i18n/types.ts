@@ -851,6 +851,7 @@ export interface Translations {
 				featured: string;
 				credentials: string;
 				terrains: string;
+				catalogue: string;
 			};
 			stats: {
 				declared: string;
@@ -913,6 +914,22 @@ export interface Translations {
 			declineReasonHint: string;
 			declineReasonLabel: string;
 			emptyTerrains: string;
+			catalogueNote: string;
+			cataloguePublished: string;
+			checkReadinessBtn: string;
+			difficulty: string;
+			emptyChallenges: string;
+			noReviewerGroup: string;
+			publishCatalogueBtn: string;
+			publishCatalogueHint: string;
+			publishedChallenges: string;
+			readyToOpen: string;
+			reviewersAvailable: string;
+			stubBrief: string;
+			totalChallenges: string;
+			tradeSlugHint: string;
+			tradeSlugLabel: string;
+			unwrittenChallenges: string;
 			projectSlugHint: string;
 			projectSlugLabel: string;
 			terrainAdopted: string;
@@ -1194,6 +1211,23 @@ export interface Translations {
 			emptyLabs: string;
 			monthLabel: string;
 			monthHint: string;
+			acceptBtn: string;
+			contributionStatuses: {
+				pending: string;
+				accepted: string;
+				rejected: string;
+			};
+			contributionAccepted: string;
+			contributionRefused: string;
+			contributionsHint: string;
+			emptyContributions: string;
+			hideContributions: string;
+			paidOn: string;
+			refusalReasonHint: string;
+			refusalReasonLabel: string;
+			refuseBtn: string;
+			refusedBecause: string;
+			showContributions: string;
 			settleBtn: string;
 			settled: string;
 			emptyBetas: string;
@@ -1722,6 +1756,13 @@ export interface Translations {
 			emptySeasons: string;
 			seasonsListTitle: string;
 			seasonCreated: string;
+			activateBtn: string;
+			activateSeason: string;
+			activateSeasonHint: string;
+			seasonActivated: string;
+			seasonSlugLabel: string;
+			seasonTheme: string;
+			seasonThemeHint: string;
 			seasonOps: string;
 			changeStatus: string;
 			closeSeason: string;
@@ -1733,7 +1774,6 @@ export interface Translations {
 			promotions: string;
 			relegations: string;
 			seasonClosed: string;
-			seasonStatusUpdated: string;
 			createTournament: string;
 			linkedSeason: string;
 			tournamentCreated: string;
@@ -1799,7 +1839,6 @@ export interface Translations {
 			tournamentStatusUpdated: string;
 			descriptionLabel: string;
 			seasonName: string;
-			seasonDescription: string;
 			contestOps: {
 				title: string;
 				hint: string;

@@ -4,7 +4,7 @@
 
 **Version :** 2026-08-29.
 **Total endpoints :** 48 pour le socle MVP (sections 1-17), plus les surfaces Cyber, missions et curation design des sections 19-21, plus les lignes commerciales et domaines de la section 22.
-**Couverture de la surface staff :** 307 / 308 verbes servis (99,7 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability**, moins les routes servies deux fois et celles qui appartiennent au praticien — voir §22.2. **Le seul restant est `POST /admin/lab-contributions/{id}/judge`, dont aucun GET n'existe nulle part** : c'est SKI-354, et rien d'autre.
+**Couverture de la surface staff :** 309 / 309 verbes servis (100 %), mesurée par `node scripts/unconsumed-routes.mjs`. Le périmètre est `/admin/**` **plus toute route gardée par une capability**, moins les routes servies deux fois et celles qui appartiennent au praticien — voir §22.2. Plus aucune écriture dont l'`{id}` soit introuvable.
 
 **Changelog depuis 2026-07-08** :
 - **ADM-M0** (commit front `b614ba4`, back P1+P2) : 2FA obligatoire pour admin (soft flag login + middleware `ensure_admin_2fa`), reset-2fa admin-to-admin, origin check server-side (`ensure_admin_origin`), rate-limit destructif Redis 10/min + 100/h (`enforce_admin_destructive`), audit log append-only (migration 0099 + rôle `audit_admin`), instrumentation audit sur KYC decide + community + SSO revoke + tournament conclude, helper `dry_run` via env `SKILLUV_ADMIN_DRY_RUN`.
@@ -1489,19 +1489,18 @@ the denominator has since grown with the routes SKI-354 added.
 | `/game` | `admin_game.rs` (10) | The mod queue, game slices awaiting a signature, jams, attestations, featurings |
 | `/recruitment` | `recruitment.rs` (4) | The campaign queue, assignment, shortlisting, departures |
 | `/ops-practice` | `ops_practice.rs` (5) | Overdue remediation, and the verifications that turn operational work into proof |
-| `/domains` | `admin_domains.rs` (3), `credentials.rs` (3) | A per-domain dashboard, and outside certifications awaiting review |
+| `/domains` | `admin_domains.rs` (3), `credentials.rs` (3), `orientations.rs` (2) | A per-domain dashboard, outside certifications awaiting review, and opening a trade's challenge catalogue |
 | `/contracts` | `enterprise_products.rs` (4), `talent_line.rs` (1) | The register every product line writes into, what lapses next, and the twenty verbs the register's `source_id` unlocked |
 | `/studios` | `engagements.rs` (4) | Forming a bookable team, and disbanding one |
 | `/finance` | `finance.rs` (11) | Advances awaiting disbursal, undecided referrals, unpaid guarantee claims, draft partnerships |
 | `/operations` (extended) | seven modules (12) | Feature flags, tags, one-off runs, the assistant ledger |
 | `/engagement` (rewired) | `cohorts.rs` (2), `talent_offers.rs` (3) | The same two lists, now read as moderation sees them, with the two actions |
-| `/programs` | eight modules (21) | Labs, beta programmes, launch campaigns, ambassadors, certification audits, community events, series, the awards ballot, sponsored content |
+| `/programs` | eight modules (23) | Labs and their contributions, beta programmes, launch campaigns, ambassadors, certification audits, community events, series, the awards ballot, sponsored content |
 | `/review` | seven modules (12) | Apprentice verifications, defect reports, the vouching queue, forum moderation, per-domain slice confirmations |
 | `/tournaments` (extended) | `tournament.rs` (2) | The panel's own screen: a contest's entries and the verdict on each |
 
-Coverage after these: **307 of 308 staff verbs (99.7%)**, from 151 at the
-start. `--admin` prints 274 of 275 for the prefix alone, because that is the
-number the backend tickets quote.
+Coverage after these: **309 of 309 staff verbs (100%)**, from 151 at the
+start.
 
 **A metric that can be gamed is worth saying out loud.** The audit counts
 `api.*` call sites, so adding a client method raises the number whether or
@@ -1509,24 +1508,37 @@ not anybody can reach it. Every route counted above is reachable from a
 screen; four of them spent an afternoon as API methods with no interface, and
 the interfaces were built rather than the number banked.
 
-### 22.4 The one that remains, and why
+### 22.4 Nothing remains, and what closed the last of it
 
-**`POST /admin/lab-contributions/{id}/judge` — there is no GET anywhere.**
-Not under `/admin`, not under `/labs`, not publicly. A lab's contributions
-are written by contributors and settled in bulk by `POST
-/admin/labs/{id}/settle`, but the per-contribution ids the judge route takes
-are served by nothing, so an administrator has the verb and no way to name
-its object. It is the same failure SKI-354 described, in the one module that
-batch did not reach, and it is filed there.
+The last unreachable verb was `POST /admin/lab-contributions/{id}/judge`:
+submission is write-only, `GET /labs` lists labs rather than their
+contributions, and `settle` closes a whole month without ever naming one. An
+administrator could pay for an evening's work in bulk but not judge it. `GET
+/admin/labs/{id}/contributions` is what closed it, and the list sits under
+each lab on `/programs` with the verdict buttons on it.
 
-Everything else in this section's previous list is gone. SKI-354 landed `GET
-/api/admin/enterprise-products` — the product register, over a table ten
-backend modules already write into, returning `source_table` and `source_id`
-per row — plus the four finance queues and the sponsored-content listing.
-`source_id` **is** the `{id}` the twenty servicing routes take, which is why
-one route closed twenty gaps.
+Two routes arrived in the same batch and are consumed here as well:
 
-Two smaller findings from that audit are still open on the same ticket:
+- `GET /admin/orientations/{slug}/challenges` and its `/publish` — a trade's
+  catalogue and what is still in the way of opening it. 130 design challenges
+  were seeded carrying a title and an intent but no brief, deliberately: a
+  challenge nobody has read must not be handed to somebody who is learning.
+  The screen is a tab on `/domains` and renders **the server's `blockers`
+  sentences verbatim** rather than deriving its own verdict from the
+  counters — two readings of "ready" would eventually disagree, and the one
+  written next to the UPDATE is the one that matters.
+
+**The `seasons` duplication is resolved, and it was a breaking change.** Two
+modules wrote the one table with different column sets; the backend removed
+the `tournament.rs` writer. `POST /admin/seasons` and
+`POST /admin/seasons/{id}/status` are gone, and `routes.contract.test.ts`
+failed on exactly those two — which is the whole reason that test exists.
+Seasons now create through `POST /seasons` with a **theme**, activate by
+**slug** through `POST /seasons/{slug}/activate`, and close by **id** through
+the surviving `POST /admin/seasons/{id}/close`. The reads and the writes are
+in `competitions.ts` together, and `Season` and `SeasonListRow` are one type.
+
+Two smaller findings from the original audit are still open:
 
 - **`/admin/events` carries two unrelated resources.** `GET/POST
   /admin/events` is the badge-event collection (`admin_ops.rs`); `POST
@@ -1536,11 +1548,12 @@ Two smaller findings from that audit are still open on the same ticket:
 - **A studio being formed is in no list.** `GET /studios` returns `active`
   only, so `/studios` holds the id from the create call and does the whole
   formation in one sitting. It says so on the page.
-- **Two modules write the one `seasons` table with different column sets.**
-  `tournament.rs` writes `description`, `seasons.rs` writes `theme`, and both
-  `INSERT INTO seasons`. A season created through one path is missing a field
-  the other assumes, which is why `Season` and `SeasonListRow` are typed
-  apart in this client.
+
+One observation on the new listing, which changes nothing today: the `total`
+`GET /admin/labs/{id}/contributions` returns counts **every** contribution of
+the lab, while the rows honour `status` and `month`. Filter to the four
+pending ones out of ninety and the page count is computed from ninety. The
+screen does not paginate that list, so nothing is wrong on this side.
 
 ### 22.5 What to run after a backend batch
 
@@ -1553,4 +1566,7 @@ node scripts/unconsumed-routes.mjs     # what arrived that nothing calls yet
 ```
 
 Refreshing the snapshot to make a red contract test green is how that test
-stops being worth having. The diff is the point.
+stops being worth having. The diff is the point — and it has now earned its
+keep twice: the batch that resolved the `seasons` duplication **removed** two
+routes this app was calling, and the contract test named both before anything
+was clicked.
