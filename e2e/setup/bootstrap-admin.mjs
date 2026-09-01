@@ -11,9 +11,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import pg from 'pg';
 import { currentCode } from './totp.mjs';
-import { loadDotEnv } from './env.mjs';
+import { assertConsistentTargets, loadDotEnv } from './env.mjs';
 
 loadDotEnv();
+// Avant toute chose : ce script inscrit un compte via BACKEND_URL puis
+// l'élève via DATABASE_URL. Si les deux ne désignent pas le même
+// environnement, le compte est créé quelque part où rien ne l'élèvera.
+assertConsistentTargets('bootstrap-admin');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CREDS_PATH = resolve(HERE, 'admin-credentials.json');

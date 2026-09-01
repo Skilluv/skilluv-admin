@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { currentCode } from './setup/totp.mjs';
+import { assertConsistentTargets } from './setup/env.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CREDS_PATH = resolve(HERE, 'setup/admin-credentials.json');
@@ -15,6 +16,11 @@ const backendUrl = () => process.env.BACKEND_URL || 'http://localhost:3001';
 const ADMIN_ORIGIN = 'http://localhost:5174';
 
 export default async function globalSetup(_config: FullConfig) {
+	// Refuse une suite qui sèmerait dans une base et piloterait une autre
+	// application. Posé ici plutôt que dans un spec : le mal est déjà fait
+	// quand le premier test s'exécute.
+	assertConsistentTargets('suite E2E');
+
 	// No credentials → skip the auth bootstrap instead of failing the whole run.
 	// The `public` project needs no session, so it must stay runnable on a
 	// machine that has no backend/DB (see qa/README.md). The `admin` project
