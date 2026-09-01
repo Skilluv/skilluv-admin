@@ -111,18 +111,11 @@ test('an admin triages a finding from its detail screen', async ({ page }) => {
 		try {
 			await expect(dialog).toBeVisible({ timeout: 10_000 });
 		} catch (e) {
-			throw new Error(
-				`the move dialog never opened.
-` +
-					(pageErrors.length
-						? `the page reported:
-  ${pageErrors.join('
-  ')}`
-						: 'the page reported nothing — so the handler ran and the modal did not render, ' +
-							'or the click never reached the button.') +
-					`
-original: ${(e as Error).message}`
-			);
+			const reported = pageErrors.length
+				? 'the page reported: ' + pageErrors.join(' | ')
+				: 'the page reported nothing, so either the handler ran without the modal '
+					+ 'rendering, or the click never reached the button';
+			throw new Error('the move dialog never opened. ' + reported + '. original: ' + (e as Error).message);
 		}
 
 		const transition = page.waitForResponse(

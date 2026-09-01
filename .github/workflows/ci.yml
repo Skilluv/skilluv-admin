@@ -35,6 +35,16 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm test
 
+      # Parse every Playwright spec without running one. `svelte-check` does
+      # not read `e2e/**` and Vitest does not collect `.spec.ts` from it, so a
+      # syntax error there reached CI, cost a full e2e job, and only announced
+      # itself as `SyntaxError: Unterminated string constant`. `--list` needs
+      # no browser, no backend and no dev server, and answers in seconds.
+      - name: Playwright specs parse
+        env:
+          VITE_API_PROXY_TARGET: http://localhost:3001
+        run: npx playwright test --list
+
       - name: Build
         run: npm run build
       - name: Secret scan -- built bundle (AD-03)
