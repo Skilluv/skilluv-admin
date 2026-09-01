@@ -73,6 +73,15 @@ test('moderator deletes a bogus signal through the danger dialog', async ({ page
 		const row = await landOnQueue(page, 'E2E bogus claim');
 
 		await row.getByRole('button', { name: /^supprimer$|^delete$/i }).click();
+
+		// The reason is not decoration and the dialog will not submit without
+		// it: the backend refuses a deletion carrying less than eight
+		// characters, because this erases a declaration somebody made about
+		// themselves. Both screens used to send none at all and took a 400
+		// every time — nothing could report it while this job was pointed at
+		// production.
+		await page.getByTestId('confirm-dangerous-reason').fill('fabricated certification claim');
+
 		const req = page.waitForResponse(
 			(r) =>
 				r.url().includes(`/moderation/external-signals/${signal.id}`) &&

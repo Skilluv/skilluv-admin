@@ -864,7 +864,12 @@
 
 					<div class="flex flex-col gap-2">
 						{#if available.length > 0}
-							<Button variant="primary" size="sm" onclick={openTransition}>
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={openTransition}
+								data-testid="transition-open"
+							>
 								{t('admin.security.actions.transition')}
 							</Button>
 						{:else}

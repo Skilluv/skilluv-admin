@@ -81,8 +81,22 @@ test('an admin triages a finding from its detail screen', async ({ page }) => {
 			timeout: 10_000
 		});
 
+		// Anything the page throws is collected and reported with the failure.
+		// The previous shape of this test failed as a bare "Test timeout",
+		// which named nothing and cost an afternoon of reading artefacts: a
+		// dialog that does not open and a click that lands nowhere look
+		// identical from the outside unless the page is asked.
+		const pageErrors: string[] = [];
+		page.on('pageerror', (e) => pageErrors.push(`pageerror: ${e.message}`));
+		page.on('console', (m) => {
+			if (m.type() === 'error') pageErrors.push(`console: ${m.text()}`);
+		});
+
 		// Open the transition dialog. `submitted` offers triaged first.
-		await page.getByRole('button', { name: /^déplacer$|^move$|^نقل$/i }).first().click();
+		// By testid, not by label: the opener and the dialog's submit carry
+		// the same word, and picking one by position is how this test used to
+		// click the wrong thing in silence.
+		await page.getByTestId('transition-open').click();
 
 		// The dialog's submit carried the same label as the button that opens
 		// it, so this used to reach for `.last()` and hope. Disambiguating by
@@ -94,7 +108,22 @@ test('an admin triages a finding from its detail screen', async ({ page }) => {
 		// Asserting the dialog is up before submitting is the other half: if
 		// it never opened, the failure says so instead of blaming the POST.
 		const dialog = page.getByRole('dialog');
-		await expect(dialog, 'the move dialog opened').toBeVisible({ timeout: 10_000 });
+		try {
+			await expect(dialog).toBeVisible({ timeout: 10_000 });
+		} catch (e) {
+			throw new Error(
+				`the move dialog never opened.
+` +
+					(pageErrors.length
+						? `the page reported:
+  ${pageErrors.join('
+  ')}`
+						: 'the page reported nothing — so the handler ran and the modal did not render, ' +
+							'or the click never reached the button.') +
+					`
+original: ${(e as Error).message}`
+			);
+		}
 
 		const transition = page.waitForResponse(
 			(r) => r.url().endsWith('/transition') && r.request().method() === 'POST'
