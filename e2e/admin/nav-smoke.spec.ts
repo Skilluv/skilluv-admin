@@ -30,7 +30,12 @@ const ROUTES: Array<{ path: string; label: string }> = [
 	{ path: '/sponsored-challenges', label: 'sponsored requests' },
 	{ path: '/sso-sessions', label: 'sso sessions' },
 	{ path: '/tournaments', label: 'tournaments' },
-	{ path: '/community', label: 'community review' }
+	{ path: '/community', label: 'community review' },
+	{ path: '/external-signals', label: 'external signals queue' },
+	{ path: '/engagement', label: 'cohorts and talent offers' },
+	{ path: '/design', label: 'design critique queue' },
+	{ path: '/security', label: 'security findings queue' },
+	{ path: '/missions', label: 'mission board' }
 ];
 
 for (const { path, label } of ROUTES) {

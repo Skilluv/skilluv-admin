@@ -1,6 +1,6 @@
 # Backend TODO — skilluv-admin MVP
 
-**Dernière révision** : 2026-07-16.
+**Dernière révision** : 2026-08-29.
 **Owner** : équipe backend (skilluv-backend).
 **Consumer** : panneau admin (skilluv-admin, SvelteKit 5).
 
@@ -495,3 +495,62 @@ endpoint indépendamment.
 Front lead : équipe skilluv-admin.
 Traçabilité back : commits P1 (`e40fc87`), P2 (`e289d37`).
 Traçabilité front : commits `b614ba4` (M0), `9950799` (M1), `3b29837` (M2).
+
+---
+
+## Cyber, missions et curation design — ce qui reste ouvert
+
+**Ajouté le 2026-08-28**, après implémentation complète des surfaces admin des
+projets Linear « Skilluv Cyber — Full workflow » et « Skilluv Design — 26
+orientations ».
+
+Contrairement aux phases ADM-M3 à M5 ci-dessus, **rien ici ne bloque une page** :
+les trois surfaces (`/security`, `/missions`, `/design`) sont livrées et
+consomment tout ce que le backend expose. Ce qui suit est ce qui manque pour
+qu'elles soient complètes, chaque point tracé dans Linear.
+
+| Ticket | Manque | Impact aujourd'hui |
+|---|---|---|
+| [SKI-333](https://linear.app/skilluv/issue/SKI-333) | Aucun endpoint d'agrégat : ni `/admin/security/overview`, ni `/admin/design/overview`, ni total/somme sur `/admin/missions` | `/security` affiche les compteurs publics du hall of fame (confirmés/corrigés/publiés seulement) ; `/design` et `/missions` n'en affichent aucun. **Aucun chiffre n'est fabriqué pour faire semblant.** |
+| [SKI-334](https://linear.app/skilluv/issue/SKI-334) | `design_curator` et `design_moderator` spécifiés par SKI-205, absents de la CHECK (migration 0229) | La file de briefs est gardée par `community_curator`, la file de plagiat par `plagiarism_reviewer` — deux périmètres plus larges que voulu |
+| [SKI-335](https://linear.app/skilluv/issue/SKI-335) | Pas de gate de review sur les missions (`approve` / `reject`), pas de troisième issue d'arbitrage | `/missions` livre lecture + arbitrage binaire. Question produit à trancher avant de coder quoi que ce soit |
+| [SKI-336](https://linear.app/skilluv/issue/SKI-336) | Pas de commentaires internes sur un finding | La coordination entre triager, reviewer et admin se fait hors du dossier |
+| [SKI-337](https://linear.app/skilluv/issue/SKI-337) | `research-tokens/{id}/revoke` existe, aucune route ne liste les tokens | `securityApi.revokeResearchToken()` est câblé mais inatteignable depuis un écran |
+
+Deux points relèvent d'une décision produit plutôt que d'un développement, et
+sont posés comme tels dans les tickets : le gate de review des missions
+(SKI-335) et l'existence même de `design_moderator` (SKI-334).
+
+### Ce qui a été livré contre l'existant
+
+Pour mémoire, et parce que ces routes n'apparaissent nulle part ailleurs dans
+ce document : 20 routes `/api/admin/security/*`, 3 routes `/api/admin/missions*`,
+`/api/admin/design/briefs*`, `/api/admin/plagiarism*`, `/api/admin/featured*`,
+et les opérations de concours (`jury`, `vote-bursts`, `prizes/outstanding`,
+`prize/fund`, `prize/refund`). Détail route par route dans `ADMIN-CAPABILITIES.md`,
+sections 19 à 21.
+
+---
+
+## Mise a jour 2026-08-29 : le lot est livre
+
+SKI-338 est integralement livre cote backend (migrations 0596-0598), et les
+six surfaces sont consommees par l'admin. Le tableau de la section precedente
+est donc clos :
+
+| Ticket | Etat |
+|---|---|
+| SKI-333 | Livre — `GET /api/admin/security/overview` + pagination sur `/api/admin/missions`. L'overview design reste volontairement non construit (decision D6). |
+| SKI-334 | Tranche autrement — `domain_curator:design` porte deja le scope, pas de `design_curator`. Voir ADMIN-CAPABILITIES 21.3. |
+| SKI-335 | Couvert par les decisions D3 et D4 : pas de gate `approve`/`reject`, un retrait a posteriori a la place. |
+| SKI-336 | Livre — `security_finding_comments`, en ajout seul. |
+| SKI-337 | Livre — `GET /api/admin/security/research-tokens`. |
+| SKI-348 | Livre cote admin — trois chemins corriges + un test de contrat qui empeche le suivant. |
+
+### Ce qui reste ouvert
+
+**SKI-351** — rien ne sert `capability_catalog`. L'admin recopie a la main une
+liste dont une partie est generee par un trigger, donc elle sera fausse des
+qu'une orientation change de famille. C'est le seul manque backend qui touche
+une surface livree : sans lui, personne ne peut accorder les capabilities qui
+gardent `/security`, `/missions` et la file de briefs design.
