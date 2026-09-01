@@ -35,7 +35,21 @@ const ROUTES: Array<{ path: string; label: string }> = [
 	{ path: '/engagement', label: 'cohorts and talent offers' },
 	{ path: '/design', label: 'design critique queue' },
 	{ path: '/security', label: 'security findings queue' },
-	{ path: '/missions', label: 'mission board' }
+	{ path: '/missions', label: 'mission board' },
+	{ path: '/money', label: 'money movements' },
+	{ path: '/disputes', label: 'dispute arbitration' },
+	{ path: '/emails', label: 'email preview' },
+	{ path: '/sales', label: 'sales pipeline' },
+	{ path: '/data', label: 'data line' },
+	{ path: '/game', label: 'game moderation' },
+	{ path: '/recruitment', label: 'recruitment campaigns' },
+	{ path: '/ops-practice', label: 'ops practice' },
+	{ path: '/domains', label: 'per-domain dashboard' },
+	{ path: '/contracts', label: 'product register' },
+	{ path: '/studios', label: 'studios' },
+	{ path: '/finance', label: 'finance queues' },
+	{ path: '/programs', label: 'programmes and events' },
+	{ path: '/review', label: 'review queues' }
 ];
 
 for (const { path, label } of ROUTES) {
