@@ -67,14 +67,20 @@ jobs:
 
   e2e-admin:
     # Runs the authenticated `admin` Playwright project against a real backend
-    # pulled from GHCR. Requires the backend team's publish workflow to be
-    # merged first (see skilluv-backend PR #33). This job will stay red on
-    # PRs until that image is published — that's intentional; we don't skip
-    # tests when a dependency isn't ready, we surface the gap.
+    # pulled from GHCR.
+    #
+    # L'image est publiée depuis, et démarre. Elle panique en revanche au boot
+    # tant que SKI-294 n'est pas livré : GeoNames est chargé depuis un chemin
+    # relatif avec un `.expect()`, et le dossier n'est pas dans l'image. Le
+    # job reste donc rouge jusqu'à ce correctif — délibérément : on ne masque
+    # pas une dépendance absente, on la donne à voir.
     name: Playwright admin flows (needs backend image)
     runs-on: ubuntu-latest
     needs: check
-    timeout-minutes: 20
+    # 20 min avaient été posées quand le job mourait au healthcheck : la valeur
+    # n'avait jamais mesuré une exécution réelle. Les 85 tests du projet admin
+    # contre un vrai backend n'y tiennent pas.
+    timeout-minutes: 35
 
     services:
       postgres:
@@ -145,8 +151,13 @@ jobs:
           docker pull "$BACKEND_IMAGE"
           # Host network — backend reaches postgres/redis/mailpit/minio via
           # the ports GHA services (and MinIO above) already bound to the
-          # runner. Admin origin allowlist added so the API accepts
-          # requests from the test's Origin: http://localhost:5174.
+          # runner.
+          #
+          # `ADMIN_ORIGINS` porte les deux formes de la même adresse : le
+          # navigateur de Playwright charge `http://127.0.0.1:5174` (le
+          # `baseURL` de playwright.config.ts) et envoie donc cet `Origin`,
+          # alors que la liste ne contenait que `localhost`. Pour `admin_gate`
+          # ce sont deux origines distinctes — et toute écriture était refusée.
           docker run -d --name backend --network host \
             -e HOST=0.0.0.0 \
             -e PORT=3001 \
@@ -163,7 +174,7 @@ jobs:
             -e SMTP_PORT=1025 \
             -e SMTP_TLS=none \
             -e EMAIL_FROM=noreply@skilluv.test \
-            -e ADMIN_ORIGINS=http://localhost:5174 \
+            -e ADMIN_ORIGINS=http://127.0.0.1:5174,http://localhost:5174 \
             -e RUST_LOG=skilluv_backend=info,tower_http=info \
             "$BACKEND_IMAGE"
 
@@ -204,8 +215,11 @@ jobs:
           DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
         run: npx playwright test --project=admin
 
-      - name: Dump backend logs on failure
-        if: failure()
+      # `always()` et non `failure()` : une annulation par timeout n'est pas un
+      # échec au sens de GitHub, et les steps `failure()` sont alors sautés. On
+      # s'est retrouvé sans logs ni rapport sur le seul run qui en avait besoin.
+      - name: Dump backend logs
+        if: always()
         run: docker logs backend
 
       - name: Upload Playwright report
