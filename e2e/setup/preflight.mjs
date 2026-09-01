@@ -14,9 +14,10 @@
 
 import pg from 'pg';
 
-import { loadDotEnv } from './env.mjs';
+import { assertConsistentTargets, loadDotEnv } from './env.mjs';
 
 loadDotEnv();
+assertConsistentTargets('preflight');
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
 const PG_URL = process.env.DATABASE_URL || 'postgres://skilluv:skilluv_secret@localhost:5433/skilluv';
