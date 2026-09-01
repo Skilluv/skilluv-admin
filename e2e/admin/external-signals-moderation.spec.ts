@@ -19,12 +19,19 @@ import {
 // instead of the queue — which is itself worth asserting, but not here.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ADMIN_EMAIL = JSON.parse(
-	readFileSync(resolve(HERE, '..', 'setup', 'admin-credentials.json'), 'utf8')
-).email as string;
+
+// Read when the test runs, not when the file is imported. The credentials
+// are written by the bootstrap step, so at import time they may not exist —
+// and an import-time throw takes the whole run down at collection: `npx
+// playwright test --list` reported "Total: 0 tests in 0 files" rather than
+// naming the one spec it could not load.
+function adminEmail(): string {
+	const path = resolve(HERE, '..', 'setup', 'admin-credentials.json');
+	return JSON.parse(readFileSync(path, 'utf8')).email as string;
+}
 
 test.beforeAll(async () => {
-	const adminId = await findUserIdByEmail(ADMIN_EMAIL);
+	const adminId = await findUserIdByEmail(adminEmail());
 	expect(adminId, 'bootstrapped e2e admin must exist').toBeTruthy();
 	await grantCapability(adminId!, 'community_moderator');
 });
