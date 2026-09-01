@@ -82,11 +82,17 @@ jobs:
     # Runs the authenticated `admin` Playwright project against a real backend
     # pulled from GHCR.
     #
-    # L'image est publiée depuis, et démarre. Elle panique en revanche au boot
-    # tant que SKI-294 n'est pas livré : GeoNames est chargé depuis un chemin
-    # relatif avec un `.expect()`, et le dossier n'est pas dans l'image. Le
-    # job reste donc rouge jusqu'à ce correctif — délibérément : on ne masque
-    # pas une dépendance absente, on la donne à voir.
+    # Ce job a été rouge du 12 août au premier vert de cette branche, pour deux
+    # raisons successives qu'il vaut la peine de distinguer :
+    #
+    #   1. l'image paniquait au boot — GeoNames chargé depuis un chemin relatif
+    #      avec un `.expect()`, dossier absent de l'image. Réglé côté backend
+    #      par SKI-294 (`load_or_empty` + `GEONAMES_DIR`), et le contournement
+    #      qui téléchargeait le jeu de données ici a été retiré avec ;
+    #   2. `ADMIN_ORIGINS` ne portait que la forme `localhost` — voir plus bas.
+    #
+    # Le nom du job garde « needs backend image » : la dépendance est réelle et
+    # le job échoue si l'image n'est pas publiée.
     name: Playwright admin flows (needs backend image)
     runs-on: ubuntu-latest
     needs: check
