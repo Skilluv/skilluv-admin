@@ -325,6 +325,21 @@ export async function countTimelineEvents(userId: string) {
 	});
 }
 
+/**
+ * Wipe a user's timeline so the backfill has something to reconstruct.
+ *
+ * `timeline_signup` is a trigger `AFTER INSERT ON users` (migration 0142),
+ * not an application hook — so a seeded user arrives with its `signup` event
+ * already written, and a backfill run against it is a no-op. Clearing the
+ * rows first is what makes "the event came back" an assertion about the
+ * backfill rather than about the trigger that had already run.
+ */
+export async function clearTimelineEvents(userId: string) {
+	return withDb(async (client) => {
+		await client.query('DELETE FROM user_timeline_events WHERE user_id = $1', [userId]);
+	});
+}
+
 export async function setUserRank(userId: string, rank: Rank) {
 	await withDb(async (client) => {
 		await client.query(

@@ -84,12 +84,22 @@ test('an admin triages a finding from its detail screen', async ({ page }) => {
 		// Open the transition dialog. `submitted` offers triaged first.
 		await page.getByRole('button', { name: /^déplacer$|^move$|^نقل$/i }).first().click();
 
+		// The dialog's submit carried the same label as the button that opens
+		// it, so this used to reach for `.last()` and hope. Disambiguating by
+		// position means the test silently clicks the wrong thing the day the
+		// DOM order shifts — and a click that lands nowhere useful surfaces
+		// thirty seconds later as a bare "Test timeout", naming nothing. The
+		// submit has a testid now.
+		//
+		// Asserting the dialog is up before submitting is the other half: if
+		// it never opened, the failure says so instead of blaming the POST.
+		const dialog = page.getByRole('dialog');
+		await expect(dialog, 'the move dialog opened').toBeVisible({ timeout: 10_000 });
+
 		const transition = page.waitForResponse(
 			(r) => r.url().endsWith('/transition') && r.request().method() === 'POST'
 		);
-		// The dialog's own submit button carries the same label as the one
-		// that opened it, so target the last — the dialog renders after.
-		await page.getByRole('button', { name: /^déplacer$|^move$|^نقل$/i }).last().click();
+		await page.getByTestId('transition-submit').click();
 		expect((await transition).status(), 'transition POST').toBeLessThan(300);
 
 		const after = await readSecurityFinding(finding.id);

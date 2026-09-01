@@ -2074,6 +2074,7 @@ export const fr: Translations = {
 				deleteDialogTitle: 'Supprimer le signal externe',
 				deleteDialogDescription:
 					'La suppression est définitive. À réserver aux déclarations fausses ou abusives.',
+				deleteReasonHint: 'Huit caractères minimum, et le backend y tient. Ceci efface une déclaration que quelqu\'un a faite sur lui-même : le motif est ce avec quoi on répondra plus tard à la question.',
 				forbiddenHint:
 					'Cette file demande la capability community_moderator ou community_curator. Accorde-la depuis la fiche utilisateur.',
 				userSectionTitle: 'Signaux externes',

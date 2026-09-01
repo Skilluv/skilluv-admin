@@ -63,11 +63,11 @@
 		}
 	}
 
-	async function confirmDelete() {
+	async function confirmDelete(reason: string) {
 		if (!deleteTarget || deleting) return;
 		deleting = true;
 		try {
-			await engagementApi.deleteExternalSignal(deleteTarget.id);
+			await engagementApi.deleteExternalSignal(deleteTarget.id, reason.trim());
 			toast.success(i18n.t('admin.engagement.externalSignals.deletedToast'));
 			deleteTarget = null;
 			await load();
@@ -201,8 +201,9 @@
 		? `${deleteTarget.provider} — ${deleteTarget.title} · ${i18n.t('admin.engagement.externalSignals.deleteDialogDescription')}`
 		: ''}
 	actionLabel={i18n.t('admin.engagement.externalSignals.deleteBtn')}
-	requireReason={false}
+	reasonHint={i18n.t('admin.engagement.externalSignals.deleteReasonHint')}
+	minReasonLength={8}
 	loading={deleting}
-	onconfirm={() => confirmDelete()}
+	onconfirm={(reason) => confirmDelete(reason)}
 	onclose={() => (deleteTarget = null)}
 />

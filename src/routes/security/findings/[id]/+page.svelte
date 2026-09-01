@@ -976,7 +976,13 @@
 		<Button variant="ghost" size="sm" onclick={() => (transitionOpen = false)}>
 			{t('admin.common.cancel')}
 		</Button>
-		<Button variant="primary" size="sm" onclick={submitTransition} loading={transitionBusy}>
+		<Button
+			variant="primary"
+			size="sm"
+			onclick={submitTransition}
+			loading={transitionBusy}
+			data-testid="transition-submit"
+		>
 			{t('admin.security.actions.transition')}
 		</Button>
 	{/snippet}

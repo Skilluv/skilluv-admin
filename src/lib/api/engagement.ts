@@ -83,9 +83,18 @@ export const engagementApi = {
 		);
 	},
 
-	/** Remove a bogus or abusive claim. 204, no body. */
-	deleteExternalSignal(id: string) {
-		return api.delete<void>(`/moderation/external-signals/${id}`);
+	/**
+	 * Remove a bogus or abusive claim. 204, no body.
+	 *
+	 * `reason` is required and the backend refuses anything under eight
+	 * characters — this erases a declaration somebody made about themselves,
+	 * and the refusal message says so. It travels as a query parameter
+	 * because the route is a DELETE and the backend reads it from there.
+	 */
+	deleteExternalSignal(id: string, reason: string) {
+		return api.delete<void>(
+			`/moderation/external-signals/${id}?reason=${encodeURIComponent(reason)}`
+		);
 	},
 
 	/** A single profile's signals, split into verified and declared. */

@@ -2074,6 +2074,7 @@ export const en: Translations = {
 				deleteDialogTitle: 'Delete external signal',
 				deleteDialogDescription:
 					'Deletion is permanent. Reserve it for false or abusive claims.',
+				deleteReasonHint: 'Eight characters minimum, and the backend enforces it. This erases a declaration somebody made about themselves — the reason is what a later question gets answered with.',
 				forbiddenHint:
 					'This queue requires the community_moderator or community_curator capability. Grant it from the user page.',
 				userSectionTitle: 'External signals',

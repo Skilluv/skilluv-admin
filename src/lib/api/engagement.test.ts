@@ -118,12 +118,17 @@ describe('engagementApi — external signals (SKI-42)', () => {
 		expect(res.data.signal.verified_at).not.toBeNull();
 	});
 
-	it('DELETEs a signal and tolerates the 204 with no body', async () => {
+	it('DELETEs a signal with its reason, and tolerates the 204 with no body', async () => {
 		fetchMock.mockResolvedValueOnce(noContent());
 		const { engagementApi } = await import('./engagement');
-		await expect(engagementApi.deleteExternalSignal('s1')).resolves.toBeUndefined();
+		await expect(
+			engagementApi.deleteExternalSignal('s1', 'fabricated certification')
+		).resolves.toBeUndefined();
 		const [url, init] = lastCall();
-		expect(url).toBe('/api/moderation/external-signals/s1');
+		// The reason travels in the query string because the route is a
+		// DELETE and the backend reads it from there. Sending none was a
+		// guaranteed 400 — the screens had never managed a deletion.
+		expect(url).toBe('/api/moderation/external-signals/s1?reason=fabricated%20certification');
 		expect(init?.method).toBe('DELETE');
 	});
 

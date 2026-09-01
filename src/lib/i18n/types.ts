@@ -2921,6 +2921,7 @@ export interface Translations {
 				deletedToast: string;
 				deleteDialogTitle: string;
 				deleteDialogDescription: string;
+				deleteReasonHint: string;
 				forbiddenHint: string;
 				userSectionTitle: string;
 				userSectionHint: string;

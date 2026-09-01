@@ -2081,6 +2081,7 @@ export const ar: Translations = {
 				deletedToast: 'تم حذف الإشارة.',
 				deleteDialogTitle: 'حذف الإشارة الخارجية',
 				deleteDialogDescription: 'الحذف نهائي. يُخصَّص للتصريحات الكاذبة أو المسيئة.',
+				deleteReasonHint: 'ثمانية أحرف على الأقل، والخادم يفرضها. هذا يمحو تصريحًا أدلى به شخص عن نفسه، والسبب هو ما سيُجاب به عن السؤال لاحقًا.',
 				forbiddenHint:
 					'تتطلب هذه القائمة صلاحية community_moderator أو community_curator. امنحها من صفحة المستخدم.',
 				userSectionTitle: 'الإشارات الخارجية',

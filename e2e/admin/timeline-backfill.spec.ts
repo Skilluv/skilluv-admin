@@ -1,18 +1,25 @@
 import { test, expect } from '@playwright/test';
-import { cleanupUser, countTimelineEvents, seedUser } from '../setup/db';
+import { cleanupUser, clearTimelineEvents, countTimelineEvents, seedUser } from '../setup/db';
 
 // SKI-39 — admin timeline backfill on the user detail page.
 //
-// A freshly seeded user has no `user_timeline_events` row: the hooks that
-// normally write one fire on real signup, not on a direct INSERT. So the
-// backfill has exactly one thing to reconstruct — the `signup` event — which
-// makes the assertion unambiguous instead of "some number went up".
+// This file used to open on a false premise: "a freshly seeded user has no
+// `user_timeline_events` row, the hooks that normally write one fire on real
+// signup, not on a direct INSERT". `timeline_signup` is a **trigger** on
+// `users` (migration 0142), so a direct INSERT fires it like any other. The
+// seeded user arrived with its signup event already there and the first
+// assertion could never hold.
+//
+// Clearing the rows first restores what the premise was reaching for: the
+// backfill then has exactly one thing to reconstruct, which makes the
+// assertion unambiguous instead of "some number went up".
 
 test('admin replays a user timeline and the signup event appears', async ({ page }) => {
 	const user = await seedUser({ prefix: 'timeline' });
 
 	try {
-		expect(await countTimelineEvents(user.id), 'seeded user starts with no event').toBe(0);
+		await clearTimelineEvents(user.id);
+		expect(await countTimelineEvents(user.id), 'timeline cleared before the replay').toBe(0);
 
 		await page.goto(`/users/${user.id}`);
 		await expect(page.getByRole('navigation').first()).toBeVisible({ timeout: 10_000 });
@@ -37,6 +44,10 @@ test('replaying twice inserts nothing the second time', async ({ page }) => {
 	const user = await seedUser({ prefix: 'timelineidem' });
 
 	try {
+		// Same reason as above: without this the first run has nothing to
+		// insert either, and the test would prove idempotence by proving that
+		// nothing ever happens.
+		await clearTimelineEvents(user.id);
 		await page.goto(`/users/${user.id}`);
 		await expect(page.getByRole('navigation').first()).toBeVisible({ timeout: 10_000 });
 
