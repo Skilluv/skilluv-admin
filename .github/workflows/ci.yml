@@ -68,6 +68,13 @@ jobs:
         run: npm run build
 
       - name: Run public smoke tests
+        # Aucun backend dans ce job : les specs publiques ne touchent pas
+        # l'API, et celle qui le ferait se `skip` faute de credentials. La
+        # cible est posée quand même parce que `vite.config.ts` refuse de
+        # démarrer sans elle sous CI — et parce qu'un proxy sans cible
+        # explicite est ce qui a envoyé l'autre job en production.
+        env:
+          VITE_API_PROXY_TARGET: http://localhost:3001
         run: npx playwright test --project=public
 
       - name: Upload Playwright report
@@ -232,6 +239,19 @@ jobs:
         env:
           BACKEND_URL: http://localhost:3001
           DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
+          # Sans ces deux-là, le serveur de dev proxie `/api` vers
+          # `https://api.skill-uv.com` : `.env` est gitignoré, donc absent du
+          # runner, et le défaut de vite.config.ts s'appliquait en silence. La
+          # suite admin authentifiée pilotait la production au lieu du backend
+          # démarré dix étapes plus haut. Toutes les écritures revenaient en
+          # 401 — le compte admin de la CI n'existe que dans la base de la CI —
+          # donc rien n'a été écrit en prod ; c'est une chance, pas un design.
+          # `vite.config.ts` refuse désormais ce défaut quand `CI` est posé.
+          VITE_API_PROXY_TARGET: http://localhost:3001
+          # Le rendu serveur appelle `/auth/me` de son côté. Son défaut est déjà
+          # local, mais le laisser implicite ferait dépendre deux chemins de deux
+          # règles différentes pour la même question.
+          API_URL: http://localhost:3001/api
         run: npx playwright test --project=admin
 
       # `always()` et non `failure()` : une annulation par timeout n'est pas un
