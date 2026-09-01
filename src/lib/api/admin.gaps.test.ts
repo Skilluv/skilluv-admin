@@ -1,5 +1,5 @@
 /**
- * Phase 6 gap-fix — GET /admin/enterprises/{id} + GET /admin/badge-events.
+ * Phase 6 gap-fix — GET /admin/enterprises/{id} + GET /admin/events.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,7 +50,7 @@ describe('adminApi.getAdminEnterprise', () => {
 });
 
 describe('adminApi.listBadgeEvents', () => {
-	it('GETs /admin/badge-events with query params', async () => {
+	it('GETs /admin/events with query params', async () => {
 		fetchMock.mockResolvedValueOnce(
 			okJson({
 				data: [],
@@ -67,11 +67,11 @@ describe('adminApi.listBadgeEvents', () => {
 		});
 		const [url] = fetchMock.mock.calls[0];
 		expect(url).toBe(
-			'/api/admin/badge-events?is_active=true&is_partner=false&page=1&per_page=20'
+			'/api/admin/events?is_active=true&is_partner=false&page=1&per_page=20'
 		);
 	});
 
-	it('GETs /admin/badge-events without params', async () => {
+	it('GETs /admin/events without params', async () => {
 		fetchMock.mockResolvedValueOnce(
 			okJson({
 				data: [],
@@ -82,6 +82,6 @@ describe('adminApi.listBadgeEvents', () => {
 		const { adminApi } = await import('./admin');
 		await adminApi.listBadgeEvents();
 		const [url] = fetchMock.mock.calls[0];
-		expect(url).toBe('/api/admin/badge-events');
+		expect(url).toBe('/api/admin/events');
 	});
 });

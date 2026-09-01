@@ -126,6 +126,61 @@ describe('adminApi capabilities (P18.4)', () => {
 		expect(init.method).toBe('DELETE');
 		expect(init.body).toBeUndefined();
 	});
+
+	it('capabilityCatalogue GETs the catalogue the grant form is built from', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: [
+					{
+						capability: 'security_reviewer:red-team',
+						family: 'security_reviewer',
+						scope: 'red-team',
+						description: 'Relecture des metiers red-team.',
+						is_derived: true,
+						engine_managed: false,
+						held_by: 0
+					}
+				]
+			})
+		);
+		const { adminApi } = await import('./admin');
+		const res = await adminApi.capabilityCatalogue();
+		expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/capabilities');
+		// The row that could not have been enumerated by hand: it is written by
+		// the orientations trigger of migration 0404, appears in no migration,
+		// and moves when a trade changes family.
+		expect(res.data[0].is_derived).toBe(true);
+		expect(res.data[0].scope).toBe('red-team');
+	});
+
+	it('distinguishes a derived row from an engine-managed one', async () => {
+		fetchMock.mockResolvedValueOnce(
+			okJson({
+				data: [
+					{
+						capability: 'mentor',
+						family: 'mentor',
+						scope: null,
+						description: 'Peut accompagner un apprenant.',
+						is_derived: false,
+						engine_managed: true,
+						held_by: 12
+					}
+				]
+			})
+		);
+		const { adminApi } = await import('./admin');
+		const res = await adminApi.capabilityCatalogue();
+		// Two different facts that a single "automatic" flag would have merged.
+		// `is_derived` decides whether the row exists at all; `engine_managed`
+		// decides whether revoking it sticks, which is what an operator is
+		// about to try.
+		const [row] = res.data;
+		expect(row.is_derived).toBe(false);
+		expect(row.engine_managed).toBe(true);
+		expect(row.scope).toBeNull();
+		expect(row.held_by).toBe(12);
+	});
 });
 
 describe('adminApi fraud (P14.5)', () => {

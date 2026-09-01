@@ -21,6 +21,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      - name: Install gitleaks
+        run: |
+          VERSION=8.21.2
+          curl -fsSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks && sudo mv gitleaks /usr/local/bin/ && gitleaks version
+      - name: Secret scan -- source (AD-03)
+        run: gitleaks detect --source . --redact --verbose --exit-code 1
 
       - name: Svelte check
         run: npm run check
@@ -28,8 +35,24 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm test
 
+      # Parse every Playwright spec without running one. `svelte-check` does
+      # not read `e2e/**` and Vitest does not collect `.spec.ts` from it, so a
+      # syntax error there reached CI, cost a full e2e job, and only announced
+      # itself as `SyntaxError: Unterminated string constant`. `--list` needs
+      # no browser, no backend and no dev server, and answers in seconds.
+      - name: Playwright specs parse
+        env:
+          VITE_API_PROXY_TARGET: http://localhost:3001
+        run: npx playwright test --list
+
       - name: Build
         run: npm run build
+      - name: Secret scan -- built bundle (AD-03)
+        # The client bundle is downloaded by every browser: a secret or a
+        # non-PUBLIC value inlined here is world-readable. Scan the build output
+        # (not tracked by git, hence --no-git). Tune with .gitleaks.toml if a
+        # minified asset trips a rule.
+        run: gitleaks detect --source build --no-git --redact --verbose --exit-code 1
 
   e2e:
     name: Playwright public smoke
@@ -55,6 +78,13 @@ jobs:
         run: npm run build
 
       - name: Run public smoke tests
+        # Aucun backend dans ce job : les specs publiques ne touchent pas
+        # l'API, et celle qui le ferait se `skip` faute de credentials. La
+        # cible est posée quand même parce que `vite.config.ts` refuse de
+        # démarrer sans elle sous CI — et parce qu'un proxy sans cible
+        # explicite est ce qui a envoyé l'autre job en production.
+        env:
+          VITE_API_PROXY_TARGET: http://localhost:3001
         run: npx playwright test --project=public
 
       - name: Upload Playwright report
@@ -67,14 +97,26 @@ jobs:
 
   e2e-admin:
     # Runs the authenticated `admin` Playwright project against a real backend
-    # pulled from GHCR. Requires the backend team's publish workflow to be
-    # merged first (see skilluv-backend PR #33). This job will stay red on
-    # PRs until that image is published — that's intentional; we don't skip
-    # tests when a dependency isn't ready, we surface the gap.
+    # pulled from GHCR.
+    #
+    # Ce job a été rouge du 12 août au premier vert de cette branche, pour deux
+    # raisons successives qu'il vaut la peine de distinguer :
+    #
+    #   1. l'image paniquait au boot — GeoNames chargé depuis un chemin relatif
+    #      avec un `.expect()`, dossier absent de l'image. Réglé côté backend
+    #      par SKI-294 (`load_or_empty` + `GEONAMES_DIR`), et le contournement
+    #      qui téléchargeait le jeu de données ici a été retiré avec ;
+    #   2. `ADMIN_ORIGINS` ne portait que la forme `localhost` — voir plus bas.
+    #
+    # Le nom du job garde « needs backend image » : la dépendance est réelle et
+    # le job échoue si l'image n'est pas publiée.
     name: Playwright admin flows (needs backend image)
     runs-on: ubuntu-latest
     needs: check
-    timeout-minutes: 20
+    # 20 min avaient été posées quand le job mourait au healthcheck : la valeur
+    # n'avait jamais mesuré une exécution réelle. Les 85 tests du projet admin
+    # contre un vrai backend n'y tiennent pas.
+    timeout-minutes: 35
 
     services:
       postgres:
@@ -145,8 +187,13 @@ jobs:
           docker pull "$BACKEND_IMAGE"
           # Host network — backend reaches postgres/redis/mailpit/minio via
           # the ports GHA services (and MinIO above) already bound to the
-          # runner. Admin origin allowlist added so the API accepts
-          # requests from the test's Origin: http://localhost:5174.
+          # runner.
+          #
+          # `ADMIN_ORIGINS` porte les deux formes de la même adresse : le
+          # navigateur de Playwright charge `http://127.0.0.1:5174` (le
+          # `baseURL` de playwright.config.ts) et envoie donc cet `Origin`,
+          # alors que la liste ne contenait que `localhost`. Pour `admin_gate`
+          # ce sont deux origines distinctes — et toute écriture était refusée.
           docker run -d --name backend --network host \
             -e HOST=0.0.0.0 \
             -e PORT=3001 \
@@ -163,7 +210,7 @@ jobs:
             -e SMTP_PORT=1025 \
             -e SMTP_TLS=none \
             -e EMAIL_FROM=noreply@skilluv.test \
-            -e ADMIN_ORIGINS=http://localhost:5174 \
+            -e ADMIN_ORIGINS=http://127.0.0.1:5174,http://localhost:5174 \
             -e RUST_LOG=skilluv_backend=info,tower_http=info \
             "$BACKEND_IMAGE"
 
@@ -202,10 +249,26 @@ jobs:
         env:
           BACKEND_URL: http://localhost:3001
           DATABASE_URL: postgres://skilluv:skilluv_secret@localhost:5433/skilluv
+          # Sans ces deux-là, le serveur de dev proxie `/api` vers
+          # `https://api.skill-uv.com` : `.env` est gitignoré, donc absent du
+          # runner, et le défaut de vite.config.ts s'appliquait en silence. La
+          # suite admin authentifiée pilotait la production au lieu du backend
+          # démarré dix étapes plus haut. Toutes les écritures revenaient en
+          # 401 — le compte admin de la CI n'existe que dans la base de la CI —
+          # donc rien n'a été écrit en prod ; c'est une chance, pas un design.
+          # `vite.config.ts` refuse désormais ce défaut quand `CI` est posé.
+          VITE_API_PROXY_TARGET: http://localhost:3001
+          # Le rendu serveur appelle `/auth/me` de son côté. Son défaut est déjà
+          # local, mais le laisser implicite ferait dépendre deux chemins de deux
+          # règles différentes pour la même question.
+          API_URL: http://localhost:3001/api
         run: npx playwright test --project=admin
 
-      - name: Dump backend logs on failure
-        if: failure()
+      # `always()` et non `failure()` : une annulation par timeout n'est pas un
+      # échec au sens de GitHub, et les steps `failure()` sont alors sautés. On
+      # s'est retrouvé sans logs ni rapport sur le seul run qui en avait besoin.
+      - name: Dump backend logs
+        if: always()
         run: docker logs backend
 
       - name: Upload Playwright report

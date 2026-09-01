@@ -68,16 +68,21 @@ test('proof-hooks sweep with dry-run reaches the backend', async ({ page }) => {
 	});
 });
 
+// `/admin/ai/*` n'existe plus : SKI-348 a déplacé les deux jobs sous
+// `/admin/assistant/*`, le client a suivi et ce spec était resté sur
+// l'ancienne adresse. Il attendait donc un POST qui ne partait plus, et
+// accusait l'hydratation — le message d'erreur du helper dit « le handler
+// n'est probablement jamais attaché », ce qui était faux et coûteux à lire.
 test('AI hidden-gems job trigger reaches the backend', async ({ page }) => {
 	await openOperations(page);
-	await pageFireAndAssert(page, '/admin/ai/hidden-gems', async () => {
+	await pageFireAndAssert(page, '/admin/assistant/hidden-gems', async () => {
 		await page.getByTestId('ops-hidden-gems').click();
 	});
 });
 
 test('AI churn job trigger reaches the backend', async ({ page }) => {
 	await openOperations(page);
-	await pageFireAndAssert(page, '/admin/ai/churn', async () => {
+	await pageFireAndAssert(page, '/admin/assistant/churn', async () => {
 		await page.getByTestId('ops-churn').click();
 	});
 });

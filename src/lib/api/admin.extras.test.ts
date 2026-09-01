@@ -23,7 +23,7 @@ function okJson<T>(body: T) {
 }
 
 describe('adminApi.createBadgeEvent', () => {
-	it('POSTs to /admin/badge-events with body', async () => {
+	it('POSTs to /admin/events with body', async () => {
 		fetchMock.mockResolvedValueOnce(okJson({ data: { event: {} }, meta: {} }));
 		const { adminApi } = await import('./admin');
 		await adminApi.createBadgeEvent({
@@ -34,7 +34,7 @@ describe('adminApi.createBadgeEvent', () => {
 			is_partner: false
 		});
 		const [url, init] = fetchMock.mock.calls[0];
-		expect(url).toBe('/api/admin/badge-events');
+		expect(url).toBe('/api/admin/events');
 		expect(init.method).toBe('POST');
 		expect(JSON.parse(init.body).slug).toBe('hacktoberfest-2026');
 	});
