@@ -21,6 +21,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      - name: Install gitleaks
+        run: |
+          VERSION=8.21.2
+          curl -fsSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks && sudo mv gitleaks /usr/local/bin/ && gitleaks version
+      - name: Secret scan -- source (AD-03)
+        run: gitleaks detect --source . --redact --verbose --exit-code 1
 
       - name: Svelte check
         run: npm run check
@@ -30,6 +37,12 @@ jobs:
 
       - name: Build
         run: npm run build
+      - name: Secret scan -- built bundle (AD-03)
+        # The client bundle is downloaded by every browser: a secret or a
+        # non-PUBLIC value inlined here is world-readable. Scan the build output
+        # (not tracked by git, hence --no-git). Tune with .gitleaks.toml if a
+        # minified asset trips a rule.
+        run: gitleaks detect --source build --no-git --redact --verbose --exit-code 1
 
   e2e:
     name: Playwright public smoke
