@@ -71,13 +71,44 @@
 
 	let transitionOpen = $state(false);
 	let transitionBusy = $state(false);
-	let move = $state<FindingTransition>({ to: 'triaged' });
+	/**
+	 * The move form, with every optional field spelled as an empty string.
+	 *
+	 * `FindingTransition` types the extras as optional because the request
+	 * omits them, and binding an `undefined` to an `<Input>` — whose `value`
+	 * prop has a fallback — makes Svelte throw `props_invalid_value` while
+	 * rendering. The dialog then never appears, and the page reports the
+	 * error to the console where nobody is watching.
+	 *
+	 * A `bind:value={move.reason}` hid this from the type checker:
+	 * the cast asserted a string that was not there. So the form has its own
+	 * all-strings type, and `submitTransition` builds the request from it —
+	 * which it already did, field by field.
+	 */
+	type MoveForm = {
+		to: SecurityFindingStatus;
+		reason: string;
+		fix_url: string;
+		writeup_url: string;
+		duplicate_of: string;
+		triage_notes_md: string;
+	};
+
+	const BLANK_MOVE = {
+		reason: '',
+		fix_url: '',
+		writeup_url: '',
+		duplicate_of: '',
+		triage_notes_md: ''
+	} as const;
+
+	let move = $state<MoveForm>({ to: 'triaged', ...BLANK_MOVE });
 
 	const available = $derived(data ? nextStatuses(data.finding.status) : []);
 
 	function openTransition() {
 		if (available.length === 0) return;
-		move = { to: available[0] };
+		move = { to: available[0], ...BLANK_MOVE };
 		transitionOpen = true;
 	}
 
@@ -87,13 +118,13 @@
 			// Only what the destination needs travels: the backend rejects
 			// unknown fields, and an empty string is not the same as absent.
 			const body: FindingTransition = { to: move.to };
-			if (move.reason?.trim()) body.reason = move.reason.trim();
-			if (move.to === 'fixed' && move.fix_url?.trim()) body.fix_url = move.fix_url.trim();
-			if (move.to === 'published' && move.writeup_url?.trim())
+			if (move.reason.trim()) body.reason = move.reason.trim();
+			if (move.to === 'fixed' && move.fix_url.trim()) body.fix_url = move.fix_url.trim();
+			if (move.to === 'published' && move.writeup_url.trim())
 				body.writeup_url = move.writeup_url.trim();
-			if (move.to === 'duplicate' && move.duplicate_of?.trim())
+			if (move.to === 'duplicate' && move.duplicate_of.trim())
 				body.duplicate_of = move.duplicate_of.trim();
-			if (move.to === 'triaged' && move.triage_notes_md?.trim())
+			if (move.to === 'triaged' && move.triage_notes_md.trim())
 				body.triage_notes_md = move.triage_notes_md.trim();
 
 			const res = await securityApi.transition(id, body);
@@ -952,27 +983,27 @@
 	{/if}
 
 	<div class="mt-4 space-y-4">
-		<Input label={t('admin.security.actions.reasonLabel')} bind:value={move.reason as string} />
+		<Input label={t('admin.security.actions.reasonLabel')} bind:value={move.reason} />
 
 		{#if move.to === 'fixed'}
 			<Input
 				label={t('admin.security.actions.fixUrlLabel')}
-				bind:value={move.fix_url as string}
+				bind:value={move.fix_url}
 			/>
 		{:else if move.to === 'published'}
 			<Input
 				label={t('admin.security.actions.writeupUrlLabel')}
-				bind:value={move.writeup_url as string}
+				bind:value={move.writeup_url}
 			/>
 		{:else if move.to === 'duplicate'}
 			<Input
 				label={t('admin.security.actions.duplicateOfLabel')}
-				bind:value={move.duplicate_of as string}
+				bind:value={move.duplicate_of}
 			/>
 		{:else if move.to === 'triaged'}
 			<Input
 				label={t('admin.security.actions.triageNotesLabel')}
-				bind:value={move.triage_notes_md as string}
+				bind:value={move.triage_notes_md}
 			/>
 		{/if}
 	</div>

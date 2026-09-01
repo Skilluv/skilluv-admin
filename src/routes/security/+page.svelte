@@ -360,7 +360,19 @@
 
 	let programmeOpen = $state(false);
 	let programmeSaving = $state(false);
-	let programme = $state<CuratedBountyInput & { topicsRaw: string }>({
+	// The three optional strings are spelled required here, and that is not
+	// cosmetic. `<Input>` declares `value` with a fallback, and Svelte throws
+	// `props_invalid_value` while rendering when an `undefined` is bound to
+	// such a prop — the dialog then never appears and the page reports the
+	// error to a console nobody is watching. A `bind:value={x as string}`
+	// asserted a string that need not be there and hid exactly that from the
+	// type checker; it cost a full CI cycle to find on the findings screen.
+	type ProgrammeForm = CuratedBountyInput &
+		Required<Pick<CuratedBountyInput, 'scope_summary' | 'payout_range' | 'retired_reason'>> & {
+			topicsRaw: string;
+		};
+
+	let programme = $state<ProgrammeForm>({
 		platform: '',
 		program_slug: '',
 		program_url: '',
@@ -419,7 +431,29 @@
 
 	let challengeOpen = $state(false);
 	let challengeSaving = $state(false);
-	let challenge = $state<NewSecurityChallenge>({
+	// Same reason as `ProgrammeForm` above: every string the form binds is a
+	// string, never `undefined`.
+	// A question as the form holds it: `hint` is a string because an input
+	// cannot hold anything else. The payload wants null for "no hint", and
+	// that conversion happens at submit.
+	type QuestionForm = Omit<NewLabQuestion, 'hint'> & { hint: string };
+
+	// `Omit` and not an intersection: `A & { questions: QuestionForm[] }`
+	// keeps both shapes and yields `NewLabQuestion[] & QuestionForm[]`, which
+	// nothing satisfies. Narrowing a field means removing it first.
+	type ChallengeForm = Omit<
+		NewSecurityChallenge,
+		'flag' | 'flag_format' | 'target_url' | 'lab_artifact_key' | 'attribution_md' | 'questions'
+	> & {
+		flag: string;
+		flag_format: string;
+		target_url: string;
+		lab_artifact_key: string;
+		attribution_md: string;
+		questions: QuestionForm[];
+	};
+
+	let challenge = $state<ChallengeForm>({
 		title: '',
 		description: '',
 		instructions: '',
@@ -440,13 +474,13 @@
 	});
 
 	function addQuestion() {
-		const q: NewLabQuestion = {
+		const q: QuestionForm = {
 			id: `q${(challenge.questions?.length ?? 0) + 1}`,
 			kind: 'text',
 			question: '',
 			answer: '',
 			choices: [],
-			hint: null,
+			hint: '',
 			case_sensitive: false
 		};
 		challenge.questions = [...(challenge.questions ?? []), q];
@@ -487,7 +521,14 @@
 							lab_artifact_bytes: challenge.lab_artifact_bytes
 								? Number(challenge.lab_artifact_bytes)
 								: null,
-							questions: challenge.questions,
+							// The form binds `hint` as a string because an input
+							// cannot hold anything else; the payload wants null
+							// for "no hint", so the conversion happens here
+							// rather than by binding a null to an <Input>.
+							questions: (challenge.questions ?? []).map((q) => ({
+								...q,
+								hint: q.hint?.trim() ? q.hint.trim() : null
+							})),
 							pass_percent: Number(challenge.pass_percent),
 							max_attempts: Number(challenge.max_attempts)
 						})
@@ -1332,7 +1373,7 @@
 		/>
 		<Input
 			label={t('admin.security.programmes.scopeLabel')}
-			bind:value={programme.scope_summary as string}
+			bind:value={programme.scope_summary}
 			class="sm:col-span-2"
 		/>
 		<Input
@@ -1341,7 +1382,7 @@
 		/>
 		<Input
 			label={t('admin.security.programmes.payoutLabel')}
-			bind:value={programme.payout_range as string}
+			bind:value={programme.payout_range}
 		/>
 	</div>
 
@@ -1376,7 +1417,7 @@
 		<div class="mt-4">
 			<Input
 				label={t('admin.security.programmes.retiredReasonLabel')}
-				bind:value={programme.retired_reason as string}
+				bind:value={programme.retired_reason}
 			/>
 		</div>
 	{/if}
@@ -1459,7 +1500,7 @@
 		/>
 		<Input
 			label={t('admin.security.catalogue.attributionLabel')}
-			bind:value={challenge.attribution_md as string}
+			bind:value={challenge.attribution_md}
 		/>
 	</div>
 
@@ -1467,15 +1508,15 @@
 		<div class="mt-4 grid gap-4 sm:grid-cols-2">
 			<Input
 				label={t('admin.security.catalogue.flagLabel')}
-				bind:value={challenge.flag as string}
+				bind:value={challenge.flag}
 			/>
 			<Input
 				label={t('admin.security.catalogue.flagFormatLabel')}
-				bind:value={challenge.flag_format as string}
+				bind:value={challenge.flag_format}
 			/>
 			<Input
 				label={t('admin.security.catalogue.targetUrlLabel')}
-				bind:value={challenge.target_url as string}
+				bind:value={challenge.target_url}
 				class="sm:col-span-2"
 			/>
 		</div>
@@ -1483,7 +1524,7 @@
 		<div class="mt-4 grid gap-4 sm:grid-cols-2">
 			<Input
 				label={t('admin.security.catalogue.artifactKeyLabel')}
-				bind:value={challenge.lab_artifact_key as string}
+				bind:value={challenge.lab_artifact_key}
 			/>
 			<Input
 				label={t('admin.security.catalogue.artifactBytesLabel')}
@@ -1545,7 +1586,7 @@
 						/>
 						<Input
 							label={t('admin.security.catalogue.hintLabel')}
-							bind:value={q.hint as string}
+							bind:value={q.hint}
 						/>
 					</div>
 					<div class="mt-3 flex items-center justify-between">
